@@ -32,8 +32,9 @@ export interface Employee {
   otherDeductions: number
   totalDeductions: number
   isDeductionManual: boolean
-  // 考勤資料 (只保留剩餘特別假)
-  annualLeaveRemaining: number
+  // 考勤資料
+  annualLeaveRemaining: number // 年度剩餘特別假
+  carriedOverLeave: number     // 結轉特別假
   // 退休金與實發
   companyPensionContribution: number
   monthlyPensionContribution: number
@@ -72,6 +73,7 @@ export function createEmptyEmployee(): Employee {
     totalDeductions: 0,
     isDeductionManual: false,
     annualLeaveRemaining: 0,
+    carriedOverLeave: 0,
     companyPensionContribution: 0,
     monthlyPensionContribution: 0,
     netSalary: 0,

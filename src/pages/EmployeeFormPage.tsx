@@ -238,7 +238,7 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 onChange={e => set('payDate', e.target.value)} />
             </Grid>
             <Grid item xs={6}>
-              {/* 保留空白即可 */}
+              {/* 保留空白 */}
             </Grid>
           </Grid>
         </Section>
@@ -312,7 +312,10 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         <Section title="考勤資料" icon="🕐">
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <PlainField label="年假剩餘特別假（日）" value={emp.annualLeaveRemaining} onChange={money('annualLeaveRemaining')} />
+              <PlainField label="年度剩餘特別假（日）" value={emp.annualLeaveRemaining} onChange={money('annualLeaveRemaining')} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <PlainField label="結轉特別假（日）" value={emp.carriedOverLeave} onChange={money('carriedOverLeave')} />
             </Grid>
           </Grid>
         </Section>

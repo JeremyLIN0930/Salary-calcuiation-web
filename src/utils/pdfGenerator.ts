@@ -54,7 +54,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 
 <table class="pt">
   <thead>
-    <tr><th colspan="2">薪　資　項　目</th><th colspan="2">代　扣　項　目</th></tr>
+    <tr><th colspan="2">薪　資　項Custom項目</th><th colspan="2">代扣　項　目</th></tr>
   </thead>
   <tbody>
     <tr><td class="lbl">本薪</td><td class="val">${fmt(emp.baseSalary)}</td><td class="lbl">勞保費</td><td class="val">${fmt(emp.laborInsurance)}</td></tr>
@@ -78,10 +78,11 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 </table>
 
 <table class="pt">
-  <thead><tr><th colspan="2">考　勤　記錄</th></tr></thead>
+  <thead><tr><th colspan="4">考　勤　記　錄</th></tr></thead>
   <tbody>
     <tr>
-      <td class="lbl">年假剩餘特別假</td><td class="val">${fmtH(emp.annualLeaveRemaining)} 日</td>
+      <td class="lbl">年度剩餘特別假</td><td class="val">${fmtH(emp.annualLeaveRemaining)} 日</td>
+      <td class="lbl">結轉特別假</td><td class="val">${fmtH(emp.carriedOverLeave)} 日</td>
     </tr>
   </tbody>
 </table>
