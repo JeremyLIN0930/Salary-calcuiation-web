@@ -16,7 +16,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 
   const div = document.createElement('div')
   div.style.cssText = [
-    'width:794px', 'min-height:1123px', 'padding:32px 40px',
+    'width:794px', 'padding:32px 40px',
     'box-sizing:border-box', 'background:white',
     'font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif',
     'font-size:12px', 'color:#111',
@@ -40,13 +40,15 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 <table class="pt">
   <tr>
     <td class="lbl">姓　　名</td><td class="val" style="text-align:left;font-size:15px;font-weight:700;">${emp.name ?? ''}</td>
-    <td class="lbl">部　　門</td><td class="val" style="text-align:left;">${emp.department || '—'}</td>
-    <td class="lbl">發薪日期</td><td class="val" style="text-align:left;">${emp.payDate || '—'}</td>
+    <td class="lbl">月　　份</td><td class="val" style="text-align:left;">${monthStr}</td>
   </tr>
   <tr>
-    <td class="lbl">員工編號</td><td class="val" style="text-align:left;">${emp.employeeId || '—'}</td>
-    <td class="lbl">職　　稱</td><td class="val" style="text-align:left;">${emp.jobTitle || '—'}</td>
-    <td class="lbl">月　　份</td><td class="val" style="text-align:left;">${monthStr}</td>
+    <td class="lbl">門　　市</td><td class="val" style="text-align:left;">${emp.store || '—'}</td>
+    <td class="lbl">到　職　日</td><td class="val" style="text-align:left;">${emp.hireDate || '—'}</td>
+  </tr>
+  <tr>
+    <td class="lbl">發薪日期</td><td class="val" style="text-align:left;">${emp.payDate || '—'}</td>
+    <td class="lbl"></td><td class="val"></td>
   </tr>
 </table>
 
@@ -76,27 +78,10 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 </table>
 
 <table class="pt">
-  <thead><tr><th colspan="6">考　勤　記　錄</th></tr></thead>
+  <thead><tr><th colspan="2">考　勤　記錄</th></tr></thead>
   <tbody>
     <tr>
       <td class="lbl">年假剩餘特別假</td><td class="val">${fmtH(emp.annualLeaveRemaining)} 日</td>
-      <td class="lbl">結轉特別假</td><td class="val">${fmtH(emp.carriedOverLeave)} 日</td>
-      <td class="lbl">加班費計算基礎</td><td class="val">${fmt(emp.otBaseRate)}</td>
-    </tr>
-    <tr>
-      <td class="lbl">加班前 2 小時</td><td class="val">${fmtH(emp.ot2Hours)} 時</td>
-      <td class="lbl">加班 2 後小時</td><td class="val">${fmtH(emp.otAfter2Hours)} 時</td>
-      <td class="lbl">事假時數</td><td class="val">${fmtH(emp.sickLeaveHours)} 時</td>
-    </tr>
-    <tr>
-      <td class="lbl">休息日前 2 時</td><td class="val">${fmtH(emp.restDay2Hours)} 時</td>
-      <td class="lbl">休息日後 6 時</td><td class="val">${fmtH(emp.restDayAfter6Hours)} 時</td>
-      <td class="lbl">病假時數</td><td class="val">${fmtH(emp.personalLeaveHours)} 時</td>
-    </tr>
-    <tr>
-      <td class="lbl">休息日 8 時後</td><td class="val">${fmtH(emp.restDay8HoursAfter)} 時</td>
-      <td class="lbl">國定假日出勤</td><td class="val">${fmtH(emp.holidayAttendance)} 時</td>
-      <td class="lbl"></td><td class="val"></td>
     </tr>
   </tbody>
 </table>
@@ -107,19 +92,10 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     <td class="lbl">當月提撥退休金</td><td class="val">${fmt(emp.monthlyPensionContribution)}</td>
   </tr>
   <tr class="net">
-    <td colspan="2" style="text-align:center;font-size:15px;padding:10px;">實　發　金　額</td>
+    <td colspan="2" style="text-align:center;font-size:15px;padding:10px;">實　發　金額</td>
     <td colspan="2" style="text-align:right;font-size:18px;font-weight:900;padding:10px 16px;">
       $ ${(emp.netSalary ?? 0).toLocaleString('zh-TW')}
     </td>
-  </tr>
-</table>
-
-<table class="pt" style="margin-top:8px;">
-  <tr>
-    <td style="text-align:center;padding:14px;width:25%;">製表人：<br/><br/></td>
-    <td style="text-align:center;padding:14px;width:25%;">主管：<br/><br/></td>
-    <td style="text-align:center;padding:14px;width:25%;">員工簽收：<br/><br/></td>
-    <td style="text-align:center;padding:14px;width:25%;">日期：<br/><br/></td>
   </tr>
 </table>
 `

@@ -1,11 +1,12 @@
+export type Store = '慶東門市' | '南醫門市'
+
 export interface Employee {
   id: string
   // 基本資料
   name: string
   month: string
-  department: string
-  jobTitle: string
-  employeeId: string
+  store: Store | ''
+  hireDate: string
   payDate: string
   // 薪資資料
   baseSalary: number
@@ -31,18 +32,8 @@ export interface Employee {
   otherDeductions: number
   totalDeductions: number
   isDeductionManual: boolean
-  // 考勤資料
+  // 考勤資料 (只保留剩餘特別假)
   annualLeaveRemaining: number
-  carriedOverLeave: number
-  ot2Hours: number
-  otAfter2Hours: number
-  restDay2Hours: number
-  restDayAfter6Hours: number
-  restDay8HoursAfter: number
-  holidayAttendance: number
-  sickLeaveHours: number
-  personalLeaveHours: number
-  otBaseRate: number
   // 退休金與實發
   companyPensionContribution: number
   monthlyPensionContribution: number
@@ -55,9 +46,8 @@ export function createEmptyEmployee(): Employee {
     id: Math.random().toString(36).slice(2),
     name: '',
     month: new Date().toISOString().slice(0, 7),
-    department: '',
-    jobTitle: '',
-    employeeId: '',
+    store: '',
+    hireDate: '',
     payDate: '',
     baseSalary: 0,
     mealAllowance: 0,
@@ -82,16 +72,6 @@ export function createEmptyEmployee(): Employee {
     totalDeductions: 0,
     isDeductionManual: false,
     annualLeaveRemaining: 0,
-    carriedOverLeave: 0,
-    ot2Hours: 0,
-    otAfter2Hours: 0,
-    restDay2Hours: 0,
-    restDayAfter6Hours: 0,
-    restDay8HoursAfter: 0,
-    holidayAttendance: 0,
-    sickLeaveHours: 0,
-    personalLeaveHours: 0,
-    otBaseRate: 0,
     companyPensionContribution: 0,
     monthlyPensionContribution: 0,
     netSalary: 0,

@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import {
   Box, Button, TextField, Grid, Typography, AppBar, Toolbar,
-  IconButton, Chip, Alert, Snackbar, Divider, Paper
+  IconButton, Chip, Alert, Snackbar, Paper, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material'
-import { Employee, createEmptyEmployee, calcGross, calcDeductions } from '../types/employee'
+import { Employee, Store, createEmptyEmployee, calcGross, calcDeductions } from '../types/employee'
 import { useEmployees } from '../context/EmployeeContext'
 
-// Inline SVG icons — no @mui/icons-material dependency
 const ArrowBackSvg = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
   </svg>
 )
 const SaveSvg = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{marginRight:6}}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
     <path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/>
   </svg>
 )
 
-// Section header
 function SectionHeader({ title, icon, expanded, onToggle }: {
   title: string; icon: string; expanded: boolean; onToggle: () => void
 }) {
@@ -65,7 +63,6 @@ function Section({ title, icon, children, defaultOpen = true }: {
   )
 }
 
-// Number field: right-aligned, thousand separator on blur
 function MoneyField({ label, value, onChange, highlight }: {
   label: string; value: number; onChange: (v: number) => void; highlight?: boolean
 }) {
@@ -137,7 +134,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
     if (emp.isGrossManual) return
     const auto = calcGross(emp)
     setEmp(p => ({ ...p, grossSalary: auto }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emp.baseSalary, emp.mealAllowance, emp.positionAllowance, emp.otherAllowance,
       emp.nightAllowance, emp.bonusItems, emp.profitSharing, emp.otherAdditions,
       emp.specialLeaveAllowance, emp.weekdayOT, emp.restDayOT, emp.holidayOT,
@@ -148,7 +144,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
     if (emp.isDeductionManual) return
     const auto = calcDeductions(emp)
     setEmp(p => ({ ...p, totalDeductions: auto }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emp.laborInsurance, emp.healthInsurance, emp.laborPension, emp.incomeTax, emp.otherDeductions, emp.isDeductionManual])
 
   // Auto-calc net
@@ -195,33 +190,55 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         {/* 第一區：基本資料 */}
         <Section title="基本資料" icon="👤">
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            {/* 第一列：左姓名，右月份 */}
+            <Grid item xs={6}>
               <TextField label="姓名 *" value={emp.name} fullWidth size="small"
                 error={!!errors.name} helperText={errors.name}
                 onChange={e => set('name', e.target.value)} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <TextField label="月份 *" type="month" value={emp.month} fullWidth size="small"
                 error={!!errors.month} helperText={errors.month}
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('month', e.target.value)} />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="部門" value={emp.department} fullWidth size="small"
-                onChange={e => set('department', e.target.value)} />
+
+            {/* 第二列：左門市，右到職日 */}
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="store-select-label">門市</InputLabel>
+                <Select
+                  labelId="store-select-label"
+                  value={emp.store}
+                  label="門市"
+                  onChange={e => set('store', e.target.value as Store)}
+                >
+                  <MenuItem value=""><em>請選擇門市</em></MenuItem>
+                  <MenuItem value="慶東門市">慶東門市</MenuItem>
+                  <MenuItem value="南醫門市">南醫門市</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="職稱（可留空）" value={emp.jobTitle} fullWidth size="small"
-                onChange={e => set('jobTitle', e.target.value)} />
+            <Grid item xs={6}>
+              <TextField
+                label="到職日"
+                type="date"
+                value={emp.hireDate}
+                fullWidth
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                onChange={e => set('hireDate', e.target.value)}
+              />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="員工編號（可留空）" value={emp.employeeId} fullWidth size="small"
-                onChange={e => set('employeeId', e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+
+            {/* 第三列：左發薪日期，右空白 */}
+            <Grid item xs={6}>
               <TextField label="發薪日期" type="date" value={emp.payDate} fullWidth size="small"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('payDate', e.target.value)} />
+            </Grid>
+            <Grid item xs={6}>
+              {/* 保留空白即可 */}
             </Grid>
           </Grid>
         </Section>
@@ -294,24 +311,8 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         {/* 第四區：考勤資料 */}
         <Section title="考勤資料" icon="🕐">
           <Grid container spacing={2}>
-            {([
-              ['年假剩餘特別假（日）', 'annualLeaveRemaining'],
-              ['結轉特別假（日）', 'carriedOverLeave'],
-              ['加班前 2 小時', 'ot2Hours'],
-              ['加班 2 後小時', 'otAfter2Hours'],
-              ['休息日前 2 小時', 'restDay2Hours'],
-              ['休息日後 6 小時', 'restDayAfter6Hours'],
-              ['休息日 8 小時後', 'restDay8HoursAfter'],
-              ['國定假日出勤（時）', 'holidayAttendance'],
-              ['事假時數（時）', 'sickLeaveHours'],
-              ['病假時數（時）', 'personalLeaveHours'],
-            ] as [string, keyof Employee][]).map(([label, key]) => (
-              <Grid item xs={12} sm={6} key={key}>
-                <PlainField label={label} value={emp[key] as number} onChange={money(key)} />
-              </Grid>
-            ))}
             <Grid item xs={12} sm={6}>
-              <MoneyField label="加班費計算基礎" value={emp.otBaseRate} onChange={money('otBaseRate')} />
+              <PlainField label="年假剩餘特別假（日）" value={emp.annualLeaveRemaining} onChange={money('annualLeaveRemaining')} />
             </Grid>
           </Grid>
         </Section>
@@ -338,7 +339,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 <Typography variant="h4" fontWeight={900} sx={{ fontFamily: 'monospace', mb: 2, letterSpacing: 1 }}>
                   $ {(emp.netSalary ?? 0).toLocaleString('zh-TW')}
                 </Typography>
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)', mb: 2 }} />
                 <TextField
                   label="手動修改實發金額"
                   size="small"

@@ -7,7 +7,6 @@ import {
 import { useEmployees } from '../context/EmployeeContext'
 import { Employee } from '../types/employee'
 
-// Inline SVG icons — zero external icon dependency
 const AddSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
@@ -193,10 +192,10 @@ function EmployeeCard({ employee, onEdit, onCopy, onDelete }: {
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
               <Typography variant="subtitle1" fontWeight={700} noWrap>{employee.name || '（未命名）'}</Typography>
-              {employee.department && <Chip label={employee.department} size="small" sx={{ height: 20, fontSize: 11 }} />}
+              {employee.store && <Chip label={employee.store} size="small" sx={{ height: 20, fontSize: 11 }} />}
             </Box>
             <Typography variant="caption" color="text.secondary">
-              {monthDisplay}{employee.jobTitle ? ` · ${employee.jobTitle}` : ''}
+              {monthDisplay}{employee.hireDate ? ` · 到職：${employee.hireDate}` : ''}
             </Typography>
           </Box>
 
