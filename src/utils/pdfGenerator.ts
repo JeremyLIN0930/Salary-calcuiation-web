@@ -55,16 +55,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     letter-spacing: 2px;
   }
 
-  /* ========== Section Label ========== */
-  .section-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: #555;
-    letter-spacing: 2px;
-    padding: 6px 0 4px 2px;
-    text-transform: uppercase;
-  }
-
   /* ========== Basic Info Table ========== */
   .info-table {
     width: 100%;
@@ -88,7 +78,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   .info-table .field-value {
     color: #111;
     font-weight: 500;
-    min-width: 140px;
+    width: 35%;
   }
 
   /* ========== Salary / Deduction Table ========== */
@@ -101,11 +91,15 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   .salary-table th {
     background: #2c2c2c;
     color: #fff;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
     padding: 9px 12px;
     text-align: center;
+    border-right: 1.5px solid #999;
+  }
+  .salary-table th:last-child {
+    border-right: none;
   }
   .salary-table td {
     padding: 7px 12px;
@@ -115,18 +109,21 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   }
   .salary-table .name-cell {
     color: #333;
-    width: 130px;
+    width: 30%;
   }
   .salary-table .amt-cell {
     text-align: right;
     font-weight: 500;
     color: #111;
-    width: 110px;
+    width: 20%;
+    border-right: 1.5px solid #999;
   }
-  .salary-table .divider-col {
-    width: 1px;
-    background: #999;
-    padding: 0;
+  .salary-table .amt-cell-last {
+    text-align: right;
+    font-weight: 500;
+    color: #111;
+    width: 20%;
+    border-right: none;
   }
   .salary-table tr:nth-child(even) td {
     background: #fafafa;
@@ -139,9 +136,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     border-bottom: 1.5px solid #aaa;
     padding: 9px 12px;
   }
-  .salary-table .subtotal-row .amt-cell {
-    color: #111;
-  }
 
   /* ========== Attendance Table ========== */
   .attend-table {
@@ -153,7 +147,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   .attend-table th {
     background: #2c2c2c;
     color: #fff;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
     padding: 9px 12px;
@@ -175,9 +169,10 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     text-align: right;
     font-weight: 500;
     color: #111;
+    width: 35%;
   }
 
-  /* ========== Pension Row ========== */
+  /* ========== Pension Table ========== */
   .pension-table {
     width: 100%;
     border-collapse: collapse;
@@ -187,7 +182,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   .pension-table th {
     background: #2c2c2c;
     color: #fff;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
     padding: 9px 12px;
@@ -209,6 +204,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     text-align: right;
     font-weight: 500;
     color: #111;
+    width: 35%;
   }
 
   /* ========== Net Salary Block ========== */
@@ -242,7 +238,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 </div>
 
 <!-- 基本資料 -->
-<div class="section-label">基本資料</div>
 <table class="info-table">
   <tr>
     <td class="field-label">姓　名</td>
@@ -265,94 +260,77 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 </table>
 
 <!-- 薪資項目 ＋ 代扣項目 -->
-<div class="section-label">薪資項目 ／ 代扣項目</div>
 <table class="salary-table">
   <thead>
     <tr>
       <th colspan="2">薪　資　項　目</th>
-      <td class="divider-col"></td>
       <th colspan="2">代　扣　項　目</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td class="name-cell">本薪</td><td class="amt-cell">${fmt(emp.baseSalary)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell">勞保費</td><td class="amt-cell">${fmt(emp.laborInsurance)}</td>
+      <td class="name-cell">勞保費</td><td class="amt-cell-last">${fmt(emp.laborInsurance)}</td>
     </tr>
     <tr>
       <td class="name-cell">伙食津貼</td><td class="amt-cell">${fmt(emp.mealAllowance)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell">健保費</td><td class="amt-cell">${fmt(emp.healthInsurance)}</td>
+      <td class="name-cell">健保費</td><td class="amt-cell-last">${fmt(emp.healthInsurance)}</td>
     </tr>
     <tr>
       <td class="name-cell">職務津貼</td><td class="amt-cell">${fmt(emp.positionAllowance)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell">勞退個人自提</td><td class="amt-cell">${fmt(emp.laborPension)}</td>
+      <td class="name-cell">勞退個人自提</td><td class="amt-cell-last">${fmt(emp.laborPension)}</td>
     </tr>
     <tr>
       <td class="name-cell">其他津貼</td><td class="amt-cell">${fmt(emp.otherAllowance)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell">所得稅</td><td class="amt-cell">${fmt(emp.incomeTax)}</td>
+      <td class="name-cell">所得稅</td><td class="amt-cell-last">${fmt(emp.incomeTax)}</td>
     </tr>
     <tr>
       <td class="name-cell">夜勤津貼</td><td class="amt-cell">${fmt(emp.nightAllowance)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell">其他扣款</td><td class="amt-cell">${fmt(emp.otherDeductions)}</td>
+      <td class="name-cell">其他扣款</td><td class="amt-cell-last">${fmt(emp.otherDeductions)}</td>
     </tr>
     <tr>
       <td class="name-cell">津貼／獎金項目</td><td class="amt-cell">${fmt(emp.bonusItems)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">盈餘分紅</td><td class="amt-cell">${fmt(emp.profitSharing)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">其他加款</td><td class="amt-cell">${fmt(emp.otherAdditions)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">特別假津貼</td><td class="amt-cell">${fmt(emp.specialLeaveAllowance)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">平日加班費</td><td class="amt-cell">${fmt(emp.weekdayOT)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">休息日加班費</td><td class="amt-cell">${fmt(emp.restDayOT)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">國定假日加班費</td><td class="amt-cell">${fmt(emp.holidayOT)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>
       <td class="name-cell">事病假扣款</td><td class="amt-cell">${fmt(emp.sickLeaveDeduction)}</td>
-      <td class="divider-col"></td>
-      <td class="name-cell"></td><td class="amt-cell"></td>
+      <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <!-- 小計 -->
     <tr class="subtotal-row">
       <td class="name-cell">應　發　薪　資</td>
       <td class="amt-cell" style="font-size:14px;">$ ${(emp.grossSalary ?? 0).toLocaleString('zh-TW')}</td>
-      <td class="divider-col"></td>
       <td class="name-cell">代　扣　合　計</td>
-      <td class="amt-cell" style="font-size:14px;">$ ${(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}</td>
+      <td class="amt-cell-last" style="font-size:14px;">$ ${(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}</td>
     </tr>
   </tbody>
 </table>
 
 <!-- 考勤記錄 -->
-<div class="section-label">考勤記錄</div>
 <table class="attend-table">
   <thead>
     <tr><th colspan="4">考　勤　記　錄</th></tr>
@@ -368,7 +346,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 </table>
 
 <!-- 退休金 -->
-<div class="section-label">退休金提撥</div>
 <table class="pension-table">
   <thead>
     <tr><th colspan="4">退　休　金　提　撥</th></tr>
