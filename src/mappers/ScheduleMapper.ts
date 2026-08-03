@@ -43,7 +43,7 @@ export class ScheduleMapper {
       storeName,
       weekStart: row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10),
       weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
-      employees: parsed.employees || [],
+      employees: (row as any).employees || parsed.employees || [],
       remark: remarkVal,
       createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),
       updatedAt: row.updated_at || parsed.updatedAt || new Date().toISOString(),

@@ -107,6 +107,7 @@ export class SupabaseScheduleRepository {
       schEmployees.sort((a, b) => a.name.localeCompare(b.name))
 
       sch.employees = schEmployees
+      console.log("populateSchedulesWithShifts result", schEmployees)
     }
   }
 
@@ -209,6 +210,7 @@ export class SupabaseScheduleRepository {
       // Load shifts and reconstruct employees/shifts
       await this.populateSchedulesWithShifts(models)
       
+      console.log("Loaded schedules", models)
       return successResult(models)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getWeeks')
@@ -270,6 +272,7 @@ export class SupabaseScheduleRepository {
       // Load shifts for this single schedule
       await this.populateSchedulesWithShifts([model])
       
+      console.log("Schedule employees", model.employees)
       return successResult(model)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getSchedule')

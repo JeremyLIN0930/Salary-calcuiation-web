@@ -120,6 +120,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (USE_SUPABASE) {
         const result = await supabaseScheduleRepository.getAllSchedules()
         if (result.success && result.data) {
+          console.log("Context schedules", result.data)
           dispatch({ type: 'SET_SCHEDULES', payload: result.data })
         } else {
           console.error('[ScheduleContext] Supabase load error:', result.error)
@@ -129,6 +130,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Dexie fallback
         const dexieSchedules = ScheduleRepository.getAll()
+        console.log("Context schedules", dexieSchedules)
         dispatch({ type: 'SET_SCHEDULES', payload: dexieSchedules })
       }
     } catch (err) {
@@ -143,6 +145,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    console.log("Context schedules", state.schedules)
+  }, [state.schedules])
 
   // ── Intercept dispatch to sync Supabase ───────────────────────────────────
   //
@@ -171,7 +177,9 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
         dispatch({ type: 'SET_SAVING', payload: true })
         const result = await supabaseScheduleRepository.saveSchedule(action.payload)
-        if (!result.success) {
+        if (result.success && result.data) {
+          dispatch({ type: 'UPDATE_SCHEDULE', payload: result.data })
+        } else if (!result.success) {
           console.error('[ScheduleContext] Save failed, rolling back:', result.error)
           // On failure: refresh from Supabase to restore truth
           await refresh()

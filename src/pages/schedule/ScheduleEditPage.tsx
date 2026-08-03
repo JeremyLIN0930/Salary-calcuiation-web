@@ -48,6 +48,8 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const { state, saveSchedule } = useSchedule()
   const { showSnackbar } = useSnackbar()
 
+  console.log("Edit page received", initialSchedule)
+
   // Sanitize initial remark to prevent JSON object string from leaking into TextArea
   const sanitizedInitialSchedule = useMemo(() => {
     let cleanRemark = initialSchedule.remark || ''
@@ -72,6 +74,13 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const [exporting, setExporting] = useState(false)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
+
+  // Keep local state in sync when initialSchedule is updated/reloaded
+  React.useEffect(() => {
+    if (!isDirty) {
+      setSchedule(sanitizedInitialSchedule)
+    }
+  }, [sanitizedInitialSchedule, isDirty])
 
   // Compute 7 dates (Mon-Sun)
   const weekDates = useMemo(() => {
