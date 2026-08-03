@@ -46,6 +46,8 @@ export class SupabaseEmployeeRepository {
   async create(employee: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow(employee)
+      console.log('🚀 [SupabaseEmployeeRepository.create] INSERT Payload:', JSON.stringify(dbRow, null, 2))
+
       const { data, error } = await supabase
         .from(this.tableName)
         .insert([dbRow])
@@ -53,10 +55,13 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
+        console.error('❌ [SupabaseEmployeeRepository.create] Error:', error)
         return errorResult(error, this.tableName, 'create')
       }
+      console.log('✅ [SupabaseEmployeeRepository.create] Success:', data)
       return successResult(EmployeeMapper.toModel(data as MasterEmployeeRow))
     } catch (err: unknown) {
+      console.error('❌ [SupabaseEmployeeRepository.create] Exception:', err)
       return errorResult(err, this.tableName, 'create')
     }
   }
@@ -64,6 +69,8 @@ export class SupabaseEmployeeRepository {
   async update(id: string, data: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow({ ...data, id })
+      console.log('🚀 [SupabaseEmployeeRepository.update] UPDATE Payload:', JSON.stringify(dbRow, null, 2))
+
       const { data: resultData, error } = await supabase
         .from(this.tableName)
         .update(dbRow)
@@ -72,26 +79,33 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
+        console.error('❌ [SupabaseEmployeeRepository.update] Error:', error)
         return errorResult(error, this.tableName, 'update')
       }
+      console.log('✅ [SupabaseEmployeeRepository.update] Success:', resultData)
       return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeRow))
     } catch (err: unknown) {
+      console.error('❌ [SupabaseEmployeeRepository.update] Exception:', err)
       return errorResult(err, this.tableName, 'update')
     }
   }
 
   async delete(id: string): Promise<RepositoryResult<boolean>> {
     try {
+      console.log('🚀 [SupabaseEmployeeRepository.delete] Target ID:', id)
       const { error } = await supabase
         .from(this.tableName)
         .delete()
         .eq('id', id)
 
       if (error) {
+        console.error('❌ [SupabaseEmployeeRepository.delete] Error:', error)
         return errorResult(error, this.tableName, 'delete')
       }
+      console.log('✅ [SupabaseEmployeeRepository.delete] Success')
       return successResult(true)
     } catch (err: unknown) {
+      console.error('❌ [SupabaseEmployeeRepository.delete] Exception:', err)
       return errorResult(err, this.tableName, 'delete')
     }
   }

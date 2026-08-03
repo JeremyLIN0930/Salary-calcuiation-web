@@ -4,14 +4,14 @@
  */
 
 export interface AppSettingRow {
-  id: string
+  id?: string
   company_id?: string | null
   created_at?: string | null
   updated_at?: string | null
 }
 
 export interface CompanyRow {
-  id: string
+  id?: string
   company_name: string
   company_code?: string | null
   tax_id?: string | null
@@ -25,7 +25,7 @@ export interface CompanyRow {
 }
 
 export interface StoreRow {
-  id: string
+  id?: string
   store_code?: string | null
   store_name: string
   phone?: string | null
@@ -38,7 +38,7 @@ export interface StoreRow {
 }
 
 export interface MasterEmployeeRow {
-  id: string
+  id?: string
   employee_no?: string | null
   name: string
   store_id?: string | null
@@ -54,7 +54,7 @@ export interface MasterEmployeeRow {
 }
 
 export interface SalaryItemTypeRow {
-  id: string
+  id?: string
   item_code: string
   item_name: string
   category: 'earning' | 'deduction' | 'addition' | string
@@ -69,7 +69,7 @@ export interface SalaryItemTypeRow {
 }
 
 export interface SalaryMonthRow {
-  id: string
+  id?: string
   company_id?: string | null
   month: string
   year?: number | null
@@ -80,7 +80,7 @@ export interface SalaryMonthRow {
 }
 
 export interface ScheduleMonthRow {
-  id: string
+  id?: string
   company_id?: string | null
   month: string
   year?: number | null
@@ -91,7 +91,7 @@ export interface ScheduleMonthRow {
 }
 
 export interface ScheduleWeekRow {
-  id: string
+  id?: string
   start_date?: string | null
   end_date?: string | null
   notes?: string | null
@@ -100,7 +100,7 @@ export interface ScheduleWeekRow {
 }
 
 export interface ScheduleShiftRow {
-  id: string
+  id?: string
   employee_id?: string | null
   shift_type?: string | null
   start_time?: string | null

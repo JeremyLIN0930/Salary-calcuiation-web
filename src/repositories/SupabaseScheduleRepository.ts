@@ -116,6 +116,7 @@ export class SupabaseScheduleRepository {
   async saveSchedule(schedule: Partial<Schedule>): Promise<RepositoryResult<Schedule>> {
     try {
       const dbRow = ScheduleMapper.modelToWeekDbRow(schedule)
+      console.log('🚀 [SupabaseScheduleRepository.saveSchedule] UPSERT Payload:', JSON.stringify(dbRow, null, 2))
       const { data, error } = await supabase
         .from(this.tableName)
         .upsert([dbRow])
@@ -138,6 +139,7 @@ export class SupabaseScheduleRepository {
   async bulkSaveSchedules(schedules: Partial<Schedule>[]): Promise<RepositoryResult<Schedule[]>> {
     try {
       const dbRows = schedules.map(s => ScheduleMapper.modelToWeekDbRow(s))
+      console.log('🚀 [SupabaseScheduleRepository.bulkSaveSchedules] UPSERT Payload:', JSON.stringify(dbRows, null, 2))
       const { data, error } = await supabase
         .from(this.tableName)
         .upsert(dbRows)

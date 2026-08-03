@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { Employee } from '../types/employee'
 import { SalaryMonthRow, SalaryItemTypeRow } from '../types/database'
 import { SalaryMapper } from '../mappers/SalaryMapper'
+import { DEFAULT_COMPANY_ID } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export interface SalaryItemType {
@@ -23,7 +24,7 @@ export class SupabaseSalaryRepository {
         return errorResult(error, this.tableName, 'getMonths')
       }
       const rows = (data || []) as { month: string }[]
-      const months = Array.from(new Set(rows.map(item => item.month))).sort().reverse()
+      const months = Array.from(new Set(rows.map(item => String(item.month)))).sort().reverse()
       return successResult(months)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getMonths')
@@ -33,7 +34,7 @@ export class SupabaseSalaryRepository {
   async createMonth(monthKey: string): Promise<RepositoryResult<string>> {
     try {
       const dbRow: SalaryMonthRow = {
-        id: Math.random().toString(36).slice(2),
+        company_id: DEFAULT_COMPANY_ID,
         month: monthKey,
         year: parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear(),
         notes: monthKey,
@@ -41,6 +42,7 @@ export class SupabaseSalaryRepository {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
+      console.log('🚀 [SupabaseSalaryRepository.createMonth] INSERT Payload:', JSON.stringify(dbRow, null, 2))
       const { error } = await supabase.from(this.tableName).insert([dbRow])
       if (error) {
         return errorResult(error, this.tableName, 'createMonth')
@@ -109,6 +111,7 @@ export class SupabaseSalaryRepository {
   async saveSalary(salaryData: Partial<Employee>): Promise<RepositoryResult<Employee>> {
     try {
       const dbRow = SalaryMapper.toDbRow(salaryData)
+      console.log('🚀 [SupabaseSalaryRepository.saveSalary] UPSERT Payload:', JSON.stringify(dbRow, null, 2))
       const { data, error } = await supabase
         .from(this.tableName)
         .upsert([dbRow])
@@ -152,7 +155,7 @@ export class SupabaseSalaryRepository {
       }
       const rows = (data || []) as SalaryItemTypeRow[]
       const itemTypes: SalaryItemType[] = rows.map(row => ({
-        id: row.id,
+        id: row.id || '',
         name: row.item_name || row.item_code || '',
         category: (row.category === 'deduction' ? 'deduction' : 'addition') as 'addition' | 'deduction',
       }))
