@@ -1,74 +1,110 @@
 import { supabase } from '../lib/supabase'
-import { Store, DEFAULT_STORES } from '../types/store'
+import { Store } from '../types/store'
+import { StoreMapper, StoreDbRow } from '../mappers/StoreMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseStoreRepository {
   private tableName = 'stores'
 
-  async getStores(): Promise<RepositoryResult<Store[]>> {
+  async getAll(): Promise<RepositoryResult<Store[]>> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .order('id', { ascending: true })
+        .order('updated_at', { ascending: false })
 
-      if (error) return errorResult(error)
-      if (!data || data.length === 0) {
-        return successResult(DEFAULT_STORES)
+      if (error) {
+        console.error('[StoreRepo] DB error on getAll:', error.message)
+        return errorResult(error.message)
       }
-      return successResult(data as Store[])
-    } catch (err) {
-      return errorResult(err)
+      const models = (data || []).map((row: StoreDbRow) => StoreMapper.toModel(row))
+      return successResult(models)
+    } catch (err: any) {
+      console.error('[StoreRepo] Exception on getAll:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async createStore(storeData: Partial<Store>): Promise<RepositoryResult<Store>> {
-    try {
-      const newStore = {
-        id: storeData.id || Math.random().toString(36).slice(2),
-        ...storeData,
-      }
+  async getStores(): Promise<RepositoryResult<Store[]>> {
+    return this.getAll()
+  }
 
+  async getById(id: string): Promise<RepositoryResult<Store | null>> {
+    try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .insert([newStore])
-        .select()
-        .single()
-
-      if (error) return errorResult(error)
-      return successResult(data as Store)
-    } catch (err) {
-      return errorResult(err)
-    }
-  }
-
-  async updateStore(id: string, data: Partial<Store>): Promise<RepositoryResult<Store>> {
-    try {
-      const { data: result, error } = await supabase
-        .from(this.tableName)
-        .update(data)
+        .select('*')
         .eq('id', id)
-        .select()
         .single()
 
-      if (error) return errorResult(error)
-      return successResult(result as Store)
-    } catch (err) {
-      return errorResult(err)
+      if (error) {
+        console.error('[StoreRepo] DB error on getById:', error.message)
+        return errorResult(error.message)
+      }
+      if (!data) return successResult(null)
+      return successResult(StoreMapper.toModel(data as StoreDbRow))
+    } catch (err: any) {
+      console.error('[StoreRepo] Exception on getById:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async deleteStore(id: string): Promise<RepositoryResult<boolean>> {
+  async create(store: Partial<Store>): Promise<RepositoryResult<Store>> {
+    try {
+      const dbRow = StoreMapper.toDbRow(store)
+      const { data, error } = await supabase
+        .from(this.tableName)
+        .insert([dbRow])
+        .select('*')
+        .single()
+
+      if (error) {
+        console.error('[StoreRepo] DB error on create:', error.message)
+        return errorResult(error.message)
+      }
+      return successResult(StoreMapper.toModel(data as StoreDbRow))
+    } catch (err: any) {
+      console.error('[StoreRepo] Exception on create:', err)
+      return errorResult(err.message || String(err))
+    }
+  }
+
+  async update(id: string, store: Partial<Store>): Promise<RepositoryResult<Store>> {
+    try {
+      const dbRow = StoreMapper.toDbRow({ ...store, id })
+      const { data, error } = await supabase
+        .from(this.tableName)
+        .update(dbRow)
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error) {
+        console.error('[StoreRepo] DB error on update:', error.message)
+        return errorResult(error.message)
+      }
+      return successResult(StoreMapper.toModel(data as StoreDbRow))
+    } catch (err: any) {
+      console.error('[StoreRepo] Exception on update:', err)
+      return errorResult(err.message || String(err))
+    }
+  }
+
+  async delete(id: string): Promise<RepositoryResult<boolean>> {
     try {
       const { error } = await supabase
         .from(this.tableName)
         .delete()
         .eq('id', id)
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[StoreRepo] DB error on delete:', error.message)
+        return errorResult(error.message)
+      }
       return successResult(true)
-    } catch (err) {
-      return errorResult(err)
+    } catch (err: any) {
+      console.error('[StoreRepo] Exception on delete:', err)
+      return errorResult(err.message || String(err))
     }
   }
 }

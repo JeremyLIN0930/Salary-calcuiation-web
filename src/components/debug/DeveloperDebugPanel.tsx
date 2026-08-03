@@ -108,13 +108,13 @@ export default function DeveloperDebugPanel() {
 
       const empCount = empRes.data ? empRes.data.length : 0
       const salRecords = salRes.data ? salRes.data : []
-      const salMonths = Array.from(new Set(salRecords.map(s => s.month))).length
+      const salMonths = Array.from(new Set(salRecords.map((s: any) => s.month || ''))).length
       const schedWeeks = schedRes.data ? schedRes.data : []
-      const schedMonths = Array.from(new Set(schedWeeks.map(w => w.weekStart.slice(0, 7)))).length
+      const schedMonths = Array.from(new Set(schedWeeks.map((w: any) => (w.weekStart || '').slice(0, 7)))).length
 
       let totalShifts = 0
-      schedWeeks.forEach(w => {
-        w.employees.forEach(e => {
+      schedWeeks.forEach((w: any) => {
+        (w.employees || []).forEach((e: any) => {
           totalShifts += (e.shifts || []).length
         })
       })

@@ -1,30 +1,31 @@
 import { supabase } from '../lib/supabase'
-import { Employee } from '../types/employee'
+import { MasterEmployee } from '../types/masterEmployee'
+import { EmployeeMapper, MasterEmployeeDbRow } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseEmployeeRepository {
-  // ✅ Correct table: master_employees
   private tableName = 'master_employees'
 
-  async getAll(): Promise<RepositoryResult<Employee[]>> {
+  async getAll(): Promise<RepositoryResult<MasterEmployee[]>> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .order('createdAt', { ascending: false })
+        .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[EmployeeRepo] getAll error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on getAll:', error.message)
+        return errorResult(error.message)
       }
-      return successResult((data as Employee[]) || [])
-    } catch (err) {
-      console.error('[EmployeeRepo] getAll exception:', err)
-      return errorResult(err)
+      const models = (data || []).map((row: MasterEmployeeDbRow) => EmployeeMapper.toModel(row))
+      return successResult(models)
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on getAll:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async getById(id: string): Promise<RepositoryResult<Employee>> {
+  async getById(id: string): Promise<RepositoryResult<MasterEmployee | null>> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
@@ -33,67 +34,55 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] getById error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on getById:', error.message)
+        return errorResult(error.message)
       }
-      return successResult(data as Employee)
-    } catch (err) {
-      console.error('[EmployeeRepo] getById exception:', err)
-      return errorResult(err)
+      if (!data) return successResult(null)
+      return successResult(EmployeeMapper.toModel(data as MasterEmployeeDbRow))
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on getById:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async create(employee: Partial<Employee>): Promise<RepositoryResult<Employee>> {
+  async create(employee: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
-      const newEmp = {
-        id: employee.id || Math.random().toString(36).slice(2),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...employee,
-      }
-
-      console.log('[EmployeeRepo] Inserting into master_employees:', newEmp)
-
+      const dbRow = EmployeeMapper.toDbRow(employee)
       const { data, error } = await supabase
         .from(this.tableName)
-        .insert([newEmp])
-        .select()
+        .insert([dbRow])
+        .select('*')
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] create error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on create:', error.message)
+        return errorResult(error.message)
       }
-      console.log('[EmployeeRepo] Insert success:', data)
-      return successResult(data as Employee)
-    } catch (err) {
-      console.error('[EmployeeRepo] create exception:', err)
-      return errorResult(err)
+      return successResult(EmployeeMapper.toModel(data as MasterEmployeeDbRow))
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on create:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async update(id: string, data: Partial<Employee>): Promise<RepositoryResult<Employee>> {
+  async update(id: string, data: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
-      const updateData = {
-        ...data,
-        updatedAt: new Date().toISOString(),
-      }
-
-      const { data: result, error } = await supabase
+      const dbRow = EmployeeMapper.toDbRow({ ...data, id })
+      const { data: resultData, error } = await supabase
         .from(this.tableName)
-        .update(updateData)
+        .update(dbRow)
         .eq('id', id)
-        .select()
+        .select('*')
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] update error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on update:', error.message)
+        return errorResult(error.message)
       }
-      return successResult(result as Employee)
-    } catch (err) {
-      console.error('[EmployeeRepo] update exception:', err)
-      return errorResult(err)
+      return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeDbRow))
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on update:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
@@ -105,51 +94,33 @@ export class SupabaseEmployeeRepository {
         .eq('id', id)
 
       if (error) {
-        console.error('[EmployeeRepo] delete error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on delete:', error.message)
+        return errorResult(error.message)
       }
       return successResult(true)
-    } catch (err) {
-      console.error('[EmployeeRepo] delete exception:', err)
-      return errorResult(err)
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on delete:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async search(keyword: string): Promise<RepositoryResult<Employee[]>> {
+  async search(query: string): Promise<RepositoryResult<MasterEmployee[]>> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .or(`name.ilike.%${keyword}%,store.ilike.%${keyword}%`)
-        .order('createdAt', { ascending: false })
+        .ilike('name', `%${query}%`)
+        .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[EmployeeRepo] search error:', error)
-        return errorResult(error)
+        console.error('[EmployeeRepo] DB error on search:', error.message)
+        return errorResult(error.message)
       }
-      return successResult((data as Employee[]) || [])
-    } catch (err) {
-      console.error('[EmployeeRepo] search exception:', err)
-      return errorResult(err)
-    }
-  }
-
-  async getByStore(storeId: string): Promise<RepositoryResult<Employee[]>> {
-    try {
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .select('*')
-        .eq('store', storeId)
-        .order('name', { ascending: true })
-
-      if (error) {
-        console.error('[EmployeeRepo] getByStore error:', error)
-        return errorResult(error)
-      }
-      return successResult((data as Employee[]) || [])
-    } catch (err) {
-      console.error('[EmployeeRepo] getByStore exception:', err)
-      return errorResult(err)
+      const models = (data || []).map((row: MasterEmployeeDbRow) => EmployeeMapper.toModel(row))
+      return successResult(models)
+    } catch (err: any) {
+      console.error('[EmployeeRepo] Exception on search:', err)
+      return errorResult(err.message || String(err))
     }
   }
 }

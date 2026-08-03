@@ -1,54 +1,48 @@
 import { supabase } from '../lib/supabase'
-import { SystemSettings, DEFAULT_SETTINGS } from '../types/settings'
+import { SettingsMapper, AppSettingsDbRow } from '../mappers/SettingsMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseSettingsRepository {
-  // ✅ Correct table: app_settings
   private tableName = 'app_settings'
 
-  async getSettings(): Promise<RepositoryResult<SystemSettings>> {
+  async getSettings(): Promise<RepositoryResult<Record<string, unknown>>> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .limit(1)
+        .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[SettingsRepo] getSettings error:', error)
-        return errorResult(error)
+        console.error('[SettingsRepo] DB error on getSettings:', error.message)
+        return errorResult(error.message)
       }
       if (!data || data.length === 0) {
-        return successResult(DEFAULT_SETTINGS)
+        return successResult({})
       }
-      return successResult(data[0] as SystemSettings)
-    } catch (err) {
-      console.error('[SettingsRepo] getSettings exception:', err)
-      return errorResult(err)
+      return successResult(SettingsMapper.toModel(data[0] as AppSettingsDbRow))
+    } catch (err: any) {
+      console.error('[SettingsRepo] Exception on getSettings:', err)
+      return errorResult(err.message || String(err))
     }
   }
 
-  async saveSettings(settingsData: Partial<SystemSettings>): Promise<RepositoryResult<SystemSettings>> {
+  async saveSettings(settings: Record<string, unknown>): Promise<RepositoryResult<Record<string, unknown>>> {
     try {
-      const record = {
-        id: '1',
-        ...settingsData,
-        updatedAt: new Date().toISOString(),
-      }
-
+      const dbRow = SettingsMapper.toDbRow(settings)
       const { data, error } = await supabase
         .from(this.tableName)
-        .upsert([record])
-        .select()
+        .upsert([dbRow])
+        .select('*')
         .single()
 
       if (error) {
-        console.error('[SettingsRepo] saveSettings error:', error)
-        return errorResult(error)
+        console.error('[SettingsRepo] DB error on saveSettings:', error.message)
+        return errorResult(error.message)
       }
-      return successResult(data as SystemSettings)
-    } catch (err) {
-      console.error('[SettingsRepo] saveSettings exception:', err)
-      return errorResult(err)
+      return successResult(SettingsMapper.toModel(data as AppSettingsDbRow))
+    } catch (err: any) {
+      console.error('[SettingsRepo] Exception on saveSettings:', err)
+      return errorResult(err.message || String(err))
     }
   }
 }
