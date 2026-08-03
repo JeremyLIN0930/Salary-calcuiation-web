@@ -1,8 +1,8 @@
 /**
  * ScheduleMapper.ts
  * Maps between React Schedule Model and Supabase ScheduleWeekRow.
- * Persists complete Schedule & Shifts data via notes JSON stringification.
- * Cleans empty strings to null or omits undefined fields.
+ * notes column ONLY stores schedule.remark (text) or null.
+ * Does NOT write full JSON object into notes.
  */
 
 import { Schedule } from '../types/schedule'
@@ -16,26 +16,26 @@ export function isValidUuid(val?: string | null): boolean {
 
 export class ScheduleMapper {
   static weekToModel(row: ScheduleWeekRow): Schedule {
-    let parsed: Partial<Schedule> = {}
-
+    let remarkVal = ''
     if (row.notes) {
       try {
-        parsed = JSON.parse(row.notes)
+        const parsed = JSON.parse(row.notes)
+        remarkVal = parsed.remark || row.notes
       } catch {
-        parsed = { remark: row.notes }
+        remarkVal = row.notes
       }
     }
 
     return {
-      id: row.id || parsed.id || '',
-      storeId: parsed.storeId || 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb',
-      storeName: parsed.storeName || '慶東門市',
-      weekStart: row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10),
-      weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
-      employees: parsed.employees || [],
-      remark: parsed.remark || row.notes || '',
-      createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),
-      updatedAt: row.updated_at || parsed.updatedAt || new Date().toISOString(),
+      id: row.id || '',
+      storeId: 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb',
+      storeName: '慶東門市',
+      weekStart: row.start_date || new Date().toISOString().slice(0, 10),
+      weekEnd: row.end_date || new Date().toISOString().slice(0, 10),
+      employees: [],
+      remark: remarkVal,
+      createdAt: row.created_at || new Date().toISOString(),
+      updatedAt: row.updated_at || new Date().toISOString(),
     }
   }
 
@@ -47,22 +47,16 @@ export class ScheduleMapper {
     const dayOfMonth = parseInt(startDate.slice(8, 10), 10) || 1
     const weekNo = Math.min(Math.ceil(dayOfMonth / 7), 5)
 
-    // Convert empty strings "" to null or omit undefined
-    const cleanPayload: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(model)) {
-      if (val === undefined || val === null) continue
-      if (typeof val === 'string' && val.trim() === '') {
-        cleanPayload[key] = null
-      } else {
-        cleanPayload[key] = val
-      }
-    }
+    // notes should only store schedule.remark or null
+    const remarkClean = model.remark && typeof model.remark === 'string' && model.remark.trim() !== ''
+      ? model.remark.trim()
+      : null
 
     const row: ScheduleWeekRow = {
       week_no: weekNo,
       start_date: startDate,
       end_date: endDate,
-      notes: JSON.stringify(cleanPayload),
+      notes: remarkClean,
       updated_at: model.updatedAt || now,
     }
 
