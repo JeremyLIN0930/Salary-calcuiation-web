@@ -88,6 +88,15 @@ export interface SalaryMonthRow {
   updated_at?: string | null
 }
 
+export interface SalaryItemRow {
+  id?: string
+  salary_month_id: string
+  employee_id: string
+  notes?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export interface ScheduleMonthRow {
   id?: string
   company_id?: string | null
