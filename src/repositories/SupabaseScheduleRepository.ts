@@ -116,18 +116,29 @@ export class SupabaseScheduleRepository {
   async saveSchedule(schedule: Partial<Schedule>): Promise<RepositoryResult<Schedule>> {
     try {
       const dbRow = ScheduleMapper.modelToWeekDbRow(schedule)
-      console.log('🚀 [SupabaseScheduleRepository.saveSchedule] UPSERT Payload:', JSON.stringify(dbRow, null, 2))
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .upsert([dbRow])
-        .select('*')
-        .single()
+      console.log('Schedule INSERT/UPSERT Payload', dbRow)
+      console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
+
+      const result = dbRow.id
+        ? await supabase.from(this.tableName).upsert([dbRow]).select('*').single()
+        : await supabase.from(this.tableName).insert([dbRow]).select('*').single()
+
+      console.log('④ Supabase Schedule Result:', result)
+      const { data, error } = result
 
       if (error) {
+        console.error('code:', error.code)
+        console.error('message:', error.message)
+        console.error('details:', error.details)
+        console.error('hint:', error.hint)
+        console.error('status:', (error as any).status || (error as any).statusCode || 'N/A')
         return errorResult(error, this.tableName, 'saveSchedule')
       }
+
+      console.log('④ Supabase Schedule Success Data:\n' + JSON.stringify(data, null, 2))
       return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekRow))
     } catch (err: unknown) {
+      console.error('❌ Supabase saveSchedule Exception:', err)
       return errorResult(err, this.tableName, 'saveSchedule')
     }
   }

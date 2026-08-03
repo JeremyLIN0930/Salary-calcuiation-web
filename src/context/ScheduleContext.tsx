@@ -94,6 +94,8 @@ interface ScheduleContextValue {
   dispatch: React.Dispatch<ScheduleAction>
   /** Re-fetch all schedules from Supabase */
   refresh: () => Promise<void>
+  /** Direct async save schedule to Supabase returning result */
+  saveSchedule: (schedule: Schedule) => Promise<{ success: boolean; data?: Schedule }>
 }
 
 const Ctx = createContext<ScheduleContextValue | null>(null)
@@ -191,8 +193,27 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refresh]) as React.Dispatch<ScheduleAction>
 
+  const saveSchedule = useCallback(async (sched: Schedule) => {
+    dispatch({ type: 'SET_SAVING', payload: true })
+    try {
+      const result = await supabaseScheduleRepository.saveSchedule(sched)
+      if (result.success && result.data) {
+        dispatch({ type: 'UPDATE_SCHEDULE', payload: result.data })
+        return { success: true, data: result.data }
+      } else {
+        console.error('[ScheduleContext] saveSchedule failed:', result.error)
+        return { success: false }
+      }
+    } catch (err) {
+      console.error('[ScheduleContext] saveSchedule exception:', err)
+      return { success: false }
+    } finally {
+      dispatch({ type: 'SET_SAVING', payload: false })
+    }
+  }, [])
+
   return (
-    <Ctx.Provider value={{ state, dispatch: syncedDispatch, refresh }}>
+    <Ctx.Provider value={{ state, dispatch: syncedDispatch, refresh, saveSchedule }}>
       {children}
     </Ctx.Provider>
   )

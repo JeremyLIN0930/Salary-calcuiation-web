@@ -2,10 +2,9 @@ import React, { useState, useMemo } from 'react'
 import {
   Box, Typography, Button, TextField, Stack, Paper,
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Card, FormControl, Select, MenuItem, InputLabel,
+  CircularProgress, Card, Chip,
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
-import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { PDFService } from '../../services/pdfService'
 import PDFPreviewModal from '../../components/common/PDFPreviewModal'
@@ -15,6 +14,11 @@ import ScheduleTable from './ScheduleTable'
 const ArrowBackSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+  </svg>
+)
+const SaveSvg = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
   </svg>
 )
 const PdfSvg = () => (
@@ -41,13 +45,15 @@ interface Props {
 }
 
 export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: Props) {
-  const { state, dispatch } = useSchedule()
+  const { state, saveSchedule } = useSchedule()
   const { showSnackbar } = useSnackbar()
 
-  const [schedule, setSchedule] = useState<Schedule>(initialSchedule)
-  const [toast, setToast]       = useState('')
+  const [schedule, setSchedule]   = useState<Schedule>(initialSchedule)
+  const [isDirty, setIsDirty]     = useState(false)
+  const [isSaving, setIsSaving]   = useState(false)
   const [exporting, setExporting] = useState(false)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
 
   // Compute 7 dates (Mon-Sun)
   const weekDates = useMemo(() => {
@@ -69,8 +75,8 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
     return dates
   }, [schedule.weekStart])
 
-  // Save changes to state & storage
-  const handleSaveAll = (updatedEmployees?: ScheduleEmployee[], updatedRemark?: string) => {
+  // Update local memory state & mark dirty
+  const handleLocalChange = (updatedEmployees?: ScheduleEmployee[], updatedRemark?: string) => {
     const updated: Schedule = {
       ...schedule,
       employees: updatedEmployees ?? schedule.employees,
@@ -78,30 +84,61 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       updatedAt: new Date().toISOString(),
     }
     setSchedule(updated)
-    dispatch({ type: 'UPDATE_SCHEDULE', payload: updated })
+    setIsDirty(true)
+  }
+
+  // Explicit Save Schedule to Supabase
+  const handleSaveSchedule = async (exitAfterSave = false) => {
+    setIsSaving(true)
+    try {
+      const res = await saveSchedule(schedule)
+      if (res.success && res.data) {
+        setSchedule(res.data)
+        setIsDirty(false)
+        showSnackbar('✅ 排班已儲存', 'success')
+        if (exitAfterSave) {
+          onBack()
+        }
+        return true
+      } else {
+        showSnackbar('❌ 排班儲存失敗，請確認網路或 Console 錯誤', 'error')
+        return false
+      }
+    } catch (err) {
+      console.error('[ScheduleEditPage] handleSaveSchedule error:', err)
+      showSnackbar('❌ 排班儲存失敗，請確認網路或 Console 錯誤', 'error')
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Back button handler with dirty check
+  const handleBackClick = () => {
+    if (isDirty) {
+      setLeaveConfirmOpen(true)
+    } else {
+      onBack()
+    }
   }
 
   // Clear current week (Keep employee names, reset shifts)
   const handleClearWeek = () => {
     const clearedEmps = schedule.employees.map(emp => ({ ...emp, shifts: [] }))
-    handleSaveAll(clearedEmps)
+    handleLocalChange(clearedEmps, undefined)
     setConfirmClearOpen(false)
-    setToast('已清空本週班別（保留員工列表）')
+    showSnackbar('已清空本週班別（請記得按下「💾 儲存排班」）', 'info')
   }
 
   // Copy previous week's schedule employees and shift pattern
   const handleCopyPrevWeek = () => {
-    // Find previous schedule by sorting weekStart
     const otherSchedules = state.schedules.filter(s => s.id !== schedule.id && s.weekStart < schedule.weekStart)
     if (otherSchedules.length === 0) {
-      setToast('找不到更早的上一週班表可供複製')
+      showSnackbar('找不到更早的上一週班表可供複製', 'warning')
       return
     }
 
-    // Sort descending by weekStart to get closest previous week
     const prev = [...otherSchedules].sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0]
-
-    // Map shifts from prev week onto current week dates
     const prevStartDate = new Date(prev.weekStart)
     const currentStartDate = new Date(schedule.weekStart)
 
@@ -125,8 +162,8 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       }
     })
 
-    handleSaveAll(copiedEmployees)
-    setToast(`已複製上一週（${prev.weekStart}）的員工與班表`)
+    handleLocalChange(copiedEmployees, undefined)
+    showSnackbar(`已複製上一週（${prev.weekStart}）的員工與班表（請記得按下「💾 儲存排班」）`, 'info')
   }
 
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
@@ -142,14 +179,10 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
     setPdfUrl(null)
 
     try {
-      console.log('[PDF Debug] Requesting Schedule PDF Blob for:', schedule.storeName)
       const res = await PDFService.createSchedulePDFBlob(schedule)
-      console.log('[PDF Debug] Generated PDF Blob Size:', res.blob.size, 'URL:', res.url)
-
       if (!res.blob || res.blob.size === 0) {
         throw new Error('生成的 PDF 檔案大小為 0')
       }
-
       setPdfUrl(res.url)
     } catch (err: any) {
       console.error('[PDF Debug] Schedule PDF Generation Error:', err)
@@ -183,15 +216,25 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
             <Button
               variant="outlined"
               size="small"
-              onClick={onBack}
+              onClick={handleBackClick}
               sx={{ borderRadius: 2, minWidth: 40, px: 1, color: 'text.primary', borderColor: '#D1D5DB' }}
             >
               <ArrowBackSvg />
             </Button>
             <Box>
-              <Typography variant="h6" fontWeight={800} color="primary.main">
-                【{schedule.storeId}】{schedule.storeName} — 週排班表
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" fontWeight={800} color="primary.main">
+                  {schedule.storeName} — 週排班表
+                </Typography>
+                {/* Save Status Badge */}
+                {isSaving ? (
+                  <Chip label="🔵 儲存中..." size="small" color="info" sx={{ fontWeight: 700 }} />
+                ) : isDirty ? (
+                  <Chip label="🟡 尚未儲存" size="small" color="warning" sx={{ fontWeight: 700 }} />
+                ) : (
+                  <Chip label="🟢 已儲存" size="small" color="success" sx={{ fontWeight: 700 }} />
+                )}
+              </Box>
               <Typography variant="body2" color="text.secondary">
                 排班週次：{schedule.weekStart}（一） ～ {schedule.weekEnd}（日）
               </Typography>
@@ -223,6 +266,22 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
 
             <Button
               variant="contained"
+              color="success"
+              size="small"
+              disabled={isSaving}
+              onClick={() => handleSaveSchedule(false)}
+              sx={{ borderRadius: 2, fontWeight: 700 }}
+            >
+              {isSaving ? (
+                <CircularProgress size={16} sx={{ mr: 1, color: '#fff' }} />
+              ) : (
+                <SaveSvg />
+              )}
+              {isSaving ? '儲存中...' : '💾 儲存排班'}
+            </Button>
+
+            <Button
+              variant="contained"
               size="small"
               disabled={exporting}
               onClick={handleOpenPdfPreview}
@@ -239,7 +298,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       <ScheduleTable
         weekDates={weekDates}
         employees={schedule.employees}
-        onChangeEmployees={emps => handleSaveAll(emps, undefined)}
+        onChangeEmployees={emps => handleLocalChange(emps, undefined)}
       />
 
       {/* Bottom Remark Section */}
@@ -249,26 +308,24 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
         </Typography>
         <TextField
           placeholder="例如：新人教育訓練、中秋連假人力支援說明..."
-          value={schedule.remark}
+          value={schedule.remark || ''}
           multiline
           minRows={3}
           maxRows={6}
           fullWidth
           size="small"
-          onChange={e => handleSaveAll(undefined, e.target.value)}
+          onChange={e => handleLocalChange(undefined, e.target.value)}
         />
       </Card>
 
       {/* Clear Confirmation Dialog */}
       <Dialog open={confirmClearOpen} onClose={() => setConfirmClearOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle fontWeight={700}>確定清空本週班別？</DialogTitle>
-
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
             這將會清除「{schedule.weekStart}」此週所有員工的所有排班時間與假別，但會保留員工姓名列表。確定繼續？
           </Typography>
         </DialogContent>
-
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
           <Button variant="outlined" onClick={() => setConfirmClearOpen(false)} sx={{ borderRadius: 2 }}>
             取消
@@ -279,28 +336,37 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
         </DialogActions>
       </Dialog>
 
-      {/* PDF Preview & Export Modal */}
+      {/* Leave Dirty Confirmation Dialog */}
+      <Dialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle fontWeight={700}>你有尚未儲存的排班</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            本週排班已有變更但尚未儲存至 Supabase 資料庫，請問是否立即儲存？
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setLeaveConfirmOpen(false)} sx={{ borderRadius: 2 }}>
+            取消
+          </Button>
+          <Button variant="outlined" color="error" onClick={() => { setLeaveConfirmOpen(false); onBack(); }} sx={{ borderRadius: 2 }}>
+            不儲存
+          </Button>
+          <Button variant="contained" color="success" onClick={() => { setLeaveConfirmOpen(false); handleSaveSchedule(true); }} sx={{ borderRadius: 2 }}>
+            儲存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* PDF Preview Modal */}
       <PDFPreviewModal
         open={pdfPreviewOpen}
-        title={`【${schedule.storeId}】${schedule.storeName} 週排班表`}
-        pdfUrl={pdfUrl}
-        pdfError={pdfError}
-        loading={pdfLoading || exporting}
         onClose={() => setPdfPreviewOpen(false)}
         onConfirmDownload={handleConfirmDownloadPDF}
+        pdfUrl={pdfUrl}
+        loading={pdfLoading}
+        pdfError={pdfError}
+        title={`週排班表 PDF 預覽 — ${schedule.storeName} (${schedule.weekStart})`}
       />
-
-      {/* Toast Snackbar */}
-      <Snackbar
-        open={!!toast}
-        autoHideDuration={3000}
-        onClose={() => setToast('')}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity={toast.includes('失敗') ? 'error' : 'success'} sx={{ borderRadius: 2 }}>
-          {toast}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }
