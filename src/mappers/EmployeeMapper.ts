@@ -1,7 +1,7 @@
 /**
  * EmployeeMapper.ts
  * Maps between React MasterEmployee Model and Supabase MasterEmployeeRow.
- * Strictly validates UUIDs to avoid "invalid input syntax for type uuid".
+ * Converts store_id UUID -> store_name for UI display.
  */
 
 import { MasterEmployee } from '../types/masterEmployee'
@@ -16,12 +16,24 @@ export function isValidUuid(val?: string | null): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val)
 }
 
+const STORE_NAME_MAP: Record<string, string> = {
+  [DEFAULT_STORE_ID]: '慶東門市',
+}
+
 export class EmployeeMapper {
   static toModel(row: MasterEmployeeRow): MasterEmployee {
+    let resolvedStoreName = row.stores?.store_name || ''
+    if (!resolvedStoreName && row.store_id) {
+      resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '慶東門市' : row.store_id)
+    }
+    if (!resolvedStoreName) {
+      resolvedStoreName = '慶東門市'
+    }
+
     return {
       id: row.id || '',
       name: row.name || '',
-      store: row.store_id || '慶東門市',
+      store: resolvedStoreName,
       hireDate: row.hire_date || '',
       remark: row.notes || '',
       createdAt: row.created_at || new Date().toISOString(),

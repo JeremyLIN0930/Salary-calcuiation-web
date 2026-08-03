@@ -51,6 +51,15 @@ export interface MasterEmployeeRow {
   is_active?: boolean | null
   created_at?: string | null
   updated_at?: string | null
+  stores?: {
+    id?: string
+    store_code?: string | null
+    store_name?: string | null
+  } | null
+  companies?: {
+    id?: string
+    company_name?: string | null
+  } | null
 }
 
 export interface SalaryItemTypeRow {

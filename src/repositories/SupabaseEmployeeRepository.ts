@@ -11,16 +11,32 @@ export class SupabaseEmployeeRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('*')
+        .select(`
+          *,
+          stores (
+            id,
+            store_code,
+            store_name
+          ),
+          companies (
+            id,
+            company_name
+          )
+        `)
         .order('updated_at', { ascending: false })
 
       if (error) {
+        console.error('① Supabase SELECT Error:', error)
         return errorResult(error, this.tableName, 'getAll')
       }
+
+      console.log('① Supabase SELECT Raw Data:', data)
       const rows = (data || []) as MasterEmployeeRow[]
       const models = rows.map(row => EmployeeMapper.toModel(row))
+      console.log('② Mapped MasterEmployees:', models)
       return successResult(models)
     } catch (err: unknown) {
+      console.error('① Supabase SELECT Exception:', err)
       return errorResult(err, this.tableName, 'getAll')
     }
   }
@@ -29,7 +45,18 @@ export class SupabaseEmployeeRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('*')
+        .select(`
+          *,
+          stores (
+            id,
+            store_code,
+            store_name
+          ),
+          companies (
+            id,
+            company_name
+          )
+        `)
         .eq('id', id)
         .single()
 
@@ -69,7 +96,7 @@ export class SupabaseEmployeeRepository {
   async update(id: string, data: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow({ ...data, id })
-      console.log('🚀 [SupabaseEmployeeRepository.update] UPDATE Payload:', JSON.stringify(dbRow, null, 2))
+      console.log('③ REPOSITORY UPDATE Payload:', JSON.stringify(dbRow, null, 2))
 
       const { data: resultData, error } = await supabase
         .from(this.tableName)
@@ -79,33 +106,33 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('❌ [SupabaseEmployeeRepository.update] Error:', error)
+        console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'update')
       }
-      console.log('✅ [SupabaseEmployeeRepository.update] Success:', resultData)
+      console.log('④ SUPABASE RESPONSE Data:', resultData)
       return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeRow))
     } catch (err: unknown) {
-      console.error('❌ [SupabaseEmployeeRepository.update] Exception:', err)
+      console.error('④ SUPABASE RESPONSE Exception:', err)
       return errorResult(err, this.tableName, 'update')
     }
   }
 
   async delete(id: string): Promise<RepositoryResult<boolean>> {
     try {
-      console.log('🚀 [SupabaseEmployeeRepository.delete] Target ID:', id)
+      console.log('③ REPOSITORY DELETE Target ID:', id)
       const { error } = await supabase
         .from(this.tableName)
         .delete()
         .eq('id', id)
 
       if (error) {
-        console.error('❌ [SupabaseEmployeeRepository.delete] Error:', error)
+        console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'delete')
       }
-      console.log('✅ [SupabaseEmployeeRepository.delete] Success')
+      console.log('④ SUPABASE RESPONSE Success')
       return successResult(true)
     } catch (err: unknown) {
-      console.error('❌ [SupabaseEmployeeRepository.delete] Exception:', err)
+      console.error('④ SUPABASE RESPONSE Exception:', err)
       return errorResult(err, this.tableName, 'delete')
     }
   }
@@ -114,7 +141,18 @@ export class SupabaseEmployeeRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('*')
+        .select(`
+          *,
+          stores (
+            id,
+            store_code,
+            store_name
+          ),
+          companies (
+            id,
+            company_name
+          )
+        `)
         .ilike('name', `%${query}%`)
         .order('updated_at', { ascending: false })
 
