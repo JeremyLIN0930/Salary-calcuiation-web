@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import { MasterEmployee } from '../types/masterEmployee'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../utils/storage'
+import { EmployeeRepository } from '../database/repositories/EmployeeRepository'
 
 type Action =
   | { type: 'ADD'; payload: MasterEmployee }
@@ -13,7 +13,7 @@ interface State {
 
 function loadInitialState(): State {
   return {
-    employees: loadFromStorage<MasterEmployee[]>(STORAGE_KEYS.MASTER_EMPLOYEES, []),
+    employees: EmployeeRepository.getAll(),
   }
 }
 
@@ -45,7 +45,16 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
   const [state, dispatch] = useReducer(reducer, undefined, loadInitialState)
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.MASTER_EMPLOYEES, state.employees)
+    const currentRepoIds = new Set(EmployeeRepository.getAll().map(e => e.id))
+    const stateIds = new Set(state.employees.map(e => e.id))
+
+    state.employees.forEach(emp => EmployeeRepository.save(emp))
+
+    currentRepoIds.forEach(id => {
+      if (!stateIds.has(id)) {
+        EmployeeRepository.delete(id)
+      }
+    })
   }, [state.employees])
 
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>

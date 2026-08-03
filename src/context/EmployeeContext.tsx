@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import { Employee } from '../types/employee'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../utils/storage'
+import { SalaryRepository } from '../database/repositories/SalaryRepository'
 
 type Action =
   | { type: 'ADD'; payload: Employee }
@@ -13,7 +13,7 @@ interface State {
 
 function loadInitialState(): State {
   return {
-    employees: loadFromStorage<Employee[]>(STORAGE_KEYS.SALARIES, []),
+    employees: SalaryRepository.getAll(),
   }
 }
 
@@ -35,9 +35,21 @@ const Ctx = createContext<{ state: State; dispatch: React.Dispatch<Action> } | n
 export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadInitialState)
 
-  // Persist to LocalStorage whenever salary employees change
+  // Persist to Repository whenever salary employees change
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SALARIES, state.employees)
+    // Sync state to SalaryRepository
+    const currentRepoIds = new Set(SalaryRepository.getAll().map(s => s.id))
+    const stateIds = new Set(state.employees.map(s => s.id))
+
+    // Save/Update
+    state.employees.forEach(emp => SalaryRepository.save(emp))
+
+    // Remove deleted items
+    currentRepoIds.forEach(id => {
+      if (!stateIds.has(id)) {
+        SalaryRepository.delete(id)
+      }
+    })
   }, [state.employees])
 
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>
