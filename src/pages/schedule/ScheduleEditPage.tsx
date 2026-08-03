@@ -48,7 +48,25 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const { state, saveSchedule } = useSchedule()
   const { showSnackbar } = useSnackbar()
 
-  const [schedule, setSchedule]   = useState<Schedule>(initialSchedule)
+  // Sanitize initial remark to prevent JSON object string from leaking into TextArea
+  const sanitizedInitialSchedule = useMemo(() => {
+    let cleanRemark = initialSchedule.remark || ''
+    const trimmed = cleanRemark.trim()
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        cleanRemark = typeof parsed.remark === 'string' ? parsed.remark : ''
+      } catch {
+        cleanRemark = ''
+      }
+    }
+    return {
+      ...initialSchedule,
+      remark: cleanRemark,
+    }
+  }, [initialSchedule])
+
+  const [schedule, setSchedule]   = useState<Schedule>(sanitizedInitialSchedule)
   const [isDirty, setIsDirty]     = useState(false)
   const [isSaving, setIsSaving]   = useState(false)
   const [exporting, setExporting] = useState(false)

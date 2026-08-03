@@ -18,10 +18,15 @@ export class ScheduleMapper {
   static weekToModel(row: ScheduleWeekRow): Schedule {
     let remarkVal = ''
     if (row.notes) {
-      try {
-        const parsed = JSON.parse(row.notes)
-        remarkVal = parsed.remark || row.notes
-      } catch {
+      const trimmed = row.notes.trim()
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          remarkVal = typeof parsed.remark === 'string' ? parsed.remark : ''
+        } catch {
+          remarkVal = ''
+        }
+      } else {
         remarkVal = row.notes
       }
     }
