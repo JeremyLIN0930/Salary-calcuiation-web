@@ -18,14 +18,19 @@ export class SupabaseSalaryRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('month')
+        .select('month, year')
 
       if (error) {
         return errorResult(error, this.tableName, 'getMonths')
       }
-      const rows = (data || []) as { month: string }[]
-      const months = Array.from(new Set(rows.map(item => String(item.month)))).sort().reverse()
-      return successResult(months)
+      const rows = (data || []) as { month: number | string; year?: number }[]
+      const monthKeys = rows.map(item => {
+        const yr = item.year || new Date().getFullYear()
+        const mo = typeof item.month === 'number' ? item.month : parseInt(String(item.month).slice(5, 7), 10) || 8
+        return `${yr}-${String(mo).padStart(2, '0')}`
+      })
+      const uniqueMonths = Array.from(new Set(monthKeys)).sort().reverse()
+      return successResult(uniqueMonths)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getMonths')
     }
@@ -33,10 +38,13 @@ export class SupabaseSalaryRepository {
 
   async createMonth(monthKey: string): Promise<RepositoryResult<string>> {
     try {
+      const yearVal  = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
+      const monthNum = parseInt(monthKey.slice(5, 7), 10) || 8
+
       const dbRow: SalaryMonthRow = {
         company_id: DEFAULT_COMPANY_ID,
-        month: monthKey,
-        year: parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear(),
+        month: monthNum as any,
+        year: yearVal,
         notes: monthKey,
         status: 'active',
         created_at: new Date().toISOString(),
@@ -55,10 +63,16 @@ export class SupabaseSalaryRepository {
 
   async updateMonth(oldMonthKey: string, newMonthKey: string): Promise<RepositoryResult<boolean>> {
     try {
+      const oldYear  = parseInt(oldMonthKey.slice(0, 4), 10) || new Date().getFullYear()
+      const oldMonth = parseInt(oldMonthKey.slice(5, 7), 10) || 8
+      const newYear  = parseInt(newMonthKey.slice(0, 4), 10) || new Date().getFullYear()
+      const newMonth = parseInt(newMonthKey.slice(5, 7), 10) || 8
+
       const { error } = await supabase
         .from(this.tableName)
-        .update({ month: newMonthKey, updated_at: new Date().toISOString() })
-        .eq('month', oldMonthKey)
+        .update({ year: newYear, month: newMonth as any, updated_at: new Date().toISOString() })
+        .eq('year', oldYear)
+        .eq('month', oldMonth)
 
       if (error) {
         return errorResult(error, this.tableName, 'updateMonth')
@@ -71,10 +85,14 @@ export class SupabaseSalaryRepository {
 
   async deleteMonth(monthKey: string): Promise<RepositoryResult<boolean>> {
     try {
+      const yr = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
+      const mo = parseInt(monthKey.slice(5, 7), 10) || 8
+
       const { error } = await supabase
         .from(this.tableName)
         .delete()
-        .eq('month', monthKey)
+        .eq('year', yr)
+        .eq('month', mo)
 
       if (error) {
         return errorResult(error, this.tableName, 'deleteMonth')
@@ -89,7 +107,9 @@ export class SupabaseSalaryRepository {
     try {
       let query = supabase.from(this.tableName).select('*')
       if (monthKey) {
-        query = query.eq('month', monthKey)
+        const yr = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
+        const mo = parseInt(monthKey.slice(5, 7), 10) || 8
+        query = query.eq('year', yr).eq('month', mo)
       }
       const { data, error } = await query.order('updated_at', { ascending: false })
 
@@ -119,10 +139,13 @@ export class SupabaseSalaryRepository {
         .single()
 
       if (error) {
+        console.error('❌ [SupabaseSalaryRepository.saveSalary] Error:', error)
         return errorResult(error, this.tableName, 'saveSalary')
       }
+      console.log('✅ [SupabaseSalaryRepository.saveSalary] Success:', data)
       return successResult(SalaryMapper.toModel(data as SalaryMonthRow))
     } catch (err: unknown) {
+      console.error('❌ [SupabaseSalaryRepository.saveSalary] Exception:', err)
       return errorResult(err, this.tableName, 'saveSalary')
     }
   }

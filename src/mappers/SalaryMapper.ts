@@ -1,7 +1,9 @@
 /**
  * SalaryMapper.ts
  * Maps between React Employee Salary Model and Supabase SalaryMonthRow.
- * Strictly validates UUIDs to avoid "invalid input syntax for type uuid".
+ * Converts month string "YYYY-MM" ↔ smallint month (1-12) for Supabase PostgreSQL schema.
+ * Persists complete Employee Salary data via notes JSON stringification.
+ * Cleans empty strings and undefined fields.
  */
 
 import { Employee, createEmptyEmployee } from '../types/employee'
@@ -11,27 +13,49 @@ import { DEFAULT_COMPANY_ID, isValidUuid } from './EmployeeMapper'
 export class SalaryMapper {
   static toModel(row: SalaryMonthRow): Employee {
     const base = createEmptyEmployee()
-    const yearMonth = row.month ? String(row.month) : new Date().toISOString().slice(0, 7)
+    let parsed: Partial<Employee> = {}
+
+    if (row.notes) {
+      try {
+        parsed = JSON.parse(row.notes)
+      } catch {
+        parsed = { name: row.notes }
+      }
+    }
+
+    const yearVal = row.year || (parsed.month ? parseInt(String(parsed.month).slice(0, 4), 10) : new Date().getFullYear())
+    const monthNum = typeof row.month === 'number' ? row.month : (row.month ? parseInt(String(row.month).slice(5, 7), 10) : (parsed.month ? parseInt(String(parsed.month).slice(5, 7), 10) : 8))
+    const formattedMonth = `${yearVal}-${String(monthNum).padStart(2, '0')}`
+
     return {
       ...base,
-      id: row.id || '',
-      name: row.notes || '未命名員工',
-      month: yearMonth,
-      createdAt: row.created_at || new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString(),
+      ...parsed,
+      id: row.id || parsed.id || base.id,
+      name: parsed.name || row.notes || '未命名員工',
+      month: formattedMonth,
+      createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),
+      updatedAt: row.updated_at || parsed.updatedAt || new Date().toISOString(),
     }
   }
 
   static toDbRow(model: Partial<Employee>): SalaryMonthRow {
     const now = new Date().toISOString()
     const monthStr = model.month || new Date().toISOString().slice(0, 7)
-    const yearVal = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
+    const yearVal  = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
+    const monthNum = parseInt(monthStr.slice(5, 7), 10) || 8
+
+    // Omit empty strings and undefined before JSON serialization
+    const cleanPayload: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(model)) {
+      if (val === undefined || val === null || val === '') continue
+      cleanPayload[key] = val
+    }
 
     const row: SalaryMonthRow = {
       company_id: DEFAULT_COMPANY_ID,
-      month: monthStr,
+      month: monthNum as any, // Supabase schema requires smallint (1-12)
       year: yearVal,
-      notes: model.name || '',
+      notes: JSON.stringify(cleanPayload),
       status: 'active',
       updated_at: model.updatedAt || now,
     }
