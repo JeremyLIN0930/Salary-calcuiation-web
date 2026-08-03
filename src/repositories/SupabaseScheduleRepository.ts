@@ -76,31 +76,64 @@ export class SupabaseScheduleRepository {
       const schIdKey = (sch.id || '').toLowerCase()
       const schShifts = shiftsByWeek.get(schIdKey) || []
       
-      // Group shifts by employee_id to build the ScheduleEmployee list
-      const empShiftsMap = new Map<string, any[]>()
+      // Calculate 7 dates of the week (Mon ~ Sun)
+      const weekDates: string[] = []
+      if (sch.weekStart) {
+        const start = new Date(sch.weekStart)
+        for (let i = 0; i < 7; i++) {
+          const cur = new Date(start)
+          cur.setDate(start.getDate() + i)
+          weekDates.push(cur.toISOString().slice(0, 10))
+        }
+      }
+
+      // Group DB shifts by employee_id -> Map(work_date -> DB Shift)
+      const empShiftsMap = new Map<string, Map<string, any>>()
       schShifts.forEach(s => {
         const empId = s.employee_id
         if (!empShiftsMap.has(empId)) {
-          empShiftsMap.set(empId, [])
+          empShiftsMap.set(empId, new Map<string, any>())
         }
-        empShiftsMap.get(empId)!.push(s)
+        empShiftsMap.get(empId)!.set(s.work_date, s)
+      })
+
+      // Also merge any existing employee objects in sch.employees
+      const existingEmps = sch.employees || []
+      existingEmps.forEach(e => {
+        if (!empShiftsMap.has(e.id)) {
+          empShiftsMap.set(e.id, new Map<string, any>())
+        }
       })
 
       const schEmployees: ScheduleEmployee[] = []
-      empShiftsMap.forEach((empShifts, empId) => {
-        const empName = empMap.get(empId) || '未命名員工'
-        const employeeShifts: Shift[] = empShifts.map(s => ({
-          date: s.work_date,
-          type: s.shift_type as ShiftType,
-          startTime: s.start_time || undefined,
-          endTime: s.end_time || undefined,
-          remark: s.remarks || undefined
-        }))
+      empShiftsMap.forEach((dateShiftMap, empId) => {
+        const empName = empMap.get(empId) || existingEmps.find(e => e.id === empId)?.name || '未命名員工'
+        
+        // Pad to 7 days for UI display (Sparse -> Full 7-Day UI)
+        const paddedShifts: Shift[] = weekDates.map(dateStr => {
+          const dbShift = dateShiftMap.get(dateStr)
+          if (dbShift) {
+            return {
+              date: dateStr,
+              type: (dbShift.shift_type || '') as ShiftType,
+              startTime: dbShift.start_time || undefined,
+              endTime: dbShift.end_time || undefined,
+              remark: dbShift.remarks || undefined
+            }
+          }
+          return {
+            date: dateStr,
+            type: '' as ShiftType,
+            startTime: '',
+            endTime: '',
+            remark: ''
+          }
+        })
 
         schEmployees.push({
           id: empId,
           name: empName,
-          shifts: employeeShifts
+          shifts: paddedShifts
         })
       })
 
@@ -596,22 +629,24 @@ export class SupabaseScheduleRepository {
         })
       }
 
-      // 5. Prepare schedule_shifts insertion rows
+      // 5. Prepare schedule_shifts insertion rows (Sparse Design: only save non-empty shifts)
       const shiftRows: any[] = []
       for (const emp of resolvedEmployees) {
         for (const shift of emp.shifts) {
-          shiftRows.push({
-            schedule_week_id: weekRowId,
-            employee_id: emp.id,
-            work_date: shift.date,
-            shift_type: shift.type,
-            start_time: shift.startTime || null,
-            end_time: shift.endTime || null,
-            is_day_off: shift.type === 'off',
-            remarks: shift.remark || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+          if (shift.type && typeof shift.type === 'string' && shift.type.trim() !== '') {
+            shiftRows.push({
+              schedule_week_id: weekRowId,
+              employee_id: emp.id,
+              work_date: shift.date,
+              shift_type: shift.type,
+              start_time: shift.startTime || null,
+              end_time: shift.endTime || null,
+              is_day_off: shift.type === 'off',
+              remarks: shift.remark || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+          }
         }
       }
 
