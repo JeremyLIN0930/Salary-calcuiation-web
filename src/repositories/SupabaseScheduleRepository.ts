@@ -176,6 +176,7 @@ export class SupabaseScheduleRepository {
         dbRow.week_no = Math.min(Math.ceil(dayOfMonth / 7), 5)
       }
 
+      console.log('schedule_weeks INSERT', dbRow)
       console.log('Schedule INSERT/UPSERT Payload', dbRow)
       console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
 
