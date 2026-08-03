@@ -162,13 +162,49 @@ export class SupabaseScheduleRepository {
           .gte('start_date', `${monthKey}-01`)
           .lte('start_date', `${monthKey}-31`)
       }
-      const { data, error } = await query.order('updated_at', { ascending: false })
+      const { data: weeksData, error: error } = await query.order('updated_at', { ascending: false })
 
       if (error) {
         return errorResult(error, this.tableName, 'getWeeks')
       }
-      const rows = (data || []) as ScheduleWeekRow[]
-      const models = rows.map(row => ScheduleMapper.weekToModel(row))
+      const rows = (weeksData || []) as ScheduleWeekRow[]
+
+      // Load parent schedule_months and stores to resolve store name and code in memory
+      const { data: monthsData } = await supabase
+        .from('schedule_months')
+        .select('*')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+
+      const monthMap = new Map<string, any>()
+      if (monthsData) {
+        monthsData.forEach(m => monthMap.set(m.id, m))
+      }
+
+      const { data: storesData } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+
+      const storeMap = new Map<string, any>()
+      if (storesData) {
+        storesData.forEach(s => storeMap.set(s.id, s))
+      }
+
+      const models = rows.map(row => {
+        const parentMonth = row.schedule_month_id ? monthMap.get(row.schedule_month_id) : null
+        const parentStore = parentMonth?.store_id ? storeMap.get(parentMonth.store_id) : null
+
+        const rowWithStore = {
+          ...row,
+          stores: parentStore ? {
+            id: parentStore.id,
+            store_code: parentStore.store_code,
+            store_name: parentStore.store_name
+          } : null,
+          store_id: parentMonth?.store_id || null
+        }
+        return ScheduleMapper.weekToModel(rowWithStore as any)
+      })
       
       // Load shifts and reconstruct employees/shifts
       await this.populateSchedulesWithShifts(models)
@@ -194,7 +230,42 @@ export class SupabaseScheduleRepository {
       if (error) {
         return errorResult(error, this.tableName, 'getSchedule')
       }
-      const model = ScheduleMapper.weekToModel(data as ScheduleWeekRow)
+      const row = data as ScheduleWeekRow
+
+      let parentStore: any = null
+      let storeIdVal: string | null = null
+      if (row.schedule_month_id) {
+        const { data: parentMonth } = await supabase
+          .from('schedule_months')
+          .select('*')
+          .eq('id', row.schedule_month_id)
+          .maybeSingle()
+
+        if (parentMonth?.store_id) {
+          storeIdVal = parentMonth.store_id
+          const { data: storeRow } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('id', parentMonth.store_id)
+            .maybeSingle()
+
+          if (storeRow) {
+            parentStore = storeRow
+          }
+        }
+      }
+
+      const rowWithStore = {
+        ...row,
+        stores: parentStore ? {
+          id: parentStore.id,
+          store_code: parentStore.store_code,
+          store_name: parentStore.store_name
+        } : null,
+        store_id: storeIdVal
+      }
+
+      const model = ScheduleMapper.weekToModel(rowWithStore as any)
       
       // Load shifts for this single schedule
       await this.populateSchedulesWithShifts([model])
@@ -212,12 +283,43 @@ export class SupabaseScheduleRepository {
       const yearVal  = parseInt(startDateStr.slice(0, 4), 10) || new Date().getFullYear()
       const monthNum = parseInt(startDateStr.slice(5, 7), 10) || (new Date().getMonth() + 1)
 
-      // 2. Query schedule_months to find existing parent month row
+      // 1.5. Resolve store UUID from stores table
+      let resolvedStoreId: string | null = null
+      
+      const { data: dbStores } = await supabase
+        .from('stores')
+        .select('id, store_code, store_name')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+
+      if (dbStores && dbStores.length > 0) {
+        if (isValidUuid(schedule.storeId)) {
+          const match = dbStores.find(s => s.id === schedule.storeId)
+          if (match) resolvedStoreId = match.id
+        }
+
+        if (!resolvedStoreId) {
+          const match = dbStores.find(s => 
+            s.store_code === schedule.storeCode || 
+            s.store_code === schedule.storeId ||
+            s.store_name === schedule.storeName
+          )
+          if (match) resolvedStoreId = match.id
+        }
+
+        if (!resolvedStoreId) {
+          resolvedStoreId = dbStores[0].id
+        }
+      }
+
+      console.log('🚀 [SupabaseScheduleRepository] Resolved store_id UUID:', resolvedStoreId)
+
+      // 2. Query schedule_months to find existing parent month row by store_id, company_id, year, month
       let scheduleMonthId: string | null = null
       const { data: existingMonth, error: findMonthErr } = await supabase
         .from('schedule_months')
         .select('id')
         .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('store_id', resolvedStoreId)
         .eq('year', yearVal)
         .eq('month', monthNum)
         .maybeSingle()
@@ -233,6 +335,7 @@ export class SupabaseScheduleRepository {
         // Create new schedule_months row
         const monthPayload = {
           company_id: DEFAULT_COMPANY_ID,
+          store_id: resolvedStoreId,
           year: yearVal,
           month: monthNum,
           status: 'draft',
