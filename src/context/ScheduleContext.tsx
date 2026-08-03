@@ -1,70 +1,204 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
+/**
+ * ScheduleContext.tsx — Supabase Migration Task 5
+ *
+ * Architecture:
+ *   Page → ScheduleContext → SupabaseScheduleRepository → Supabase
+ *
+ * Backward Compatibility:
+ *   - Keeps { state, dispatch } API so all Pages/Components are UNCHANGED.
+ *   - state.schedules is the single source of truth (loaded from Supabase).
+ *   - dispatch actions (ADD/UPDATE/DELETE) perform optimistic local updates
+ *     AND persist to Supabase asynchronously.
+ *   - Falls back to Dexie when USE_SUPABASE is false.
+ */
+
+import React, {
+  createContext, useContext, useReducer,
+  useEffect, useCallback, useRef,
+} from 'react'
 import { Schedule } from '../types/schedule'
+import { supabaseScheduleRepository } from '../repositories/SupabaseScheduleRepository'
+// Dexie fallback (preserved for rollback)
 import { ScheduleRepository } from '../database/repositories/ScheduleRepository'
+
+// ── Feature flag: set to false to rollback to Dexie ──────────────────────────
+const USE_SUPABASE = true
+
+// ── State & Actions ──────────────────────────────────────────────────────────
 
 interface ScheduleState {
   schedules: Schedule[]
+  loading: boolean
+  saving: boolean
+  refreshing: boolean
+  copying: boolean
+  deleting: boolean
+  error: string | null
 }
 
 type ScheduleAction =
-  | { type: 'SET_SCHEDULES'; payload: Schedule[] }
-  | { type: 'ADD_SCHEDULE'; payload: Schedule }
+  | { type: 'SET_SCHEDULES';   payload: Schedule[] }
+  | { type: 'ADD_SCHEDULE';    payload: Schedule }
   | { type: 'UPDATE_SCHEDULE'; payload: Schedule }
   | { type: 'DELETE_SCHEDULE'; payload: string }
-
-function loadInitialState(): ScheduleState {
-  return {
-    schedules: ScheduleRepository.getAll(),
-  }
-}
+  | { type: 'SET_LOADING';     payload: boolean }
+  | { type: 'SET_SAVING';      payload: boolean }
+  | { type: 'SET_REFRESHING';  payload: boolean }
+  | { type: 'SET_COPYING';     payload: boolean }
+  | { type: 'SET_DELETING';    payload: boolean }
+  | { type: 'SET_ERROR';       payload: string | null }
 
 function reducer(state: ScheduleState, action: ScheduleAction): ScheduleState {
   switch (action.type) {
     case 'SET_SCHEDULES':
-      return { schedules: action.payload }
+      return { ...state, schedules: action.payload, loading: false, error: null }
     case 'ADD_SCHEDULE':
-      return { schedules: [action.payload, ...state.schedules] }
+      return { ...state, schedules: [action.payload, ...state.schedules] }
     case 'UPDATE_SCHEDULE':
       return {
-        schedules: state.schedules.map(s => s.id === action.payload.id ? action.payload : s),
+        ...state,
+        schedules: state.schedules.map(s =>
+          s.id === action.payload.id ? action.payload : s
+        ),
       }
     case 'DELETE_SCHEDULE':
       return {
+        ...state,
         schedules: state.schedules.filter(s => s.id !== action.payload),
       }
+    case 'SET_LOADING':     return { ...state, loading: action.payload }
+    case 'SET_SAVING':      return { ...state, saving: action.payload }
+    case 'SET_REFRESHING':  return { ...state, refreshing: action.payload }
+    case 'SET_COPYING':     return { ...state, copying: action.payload }
+    case 'SET_DELETING':    return { ...state, deleting: action.payload }
+    case 'SET_ERROR':       return { ...state, error: action.payload }
     default:
       return state
   }
 }
 
+const INITIAL_STATE: ScheduleState = {
+  schedules: [],
+  loading: true,
+  saving: false,
+  refreshing: false,
+  copying: false,
+  deleting: false,
+  error: null,
+}
+
+// ── Context Value ─────────────────────────────────────────────────────────────
+
 interface ScheduleContextValue {
   state: ScheduleState
   dispatch: React.Dispatch<ScheduleAction>
+  /** Re-fetch all schedules from Supabase */
+  refresh: () => Promise<void>
 }
 
 const Ctx = createContext<ScheduleContextValue | null>(null)
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 export function ScheduleProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadInitialState)
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE)
 
-  // Sync state with ScheduleRepository
-  useEffect(() => {
-    const currentRepoIds = new Set(ScheduleRepository.getAll().map(s => s.id))
-    const stateIds = new Set(state.schedules.map(s => s.id))
+  // Prevent concurrent refreshes
+  const refreshingRef = useRef(false)
 
-    // Save/Update
-    state.schedules.forEach(s => ScheduleRepository.save(s))
+  // ── Load from Supabase or Dexie on mount ──────────────────────────────────
 
-    // Remove deleted items
-    currentRepoIds.forEach(id => {
-      if (!stateIds.has(id)) {
-        ScheduleRepository.delete(id)
+  const refresh = useCallback(async () => {
+    if (refreshingRef.current) return
+    refreshingRef.current = true
+    dispatch({ type: 'SET_LOADING', payload: true })
+    dispatch({ type: 'SET_ERROR',   payload: null })
+
+    try {
+      if (USE_SUPABASE) {
+        const result = await supabaseScheduleRepository.getAllSchedules()
+        if (result.success && result.data) {
+          dispatch({ type: 'SET_SCHEDULES', payload: result.data })
+        } else {
+          console.error('[ScheduleContext] Supabase load error:', result.error)
+          dispatch({ type: 'SET_ERROR', payload: '無法載入排班資料，請稍後再試。' })
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
+      } else {
+        // Dexie fallback
+        const dexieSchedules = ScheduleRepository.getAll()
+        dispatch({ type: 'SET_SCHEDULES', payload: dexieSchedules })
       }
-    })
-  }, [state.schedules])
+    } catch (err) {
+      console.error('[ScheduleContext] refresh error:', err)
+      dispatch({ type: 'SET_ERROR', payload: '載入排班資料時發生錯誤。' })
+      dispatch({ type: 'SET_LOADING', payload: false })
+    } finally {
+      refreshingRef.current = false
+    }
+  }, [])
 
-  return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  // ── Intercept dispatch to sync Supabase ───────────────────────────────────
+  //
+  // We wrap dispatch so that:
+  //  1. ADD_SCHEDULE  → optimistic local update + Supabase upsert
+  //  2. UPDATE_SCHEDULE → optimistic local update + Supabase upsert
+  //  3. DELETE_SCHEDULE → optimistic local removal + Supabase delete
+  //  All other action types pass through unchanged.
+
+  const syncedDispatch = useCallback(async (action: ScheduleAction) => {
+    // Always apply optimistic local state update first (zero-lag UI)
+    dispatch(action)
+
+    if (!USE_SUPABASE) {
+      // Dexie sync (original behavior)
+      if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
+        ScheduleRepository.save(action.payload)
+      } else if (action.type === 'DELETE_SCHEDULE') {
+        ScheduleRepository.delete(action.payload)
+      }
+      return
+    }
+
+    // Supabase async persistence
+    try {
+      if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
+        dispatch({ type: 'SET_SAVING', payload: true })
+        const result = await supabaseScheduleRepository.saveSchedule(action.payload)
+        if (!result.success) {
+          console.error('[ScheduleContext] Save failed, rolling back:', result.error)
+          // On failure: refresh from Supabase to restore truth
+          await refresh()
+        }
+      } else if (action.type === 'DELETE_SCHEDULE') {
+        dispatch({ type: 'SET_DELETING', payload: true })
+        const result = await supabaseScheduleRepository.deleteSchedule(action.payload)
+        if (!result.success) {
+          console.error('[ScheduleContext] Delete failed, rolling back:', result.error)
+          await refresh()
+        }
+      }
+    } catch (err) {
+      console.error('[ScheduleContext] syncedDispatch error:', err)
+      await refresh()
+    } finally {
+      dispatch({ type: 'SET_SAVING',   payload: false })
+      dispatch({ type: 'SET_DELETING', payload: false })
+    }
+  }, [refresh]) as React.Dispatch<ScheduleAction>
+
+  return (
+    <Ctx.Provider value={{ state, dispatch: syncedDispatch, refresh }}>
+      {children}
+    </Ctx.Provider>
+  )
 }
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useSchedule() {
   const ctx = useContext(Ctx)
