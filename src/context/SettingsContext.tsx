@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { SystemSettings, DEFAULT_SETTINGS } from '../types/settings'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../utils/storage'
+import { supabaseSettingsRepository } from '../repositories/SupabaseSettingsRepository'
 
 interface SettingsContextValue {
   settings: SystemSettings
@@ -14,16 +15,37 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     loadFromStorage<SystemSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS)
   )
 
+  const fetchSupabaseSettings = useCallback(async () => {
+    try {
+      const res = await supabaseSettingsRepository.getSettings()
+      if (res.success && res.data && Object.keys(res.data).length > 0) {
+        setSettings(prev => ({
+          ...prev,
+          ...res.data,
+        }))
+      }
+    } catch (err) {
+      console.error('[SettingsContext] Load from Supabase error:', err)
+    }
+  }, [])
+
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SETTINGS, settings)
-  }, [settings])
+    fetchSupabaseSettings()
+  }, [fetchSupabaseSettings])
 
   const updateSettings = (newSettings: Partial<SystemSettings>) => {
-    setSettings(prev => ({
-      ...prev,
-      ...newSettings,
-      updatedAt: new Date().toISOString(),
-    }))
+    setSettings(prev => {
+      const next = {
+        ...prev,
+        ...newSettings,
+        updatedAt: new Date().toISOString(),
+      }
+      saveToStorage(STORAGE_KEYS.SETTINGS, next)
+      supabaseSettingsRepository.saveSettings(next as Record<string, unknown>).catch(err => {
+        console.error('[SettingsContext] Save to Supabase error:', err)
+      })
+      return next
+    })
   }
 
   return (
