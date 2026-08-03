@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer } from 'react'
+import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import { Employee } from '../types/employee'
+import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../utils/storage'
 
 type Action =
   | { type: 'ADD'; payload: Employee }
@@ -10,7 +11,11 @@ interface State {
   employees: Employee[]
 }
 
-const initial: State = { employees: [] }
+function loadInitialState(): State {
+  return {
+    employees: loadFromStorage<Employee[]>(STORAGE_KEYS.SALARY_EMPLOYEES, []),
+  }
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -28,7 +33,13 @@ function reducer(state: State, action: Action): State {
 const Ctx = createContext<{ state: State; dispatch: React.Dispatch<Action> } | null>(null)
 
 export function EmployeeProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initial)
+  const [state, dispatch] = useReducer(reducer, undefined, loadInitialState)
+
+  // Persist to LocalStorage whenever salary employees change
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SALARY_EMPLOYEES, state.employees)
+  }, [state.employees])
+
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>
 }
 
