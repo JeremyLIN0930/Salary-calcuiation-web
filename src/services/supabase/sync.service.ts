@@ -1,5 +1,18 @@
-import { db } from '../../database/db'
-import { supabase, isSupabaseConfigured } from './supabase'
+/**
+ * sync.service.ts
+ *
+ * NOTE: This legacy Dexie→Supabase background sync service is DEPRECATED.
+ * Data is now written directly to Supabase via Repository layer.
+ * Table names are kept corrected for reference. The sync logic is disabled.
+ *
+ * Correct Supabase table names:
+ *   employees  → master_employees
+ *   salaries   → salary_months
+ *   schedules  → schedule_shifts
+ *   settings   → app_settings
+ */
+
+import { isSupabaseEnvConfigured } from '../../lib/supabase'
 
 export type SyncStatus = 'synced' | 'pending' | 'error' | 'offline'
 
@@ -13,13 +26,12 @@ type Listener = (state: SyncState) => void
 
 export class SyncService {
   private static state: SyncState = {
-    status: navigator.onLine ? (isSupabaseConfigured ? 'pending' : 'offline') : 'offline',
+    status: navigator.onLine ? (isSupabaseEnvConfigured ? 'synced' : 'offline') : 'offline',
     lastSyncTime: localStorage.getItem('last_supabase_sync_time'),
-    message: isSupabaseConfigured ? '準備同步' : '雲端金鑰未設定 (離線模式)',
+    message: isSupabaseEnvConfigured ? '直接寫入 Supabase (Repository Mode)' : '雲端金鑰未設定 (離線模式)',
   }
 
   private static listeners: Set<Listener> = new Set()
-  private static isSyncing = false
 
   public static subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
@@ -38,21 +50,22 @@ export class SyncService {
   }
 
   /**
-   * Main Background Sync function.
-   * Dexie (IndexedDB) -> Background Sync -> Supabase
+   * DEPRECATED: Legacy Dexie→Supabase sync.
+   * Data is now written directly to Supabase via Repository.
+   * This method is a no-op kept for backward compatibility.
    */
   public static async triggerSync(): Promise<void> {
     if (!navigator.onLine) {
       this.state = {
         ...this.state,
         status: 'offline',
-        message: '目前處於離線狀態，資料已存至本機資料庫。',
+        message: '目前處於離線狀態。',
       }
       this.notify()
       return
     }
 
-    if (!isSupabaseConfigured || !supabase) {
+    if (!isSupabaseEnvConfigured) {
       this.state = {
         ...this.state,
         status: 'offline',
@@ -62,88 +75,25 @@ export class SyncService {
       return
     }
 
-    if (this.isSyncing) return
-    this.isSyncing = true
-
+    // No-op: Repository layer handles writes directly
     this.state = {
       ...this.state,
-      status: 'pending',
-      message: '正在進行背景雲端同步...',
+      status: 'synced',
+      message: '直接寫入 Supabase (Repository Mode)',
     }
     this.notify()
-
-    try {
-      // 1. Fetch latest IndexedDB items
-      const employees = await db.employees.toArray()
-      const salaries  = await db.salaries.toArray()
-      const schedules = await db.schedules.toArray()
-      const settings  = await db.settings.toArray()
-
-      // 2. Background upsert to Supabase
-      if (employees.length > 0) {
-        await supabase.from('employees').upsert(employees, { onConflict: 'id' })
-      }
-      if (salaries.length > 0) {
-        await supabase.from('salaries').upsert(salaries, { onConflict: 'id' })
-      }
-      if (schedules.length > 0) {
-        await supabase.from('schedules').upsert(schedules, { onConflict: 'id' })
-      }
-      if (settings.length > 0) {
-        await supabase.from('settings').upsert(settings, { onConflict: 'id' })
-      }
-
-      // 3. Mark success
-      const nowStr = new Date().toLocaleString('zh-TW', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: false,
-      })
-
-      localStorage.setItem('last_supabase_sync_time', nowStr)
-
-      this.state = {
-        status: 'synced',
-        lastSyncTime: nowStr,
-        message: '雲端同步完成',
-      }
-    } catch (err: any) {
-      console.warn('[SyncService] Background sync failed (Offline or network error):', err)
-      // Never break UI on network failure! Gracefully handle error state
-      this.state = {
-        ...this.state,
-        status: 'error',
-        message: '同步失敗，資料已安全存在本機，恢復網路後自動重試。',
-      }
-    } finally {
-      this.isSyncing = false
-      this.notify()
-    }
   }
 
-  /**
-   * Initializes network state listeners (online/offline)
-   */
   public static initAutoSync(): void {
     window.addEventListener('online', () => {
-      console.log('[SyncService] Network reconnected, triggering background sync...')
-      this.triggerSync()
+      this.state = { ...this.state, status: 'synced', message: '已連線' }
+      this.notify()
     })
 
     window.addEventListener('offline', () => {
-      this.state = {
-        ...this.state,
-        status: 'offline',
-        message: '離線模式',
-      }
+      this.state = { ...this.state, status: 'offline', message: '離線模式' }
       this.notify()
     })
-
-    // Initial background trigger if online
-    if (navigator.onLine && isSupabaseConfigured) {
-      setTimeout(() => {
-        this.triggerSync()
-      }, 2000)
-    }
   }
 }
 

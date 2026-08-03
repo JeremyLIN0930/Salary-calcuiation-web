@@ -9,7 +9,8 @@ export interface SalaryItemType {
 }
 
 export class SupabaseSalaryRepository {
-  private tableName = 'salaries'
+  // ✅ Correct table: salary_months (stores per-employee salary records per month)
+  private tableName = 'salary_months'
 
   async getMonths(): Promise<RepositoryResult<string[]>> {
     try {
@@ -17,10 +18,14 @@ export class SupabaseSalaryRepository {
         .from(this.tableName)
         .select('month')
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] getMonths error:', error)
+        return errorResult(error)
+      }
       const months = Array.from(new Set((data || []).map((item: { month: string }) => item.month))).sort().reverse()
       return successResult(months)
     } catch (err) {
+      console.error('[SalaryRepo] getMonths exception:', err)
       return errorResult(err)
     }
   }
@@ -40,9 +45,13 @@ export class SupabaseSalaryRepository {
         .update({ month: newMonthKey, updatedAt: new Date().toISOString() })
         .eq('month', oldMonthKey)
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] updateMonth error:', error)
+        return errorResult(error)
+      }
       return successResult(true)
     } catch (err) {
+      console.error('[SalaryRepo] updateMonth exception:', err)
       return errorResult(err)
     }
   }
@@ -54,9 +63,13 @@ export class SupabaseSalaryRepository {
         .delete()
         .eq('month', monthKey)
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] deleteMonth error:', error)
+        return errorResult(error)
+      }
       return successResult(true)
     } catch (err) {
+      console.error('[SalaryRepo] deleteMonth exception:', err)
       return errorResult(err)
     }
   }
@@ -69,9 +82,13 @@ export class SupabaseSalaryRepository {
       }
       const { data, error } = await query.order('createdAt', { ascending: false })
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] getSalaryRecords error:', error)
+        return errorResult(error)
+      }
       return successResult((data as Employee[]) || [])
     } catch (err) {
+      console.error('[SalaryRepo] getSalaryRecords exception:', err)
       return errorResult(err)
     }
   }
@@ -86,8 +103,11 @@ export class SupabaseSalaryRepository {
       const record = {
         id: salaryData.id || Math.random().toString(36).slice(2),
         updatedAt: now,
+        createdAt: salaryData.createdAt || now,
         ...salaryData,
       }
+
+      console.log('[SalaryRepo] Upserting into salary_months:', record.id)
 
       const { data, error } = await supabase
         .from(this.tableName)
@@ -95,9 +115,13 @@ export class SupabaseSalaryRepository {
         .select()
         .single()
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] saveSalary error:', error)
+        return errorResult(error)
+      }
       return successResult(data as Employee)
     } catch (err) {
+      console.error('[SalaryRepo] saveSalary exception:', err)
       return errorResult(err)
     }
   }
@@ -109,9 +133,13 @@ export class SupabaseSalaryRepository {
         .delete()
         .eq('id', id)
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] deleteSalary error:', error)
+        return errorResult(error)
+      }
       return successResult(true)
     } catch (err) {
+      console.error('[SalaryRepo] deleteSalary exception:', err)
       return errorResult(err)
     }
   }
@@ -124,9 +152,13 @@ export class SupabaseSalaryRepository {
         .eq('name', empName)
         .order('month', { ascending: false })
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] getSalaryByEmployee error:', error)
+        return errorResult(error)
+      }
       return successResult((data as Employee[]) || [])
     } catch (err) {
+      console.error('[SalaryRepo] getSalaryByEmployee exception:', err)
       return errorResult(err)
     }
   }
@@ -183,9 +215,13 @@ export class SupabaseSalaryRepository {
         .insert(newRecords)
         .select()
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] duplicateMonth error:', error)
+        return errorResult(error)
+      }
       return successResult(data as Employee[])
     } catch (err) {
+      console.error('[SalaryRepo] duplicateMonth exception:', err)
       return errorResult(err)
     }
   }
@@ -198,9 +234,13 @@ export class SupabaseSalaryRepository {
         .eq('id', id)
         .single()
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SalaryRepo] exportEmployee error:', error)
+        return errorResult(error)
+      }
       return successResult(data as Employee)
     } catch (err) {
+      console.error('[SalaryRepo] exportEmployee exception:', err)
       return errorResult(err)
     }
   }
@@ -211,12 +251,13 @@ export class SupabaseSalaryRepository {
 
   async getSalaryItemTypes(): Promise<RepositoryResult<SalaryItemType[]>> {
     try {
+      // ✅ Correct table: salary_item_types
       const { data, error } = await supabase
         .from('salary_item_types')
         .select('*')
 
       if (error || !data) {
-        // Fallback default salary items if table not created yet
+        console.warn('[SalaryRepo] salary_item_types not found, using defaults')
         return successResult([
           { id: '1', name: '本薪', category: 'addition' },
           { id: '2', name: '伙食津貼', category: 'addition' },
@@ -228,6 +269,7 @@ export class SupabaseSalaryRepository {
       }
       return successResult(data as SalaryItemType[])
     } catch (err) {
+      console.error('[SalaryRepo] getSalaryItemTypes exception:', err)
       return errorResult(err)
     }
   }

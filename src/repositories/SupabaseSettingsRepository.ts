@@ -3,7 +3,8 @@ import { SystemSettings, DEFAULT_SETTINGS } from '../types/settings'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseSettingsRepository {
-  private tableName = 'settings'
+  // ✅ Correct table: app_settings
+  private tableName = 'app_settings'
 
   async getSettings(): Promise<RepositoryResult<SystemSettings>> {
     try {
@@ -12,12 +13,16 @@ export class SupabaseSettingsRepository {
         .select('*')
         .limit(1)
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SettingsRepo] getSettings error:', error)
+        return errorResult(error)
+      }
       if (!data || data.length === 0) {
         return successResult(DEFAULT_SETTINGS)
       }
       return successResult(data[0] as SystemSettings)
     } catch (err) {
+      console.error('[SettingsRepo] getSettings exception:', err)
       return errorResult(err)
     }
   }
@@ -36,9 +41,13 @@ export class SupabaseSettingsRepository {
         .select()
         .single()
 
-      if (error) return errorResult(error)
+      if (error) {
+        console.error('[SettingsRepo] saveSettings error:', error)
+        return errorResult(error)
+      }
       return successResult(data as SystemSettings)
     } catch (err) {
+      console.error('[SettingsRepo] saveSettings exception:', err)
       return errorResult(err)
     }
   }
