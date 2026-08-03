@@ -136,6 +136,8 @@ function AppContent() {
   )
 }
 
+const DeveloperDebugPanel = React.lazy(() => import('./components/debug/DeveloperDebugPanel'))
+
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
@@ -148,6 +150,9 @@ export default function App() {
               <EmployeeProvider>
                 <ScheduleProvider>
                   <AppContent />
+                  <React.Suspense fallback={null}>
+                    <DeveloperDebugPanel />
+                  </React.Suspense>
                 </ScheduleProvider>
               </EmployeeProvider>
             </MasterEmployeeProvider>
