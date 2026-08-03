@@ -8,6 +8,7 @@ import {
 import { useSchedule } from '../../context/ScheduleContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { Schedule, ScheduleEmployee, formatStoreTitle } from '../../types/schedule'
+import { supabaseScheduleRepository } from '../../repositories/SupabaseScheduleRepository'
 import CreateScheduleDialog from './CreateScheduleDialog'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
@@ -70,6 +71,8 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   const [createWeekDialogOpen, setCreateWeekDialogOpen] = useState(false)
   const [deleteTargetSchedule, setDeleteTargetSchedule] = useState<Schedule | null>(null)
   const [deleteMonthKey, setDeleteMonthKey]             = useState<string | null>(null)
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const [duplicateInfo, setDuplicateInfo]             = useState<{ storeTitle: string; weekTitle: string } | null>(null)
 
   // Create Month Modal State
   const [createMonthModalOpen, setCreateMonthModalOpen] = useState(false)
@@ -300,9 +303,55 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   }
 
   // Handle new weekly schedule created via Dialog
-  const handleCreateNewWeekSchedule = (newSchedule: Schedule) => {
+  const handleCreateNewWeekSchedule = async (newSchedule: Schedule) => {
+    const startDateStr = newSchedule.weekStart || ''
+    const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
+    const targetWeekNo = newSchedule.weekNo || Math.min(Math.ceil(dayOfMonth / 7), 5) || 1
+
+    const storeTitle = formatStoreTitle(newSchedule)
+    const weekStartFormatted = newSchedule.weekStart.replace(/-/g, '/')
+    const weekEndFormatted = newSchedule.weekEnd.replace(/-/g, '/')
+    const weekTitle = `第${targetWeekNo}週（${weekStartFormatted}～${weekEndFormatted}）`
+
+    // 1. In-memory check against state.schedules
+    const existingInMemory = state.schedules.find(s => {
+      const sStoreTitle = formatStoreTitle(s)
+      const sDay = parseInt((s.weekStart || '').slice(8, 10), 10) || 1
+      const sWeekNo = s.weekNo || Math.min(Math.ceil(sDay / 7), 5) || 1
+      const sMonthKey = (s.weekStart || '').slice(0, 7)
+      const targetMonthKey = (newSchedule.weekStart || '').slice(0, 7)
+
+      return sMonthKey === targetMonthKey && sWeekNo === targetWeekNo && (
+        sStoreTitle === storeTitle ||
+        s.storeId === newSchedule.storeId ||
+        s.storeCode === newSchedule.storeCode ||
+        s.storeName === newSchedule.storeName
+      )
+    })
+
+    if (existingInMemory) {
+      setDuplicateInfo({ storeTitle, weekTitle })
+      setDuplicateDialogOpen(true)
+      setCreateWeekDialogOpen(false)
+      return
+    }
+
+    // 2. Database check against Supabase
+    const dbCheck = await supabaseScheduleRepository.checkScheduleWeekExists(
+      newSchedule.storeId || newSchedule.storeName,
+      newSchedule.weekStart
+    )
+
+    if (dbCheck.exists) {
+      setDuplicateInfo({ storeTitle, weekTitle })
+      setDuplicateDialogOpen(true)
+      setCreateWeekDialogOpen(false)
+      return
+    }
+
+    // 3. Creation succeeds
     dispatch({ type: 'ADD_SCHEDULE', payload: newSchedule })
-    showSnackbar('全新週排班表已建立', 'success')
+    showSnackbar('班表建立成功', 'success')
     setCreateWeekDialogOpen(false)
     onSelectSchedule(newSchedule)
   }
@@ -731,6 +780,38 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         onClose={() => setDeleteTargetSchedule(null)}
         onConfirm={handleConfirmDeleteSingleSchedule}
       />
+
+      {/* Dialog: Schedule Already Exists Notice */}
+      <Dialog open={duplicateDialogOpen} onClose={() => setDuplicateDialogOpen(false)} PaperProps={{ sx: { borderRadius: 4, p: 1, minWidth: 320, maxWidth: 420 } }}>
+        <DialogTitle fontWeight={800} color="error.main">
+          ⚠️ 班表已存在
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ bgcolor: '#FFF5F5', p: 2, borderRadius: 3, border: '1px solid #FECDD3', mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={800} color="text.primary">
+              {duplicateInfo?.storeTitle}
+            </Typography>
+            <Typography variant="body2" fontWeight={700} color="text.secondary" sx={{ mt: 0.5 }}>
+              {duplicateInfo?.weekTitle}
+            </Typography>
+          </Box>
+          <Typography variant="body1" fontWeight={600} color="text.primary" sx={{ lineHeight: 1.6 }}>
+            班表已建立，
+            <br />
+            請至排班列表點擊「編輯班表」。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setDuplicateDialogOpen(false)}
+            sx={{ borderRadius: 2, fontWeight: 700, px: 3 }}
+          >
+            我知道了
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageContainer>
   )
 }

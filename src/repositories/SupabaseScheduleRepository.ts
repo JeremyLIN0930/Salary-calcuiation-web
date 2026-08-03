@@ -322,10 +322,76 @@ export class SupabaseScheduleRepository {
       if (weekErr || !weekData) {
         return errorResult(weekErr || 'Schedule week not found', this.tableName, 'getScheduleByMonthStoreWeek')
       }
-
       return this.getSchedule(weekData.id)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getScheduleByMonthStoreWeek')
+    }
+  }
+
+  async checkScheduleWeekExists(storeIdentifier: string, weekStartStr: string): Promise<{ exists: boolean; existingSchedule?: Schedule }> {
+    try {
+      const startDateStr = weekStartStr || new Date().toISOString().slice(0, 10)
+      const yearVal = parseInt(startDateStr.slice(0, 4), 10) || new Date().getFullYear()
+      const monthNum = parseInt(startDateStr.slice(5, 7), 10) || (new Date().getMonth() + 1)
+      const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
+      const weekNo = Math.min(Math.ceil(dayOfMonth / 7), 5)
+
+      const { data: dbStores } = await supabase
+        .from('stores')
+        .select('id, store_code, store_name')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+
+      let resolvedStoreId: string | null = null
+      if (dbStores && dbStores.length > 0) {
+        if (isValidUuid(storeIdentifier)) {
+          const match = dbStores.find(s => s.id === storeIdentifier)
+          if (match) resolvedStoreId = match.id
+        }
+        if (!resolvedStoreId) {
+          const match = dbStores.find(s => 
+            s.store_code === storeIdentifier || 
+            s.store_name === storeIdentifier
+          )
+          if (match) resolvedStoreId = match.id
+        }
+        if (!resolvedStoreId) {
+          resolvedStoreId = dbStores[0].id
+        }
+      }
+
+      if (!resolvedStoreId) {
+        return { exists: false }
+      }
+
+      const { data: parentMonth } = await supabase
+        .from('schedule_months')
+        .select('id')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('store_id', resolvedStoreId)
+        .eq('year', yearVal)
+        .eq('month', monthNum)
+        .maybeSingle()
+
+      if (!parentMonth?.id) {
+        return { exists: false }
+      }
+
+      const { data: weekRow } = await supabase
+        .from('schedule_weeks')
+        .select('id')
+        .eq('schedule_month_id', parentMonth.id)
+        .eq('week_no', weekNo)
+        .maybeSingle()
+
+      if (weekRow?.id) {
+        const fullSch = await this.getSchedule(weekRow.id)
+        return { exists: true, existingSchedule: fullSch.data || undefined }
+      }
+
+      return { exists: false }
+    } catch (err) {
+      console.error('[SupabaseScheduleRepository] checkScheduleWeekExists error:', err)
+      return { exists: false }
     }
   }
 
