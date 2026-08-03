@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import { Schedule } from '../types/schedule'
-import { loadFromStorage, saveToStorage } from '../utils/storage'
-
-const STORAGE_KEY = 'schedules_v2'
+import { ScheduleRepository } from '../database/repositories/ScheduleRepository'
 
 interface ScheduleState {
   schedules: Schedule[]
@@ -16,7 +14,7 @@ type ScheduleAction =
 
 function loadInitialState(): ScheduleState {
   return {
-    schedules: loadFromStorage<Schedule[]>(STORAGE_KEY, []),
+    schedules: ScheduleRepository.getAll(),
   }
 }
 
@@ -49,8 +47,20 @@ const Ctx = createContext<ScheduleContextValue | null>(null)
 export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadInitialState)
 
+  // Sync state with ScheduleRepository
   useEffect(() => {
-    saveToStorage(STORAGE_KEY, state.schedules)
+    const currentRepoIds = new Set(ScheduleRepository.getAll().map(s => s.id))
+    const stateIds = new Set(state.schedules.map(s => s.id))
+
+    // Save/Update
+    state.schedules.forEach(s => ScheduleRepository.save(s))
+
+    // Remove deleted items
+    currentRepoIds.forEach(id => {
+      if (!stateIds.has(id)) {
+        ScheduleRepository.delete(id)
+      }
+    })
   }, [state.schedules])
 
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>
