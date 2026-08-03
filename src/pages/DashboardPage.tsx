@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import {
   Box, Typography, Card, CardContent, CardActionArea,
-  Grid, Stack, Chip, Divider, Button,
+  Grid, Stack, Chip, Divider, Button, CircularProgress,
 } from '@mui/material'
 import { useEmployees } from '../context/EmployeeContext'
 import { useSchedule } from '../context/ScheduleContext'
@@ -9,6 +9,7 @@ import { AppModule } from '../components/layout/MainLayout'
 import PageContainer from '../components/common/PageContainer'
 import SectionCard from '../components/common/SectionCard'
 import EmptyState from '../components/common/EmptyState'
+import { SyncService } from '../services/supabase/sync.service'
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
@@ -80,19 +81,67 @@ export default function DashboardPage({ onNavigate }: Props) {
       .slice(0, 5)
   }, [scheduleState.schedules])
 
+  const [syncState, setSyncState] = React.useState(SyncService.getSyncState())
+
+  React.useEffect(() => {
+    const unsubscribe = SyncService.subscribe(setSyncState)
+    return () => unsubscribe()
+  }, [])
+
+  const handleSyncClick = () => {
+    SyncService.triggerSync()
+  }
+
+  const getStatusChip = () => {
+    switch (syncState.status) {
+      case 'synced':
+        return <Chip label="🟢 已同步" color="success" variant="outlined" sx={{ fontWeight: 700 }} />
+      case 'pending':
+        return <Chip label="🟡 等待同步" color="warning" variant="outlined" sx={{ fontWeight: 700 }} />
+      case 'error':
+        return <Chip label="🔴 同步失敗" color="error" variant="outlined" sx={{ fontWeight: 700 }} />
+      case 'offline':
+      default:
+        return <Chip label="⚪ 離線模式" variant="outlined" sx={{ fontWeight: 700 }} />
+    }
+  }
+
   return (
     <PageContainer maxWidth={1100}>
-      {/* ── Dynamic Header ── */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={900} color="primary.main" sx={{ mb: 0.5 }}>
-          {greeting}
-        </Typography>
-        <Typography variant="body1" fontWeight={700} color="text.primary" sx={{ mb: 0.5, fontSize: 18 }}>
-          {dateDisplay}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          目前排班週次：{currentWeekRange}
-        </Typography>
+      {/* ── Dynamic Header & Sync Bar ── */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 4 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={900} color="primary.main" sx={{ mb: 0.5 }}>
+            {greeting}
+          </Typography>
+          <Typography variant="body1" fontWeight={700} color="text.primary" sx={{ mb: 0.5, fontSize: 18 }}>
+            {dateDisplay}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            目前排班週次：{currentWeekRange}
+          </Typography>
+        </Box>
+
+        {/* Sync Status Badge & Button */}
+        <Card variant="outlined" sx={{ borderRadius: 3, px: 2.5, py: 1.5, bgcolor: '#FAFAFA' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {getStatusChip()}
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {syncState.lastSyncTime ? `最後同步：${syncState.lastSyncTime}` : syncState.message}
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={syncState.status === 'pending'}
+              onClick={handleSyncClick}
+              sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, height: 36 }}
+            >
+              {syncState.status === 'pending' ? <CircularProgress size={16} /> : '立即同步'}
+            </Button>
+          </Stack>
+        </Card>
       </Box>
 
       {/* ── 4 Large Main Feature Cards (2x2 Tablet Grid) ── */}
