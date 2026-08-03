@@ -1,28 +1,13 @@
 /**
  * EmployeeMapper.ts
- * Maps between React MasterEmployee Model and Supabase master_employees DB Row.
+ * Maps between React MasterEmployee Model and Supabase MasterEmployeeRow.
  */
 
 import { MasterEmployee } from '../types/masterEmployee'
-
-export interface MasterEmployeeDbRow {
-  id: string
-  employee_no?: string | null
-  name: string
-  store_id?: string | null
-  company_id?: string | null
-  hire_date?: string | null
-  phone?: string | null
-  email?: string | null
-  address?: string | null
-  notes?: string | null
-  is_active?: boolean | null
-  created_at?: string | null
-  updated_at?: string | null
-}
+import { MasterEmployeeRow } from '../types/database'
 
 export class EmployeeMapper {
-  static toModel(row: MasterEmployeeDbRow): MasterEmployee {
+  static toModel(row: MasterEmployeeRow): MasterEmployee {
     return {
       id: row.id,
       name: row.name || '',
@@ -34,9 +19,9 @@ export class EmployeeMapper {
     }
   }
 
-  static toDbRow(model: Partial<MasterEmployee>): MasterEmployeeDbRow {
+  static toDbRow(model: Partial<MasterEmployee>): MasterEmployeeRow {
     const now = new Date().toISOString()
-    const row: MasterEmployeeDbRow = {
+    const row: MasterEmployeeRow = {
       id: model.id || Math.random().toString(36).slice(2),
       name: model.name || '',
       store_id: model.store || null,

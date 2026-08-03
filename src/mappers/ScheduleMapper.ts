@@ -1,32 +1,13 @@
 /**
  * ScheduleMapper.ts
- * Maps between React Schedule Model and Supabase schedule_weeks / schedule_shifts DB Rows.
+ * Maps between React Schedule Model and Supabase ScheduleWeekRow / ScheduleShiftRow.
  */
 
 import { Schedule } from '../types/schedule'
-
-export interface ScheduleWeekDbRow {
-  id: string
-  start_date?: string | null
-  end_date?: string | null
-  notes?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
-
-export interface ScheduleShiftDbRow {
-  id: string
-  employee_id?: string | null
-  shift_type?: string | null
-  start_time?: string | null
-  end_time?: string | null
-  remarks?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
+import { ScheduleWeekRow, ScheduleShiftRow } from '../types/database'
 
 export class ScheduleMapper {
-  static weekToModel(row: ScheduleWeekDbRow): Schedule {
+  static weekToModel(row: ScheduleWeekRow): Schedule {
     return {
       id: row.id,
       storeId: '101',
@@ -40,9 +21,9 @@ export class ScheduleMapper {
     }
   }
 
-  static modelToWeekDbRow(model: Partial<Schedule>): ScheduleWeekDbRow {
+  static modelToWeekDbRow(model: Partial<Schedule>): ScheduleWeekRow {
     const now = new Date().toISOString()
-    const row: ScheduleWeekDbRow = {
+    const row: ScheduleWeekRow = {
       id: model.id || Math.random().toString(36).slice(2),
       start_date: model.weekStart || new Date().toISOString().slice(0, 10),
       end_date: model.weekEnd || new Date().toISOString().slice(0, 10),

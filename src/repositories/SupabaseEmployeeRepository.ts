@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { MasterEmployee } from '../types/masterEmployee'
-import { EmployeeMapper, MasterEmployeeDbRow } from '../mappers/EmployeeMapper'
+import { MasterEmployeeRow } from '../types/database'
+import { EmployeeMapper } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseEmployeeRepository {
@@ -14,14 +15,13 @@ export class SupabaseEmployeeRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on getAll:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getAll')
       }
-      const models = (data || []).map((row: MasterEmployeeDbRow) => EmployeeMapper.toModel(row))
+      const rows = (data || []) as MasterEmployeeRow[]
+      const models = rows.map(row => EmployeeMapper.toModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on getAll:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getAll')
     }
   }
 
@@ -34,14 +34,12 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on getById:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getById')
       }
       if (!data) return successResult(null)
-      return successResult(EmployeeMapper.toModel(data as MasterEmployeeDbRow))
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on getById:', err)
-      return errorResult(err.message || String(err))
+      return successResult(EmployeeMapper.toModel(data as MasterEmployeeRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getById')
     }
   }
 
@@ -55,13 +53,11 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on create:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'create')
       }
-      return successResult(EmployeeMapper.toModel(data as MasterEmployeeDbRow))
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on create:', err)
-      return errorResult(err.message || String(err))
+      return successResult(EmployeeMapper.toModel(data as MasterEmployeeRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'create')
     }
   }
 
@@ -76,13 +72,11 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on update:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'update')
       }
-      return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeDbRow))
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on update:', err)
-      return errorResult(err.message || String(err))
+      return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'update')
     }
   }
 
@@ -94,13 +88,11 @@ export class SupabaseEmployeeRepository {
         .eq('id', id)
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on delete:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'delete')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on delete:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'delete')
     }
   }
 
@@ -113,14 +105,13 @@ export class SupabaseEmployeeRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[EmployeeRepo] DB error on search:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'search')
       }
-      const models = (data || []).map((row: MasterEmployeeDbRow) => EmployeeMapper.toModel(row))
+      const rows = (data || []) as MasterEmployeeRow[]
+      const models = rows.map(row => EmployeeMapper.toModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[EmployeeRepo] Exception on search:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'search')
     }
   }
 }

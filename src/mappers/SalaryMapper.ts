@@ -1,23 +1,13 @@
 /**
  * SalaryMapper.ts
- * Maps between React Employee Salary Model and Supabase salary_months DB Row.
+ * Maps between React Employee Salary Model and Supabase SalaryMonthRow.
  */
 
 import { Employee, createEmptyEmployee } from '../types/employee'
-
-export interface SalaryMonthDbRow {
-  id: string
-  company_id?: string | null
-  month: string
-  year?: number | null
-  notes?: string | null
-  status?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
+import { SalaryMonthRow } from '../types/database'
 
 export class SalaryMapper {
-  static toModel(row: SalaryMonthDbRow): Employee {
+  static toModel(row: SalaryMonthRow): Employee {
     const base = createEmptyEmployee()
     const yearMonth = row.month || new Date().toISOString().slice(0, 7)
     return {
@@ -30,12 +20,12 @@ export class SalaryMapper {
     }
   }
 
-  static toDbRow(model: Partial<Employee>): SalaryMonthDbRow {
+  static toDbRow(model: Partial<Employee>): SalaryMonthRow {
     const now = new Date().toISOString()
     const monthStr = model.month || new Date().toISOString().slice(0, 7)
     const yearVal = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
 
-    const row: SalaryMonthDbRow = {
+    const row: SalaryMonthRow = {
       id: model.id || Math.random().toString(36).slice(2),
       month: monthStr,
       year: yearVal,

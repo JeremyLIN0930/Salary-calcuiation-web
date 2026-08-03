@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
-import { SettingsMapper, AppSettingsDbRow } from '../mappers/SettingsMapper'
+import { AppSettingRow } from '../types/database'
+import { SettingsMapper } from '../mappers/SettingsMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseSettingsRepository {
@@ -13,16 +14,15 @@ export class SupabaseSettingsRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[SettingsRepo] DB error on getSettings:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getSettings')
       }
       if (!data || data.length === 0) {
         return successResult({})
       }
-      return successResult(SettingsMapper.toModel(data[0] as AppSettingsDbRow))
-    } catch (err: any) {
-      console.error('[SettingsRepo] Exception on getSettings:', err)
-      return errorResult(err.message || String(err))
+      const rows = data as AppSettingRow[]
+      return successResult(SettingsMapper.toModel(rows[0]))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getSettings')
     }
   }
 
@@ -36,13 +36,11 @@ export class SupabaseSettingsRepository {
         .single()
 
       if (error) {
-        console.error('[SettingsRepo] DB error on saveSettings:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'saveSettings')
       }
-      return successResult(SettingsMapper.toModel(data as AppSettingsDbRow))
-    } catch (err: any) {
-      console.error('[SettingsRepo] Exception on saveSettings:', err)
-      return errorResult(err.message || String(err))
+      return successResult(SettingsMapper.toModel(data as AppSettingRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'saveSettings')
     }
   }
 }

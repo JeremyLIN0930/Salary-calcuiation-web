@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { Store } from '../types/store'
-import { StoreMapper, StoreDbRow } from '../mappers/StoreMapper'
+import { StoreRow } from '../types/database'
+import { StoreMapper } from '../mappers/StoreMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export class SupabaseStoreRepository {
@@ -14,14 +15,13 @@ export class SupabaseStoreRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[StoreRepo] DB error on getAll:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getAll')
       }
-      const models = (data || []).map((row: StoreDbRow) => StoreMapper.toModel(row))
+      const rows = (data || []) as StoreRow[]
+      const models = rows.map(row => StoreMapper.toModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[StoreRepo] Exception on getAll:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getAll')
     }
   }
 
@@ -38,14 +38,12 @@ export class SupabaseStoreRepository {
         .single()
 
       if (error) {
-        console.error('[StoreRepo] DB error on getById:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getById')
       }
       if (!data) return successResult(null)
-      return successResult(StoreMapper.toModel(data as StoreDbRow))
-    } catch (err: any) {
-      console.error('[StoreRepo] Exception on getById:', err)
-      return errorResult(err.message || String(err))
+      return successResult(StoreMapper.toModel(data as StoreRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getById')
     }
   }
 
@@ -59,13 +57,11 @@ export class SupabaseStoreRepository {
         .single()
 
       if (error) {
-        console.error('[StoreRepo] DB error on create:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'create')
       }
-      return successResult(StoreMapper.toModel(data as StoreDbRow))
-    } catch (err: any) {
-      console.error('[StoreRepo] Exception on create:', err)
-      return errorResult(err.message || String(err))
+      return successResult(StoreMapper.toModel(data as StoreRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'create')
     }
   }
 
@@ -80,13 +76,11 @@ export class SupabaseStoreRepository {
         .single()
 
       if (error) {
-        console.error('[StoreRepo] DB error on update:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'update')
       }
-      return successResult(StoreMapper.toModel(data as StoreDbRow))
-    } catch (err: any) {
-      console.error('[StoreRepo] Exception on update:', err)
-      return errorResult(err.message || String(err))
+      return successResult(StoreMapper.toModel(data as StoreRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'update')
     }
   }
 
@@ -98,13 +92,11 @@ export class SupabaseStoreRepository {
         .eq('id', id)
 
       if (error) {
-        console.error('[StoreRepo] DB error on delete:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'delete')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[StoreRepo] Exception on delete:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'delete')
     }
   }
 }

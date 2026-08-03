@@ -1,25 +1,13 @@
 /**
  * StoreMapper.ts
- * Maps between React Store Model and Supabase stores DB Row.
+ * Maps between React Store Model and Supabase StoreRow.
  */
 
 import { Store } from '../types/store'
-
-export interface StoreDbRow {
-  id: string
-  store_code?: string | null
-  store_name: string
-  phone?: string | null
-  address?: string | null
-  manager_name?: string | null
-  is_active?: boolean | null
-  company_id?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
+import { StoreRow } from '../types/database'
 
 export class StoreMapper {
-  static toModel(row: StoreDbRow): Store {
+  static toModel(row: StoreRow): Store {
     return {
       id: row.id,
       name: row.store_name || '',
@@ -28,7 +16,7 @@ export class StoreMapper {
     }
   }
 
-  static toDbRow(model: Partial<Store>): StoreDbRow {
+  static toDbRow(model: Partial<Store>): StoreRow {
     const now = new Date().toISOString()
     return {
       id: model.id || Math.random().toString(36).slice(2),

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { Employee } from '../types/employee'
-import { SalaryMapper, SalaryMonthDbRow } from '../mappers/SalaryMapper'
+import { SalaryMonthRow, SalaryItemTypeRow } from '../types/database'
+import { SalaryMapper } from '../mappers/SalaryMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export interface SalaryItemType {
@@ -19,20 +20,19 @@ export class SupabaseSalaryRepository {
         .select('month')
 
       if (error) {
-        console.error('[SalaryRepo] DB error on getMonths:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getMonths')
       }
-      const months = Array.from(new Set((data || []).map((item: { month: string }) => item.month))).sort().reverse()
+      const rows = (data || []) as { month: string }[]
+      const months = Array.from(new Set(rows.map(item => item.month))).sort().reverse()
       return successResult(months)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on getMonths:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getMonths')
     }
   }
 
   async createMonth(monthKey: string): Promise<RepositoryResult<string>> {
     try {
-      const dbRow: SalaryMonthDbRow = {
+      const dbRow: SalaryMonthRow = {
         id: Math.random().toString(36).slice(2),
         month: monthKey,
         year: parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear(),
@@ -43,13 +43,11 @@ export class SupabaseSalaryRepository {
       }
       const { error } = await supabase.from(this.tableName).insert([dbRow])
       if (error) {
-        console.error('[SalaryRepo] DB error on createMonth:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'createMonth')
       }
       return successResult(monthKey)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on createMonth:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'createMonth')
     }
   }
 
@@ -61,13 +59,11 @@ export class SupabaseSalaryRepository {
         .eq('month', oldMonthKey)
 
       if (error) {
-        console.error('[SalaryRepo] DB error on updateMonth:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'updateMonth')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on updateMonth:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'updateMonth')
     }
   }
 
@@ -79,13 +75,11 @@ export class SupabaseSalaryRepository {
         .eq('month', monthKey)
 
       if (error) {
-        console.error('[SalaryRepo] DB error on deleteMonth:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'deleteMonth')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on deleteMonth:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'deleteMonth')
     }
   }
 
@@ -98,14 +92,13 @@ export class SupabaseSalaryRepository {
       const { data, error } = await query.order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[SalaryRepo] DB error on getSalaryRecords:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getSalaryRecords')
       }
-      const models = (data || []).map((row: SalaryMonthDbRow) => SalaryMapper.toModel(row))
+      const rows = (data || []) as SalaryMonthRow[]
+      const models = rows.map(row => SalaryMapper.toModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on getSalaryRecords:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getSalaryRecords')
     }
   }
 
@@ -123,13 +116,11 @@ export class SupabaseSalaryRepository {
         .single()
 
       if (error) {
-        console.error('[SalaryRepo] DB error on saveSalary:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'saveSalary')
       }
-      return successResult(SalaryMapper.toModel(data as SalaryMonthDbRow))
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on saveSalary:', err)
-      return errorResult(err.message || String(err))
+      return successResult(SalaryMapper.toModel(data as SalaryMonthRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'saveSalary')
     }
   }
 
@@ -141,13 +132,11 @@ export class SupabaseSalaryRepository {
         .eq('id', id)
 
       if (error) {
-        console.error('[SalaryRepo] DB error on deleteSalary:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'deleteSalary')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on deleteSalary:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'deleteSalary')
     }
   }
 
@@ -159,18 +148,17 @@ export class SupabaseSalaryRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[SalaryRepo] DB error on getSalaryItemTypes:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, 'salary_item_types', 'getSalaryItemTypes')
       }
-      const itemTypes = (data || []).map((row: any) => ({
+      const rows = (data || []) as SalaryItemTypeRow[]
+      const itemTypes: SalaryItemType[] = rows.map(row => ({
         id: row.id,
         name: row.item_name || row.item_code || '',
         category: (row.category === 'deduction' ? 'deduction' : 'addition') as 'addition' | 'deduction',
       }))
       return successResult(itemTypes)
-    } catch (err: any) {
-      console.error('[SalaryRepo] Exception on getSalaryItemTypes:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, 'salary_item_types', 'getSalaryItemTypes')
     }
   }
 }

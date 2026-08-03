@@ -1,17 +1,12 @@
 /**
  * SettingsMapper.ts
- * Maps between React Settings Model and Supabase app_settings DB Row.
+ * Maps between React Settings Model and Supabase AppSettingRow.
  */
 
-export interface AppSettingsDbRow {
-  id: string
-  company_id?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
+import { AppSettingRow } from '../types/database'
 
 export class SettingsMapper {
-  static toModel(row: AppSettingsDbRow): Record<string, unknown> {
+  static toModel(row: AppSettingRow): Record<string, unknown> {
     return {
       id: row.id,
       companyId: row.company_id,
@@ -20,7 +15,7 @@ export class SettingsMapper {
     }
   }
 
-  static toDbRow(model: Record<string, unknown>): AppSettingsDbRow {
+  static toDbRow(model: Record<string, unknown>): AppSettingRow {
     const now = new Date().toISOString()
     return {
       id: (model.id as string) || Math.random().toString(36).slice(2),

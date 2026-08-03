@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { Schedule } from '../types/schedule'
-import { ScheduleMapper, ScheduleWeekDbRow, ScheduleShiftDbRow } from '../mappers/ScheduleMapper'
+import { ScheduleWeekRow } from '../types/database'
+import { ScheduleMapper } from '../mappers/ScheduleMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export interface ShiftTemplate {
@@ -25,7 +26,6 @@ const DEFAULT_SHIFT_TEMPLATES: ShiftTemplate[] = [
 
 export class SupabaseScheduleRepository {
   private tableName = 'schedule_weeks'
-  private shiftTableName = 'schedule_shifts'
 
   async getMonths(): Promise<RepositoryResult<string[]>> {
     try {
@@ -34,24 +34,23 @@ export class SupabaseScheduleRepository {
         .select('start_date')
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on getMonths:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getMonths')
       }
+      const rows = (data || []) as { start_date?: string | null }[]
       const months = Array.from(
-        new Set((data || []).map((item: { start_date: string }) => (item.start_date || '').slice(0, 7)).filter(Boolean))
+        new Set(rows.map(item => (item.start_date || '').slice(0, 7)).filter(Boolean))
       ).sort().reverse()
       return successResult(months)
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on getMonths:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getMonths')
     }
   }
 
   async createMonth(monthKey: string): Promise<RepositoryResult<string>> {
     try {
       return successResult(monthKey)
-    } catch (err: any) {
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'createMonth')
     }
   }
 
@@ -64,13 +63,11 @@ export class SupabaseScheduleRepository {
         .lte('start_date', `${monthKey}-31`)
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on deleteMonth:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'deleteMonth')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on deleteMonth:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'deleteMonth')
     }
   }
 
@@ -85,14 +82,13 @@ export class SupabaseScheduleRepository {
       const { data, error } = await query.order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on getWeeks:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getWeeks')
       }
-      const models = (data || []).map((row: ScheduleWeekDbRow) => ScheduleMapper.weekToModel(row))
+      const rows = (data || []) as ScheduleWeekRow[]
+      const models = rows.map(row => ScheduleMapper.weekToModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on getWeeks:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getWeeks')
     }
   }
 
@@ -109,13 +105,11 @@ export class SupabaseScheduleRepository {
         .single()
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on getSchedule:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'getSchedule')
       }
-      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekDbRow))
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on getSchedule:', err)
-      return errorResult(err.message || String(err))
+      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getSchedule')
     }
   }
 
@@ -129,13 +123,11 @@ export class SupabaseScheduleRepository {
         .single()
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on saveSchedule:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'saveSchedule')
       }
-      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekDbRow))
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on saveSchedule:', err)
-      return errorResult(err.message || String(err))
+      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekRow))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'saveSchedule')
     }
   }
 
@@ -152,14 +144,13 @@ export class SupabaseScheduleRepository {
         .select('*')
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on bulkSaveSchedules:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'bulkSaveSchedules')
       }
-      const models = (data || []).map((row: ScheduleWeekDbRow) => ScheduleMapper.weekToModel(row))
+      const rows = (data || []) as ScheduleWeekRow[]
+      const models = rows.map(row => ScheduleMapper.weekToModel(row))
       return successResult(models)
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on bulkSaveSchedules:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'bulkSaveSchedules')
     }
   }
 
@@ -171,13 +162,11 @@ export class SupabaseScheduleRepository {
         .eq('id', id)
 
       if (error) {
-        console.error('[ScheduleRepo] DB error on deleteSchedule:', error.message)
-        return errorResult(error.message)
+        return errorResult(error, this.tableName, 'deleteSchedule')
       }
       return successResult(true)
-    } catch (err: any) {
-      console.error('[ScheduleRepo] Exception on deleteSchedule:', err)
-      return errorResult(err.message || String(err))
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'deleteSchedule')
     }
   }
 
