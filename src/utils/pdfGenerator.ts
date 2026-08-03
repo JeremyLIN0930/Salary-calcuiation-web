@@ -11,13 +11,24 @@ function fmtD(n: number | undefined | null): string {
   return v === 0 ? '—' : String(v) + ' 日'
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
 function createPayslipElement(emp: Employee): HTMLDivElement {
   const monthStr = emp.month
     ? emp.month.replace('-', ' 年 ') + ' 月'
     : ''
 
+  const remarkText = emp.remark && emp.remark.trim()
+    ? escapeHtml(emp.remark.trim())
+    : '無'
+
   const div = document.createElement('div')
-  // A4 width 794px at 96dpi
   div.style.cssText = [
     'width:794px',
     'min-height:1123px',
@@ -32,10 +43,8 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 
   div.innerHTML = `
 <style>
-  /* ========== Reset ========== */
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ========== Title Area ========== */
   .title-block {
     text-align: center;
     padding-bottom: 18px;
@@ -55,7 +64,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     letter-spacing: 2px;
   }
 
-  /* ========== Basic Info Table ========== */
   .info-table {
     width: 100%;
     border-collapse: collapse;
@@ -81,7 +89,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     width: 35%;
   }
 
-  /* ========== Salary / Deduction Table ========== */
   .salary-table {
     width: 100%;
     border-collapse: collapse;
@@ -98,19 +105,14 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     text-align: center;
     border-right: 1.5px solid #999;
   }
-  .salary-table th:last-child {
-    border-right: none;
-  }
+  .salary-table th:last-child { border-right: none; }
   .salary-table td {
     padding: 7px 12px;
     border-bottom: 1px solid #e8e8e8;
     font-size: 12.5px;
     vertical-align: middle;
   }
-  .salary-table .name-cell {
-    color: #333;
-    width: 30%;
-  }
+  .salary-table .name-cell { color: #333; width: 30%; }
   .salary-table .amt-cell {
     text-align: right;
     font-weight: 500;
@@ -123,11 +125,8 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     font-weight: 500;
     color: #111;
     width: 20%;
-    border-right: none;
   }
-  .salary-table tr:nth-child(even) td {
-    background: #fafafa;
-  }
+  .salary-table tr:nth-child(even) td { background: #fafafa; }
   .salary-table .subtotal-row td {
     background: #ebebeb !important;
     font-weight: 700;
@@ -137,7 +136,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     padding: 9px 12px;
   }
 
-  /* ========== Attendance Table ========== */
   .attend-table {
     width: 100%;
     border-collapse: collapse;
@@ -172,7 +170,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     width: 35%;
   }
 
-  /* ========== Pension Table ========== */
   .pension-table {
     width: 100%;
     border-collapse: collapse;
@@ -207,7 +204,32 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     width: 35%;
   }
 
-  /* ========== Net Salary Block ========== */
+  .remark-block {
+    margin-bottom: 20px;
+    border: 1.5px solid #999;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .remark-header {
+    background: #2c2c2c;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 9px 12px;
+    text-align: center;
+  }
+  .remark-content {
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: #333;
+    line-height: 1.8;
+    min-height: 40px;
+    background: #fff;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
   .net-block {
     background: #1a237e;
     border-radius: 4px;
@@ -226,7 +248,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     font-size: 28px;
     font-weight: 900;
     color: #ffffff;
-    font-family: "Microsoft JhengHei","Noto Sans TC",sans-serif;
     letter-spacing: 1px;
   }
 </style>
@@ -320,7 +341,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
       <td class="name-cell">事病假扣款</td><td class="amt-cell">${fmt(emp.sickLeaveDeduction)}</td>
       <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
-    <!-- 小計 -->
     <tr class="subtotal-row">
       <td class="name-cell">應　發　薪　資</td>
       <td class="amt-cell" style="font-size:14px;">$ ${(emp.grossSalary ?? 0).toLocaleString('zh-TW')}</td>
@@ -359,6 +379,12 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     </tr>
   </tbody>
 </table>
+
+<!-- 備註 -->
+<div class="remark-block">
+  <div class="remark-header">備　　　註</div>
+  <div class="remark-content">${remarkText}</div>
+</div>
 
 <!-- 實發金額 -->
 <div class="net-block">

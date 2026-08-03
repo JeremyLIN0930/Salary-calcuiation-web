@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   Box, Button, TextField, Grid, Typography, AppBar, Toolbar,
-  IconButton, Chip, Alert, Snackbar, Paper, MenuItem, Select, FormControl, InputLabel
+  IconButton, Chip, Alert, Snackbar, Paper, MenuItem, Select, FormControl, InputLabel, Divider
 } from '@mui/material'
 import { Employee, Store, createEmptyEmployee, calcGross, calcDeductions } from '../types/employee'
 import { useEmployees } from '../context/EmployeeContext'
@@ -63,8 +63,8 @@ function Section({ title, icon, children, defaultOpen = true }: {
   )
 }
 
-function MoneyField({ label, value, onChange, highlight }: {
-  label: string; value: number; onChange: (v: number) => void; highlight?: boolean
+function MoneyField({ label, value, onChange }: {
+  label: string; value: number; onChange: (v: number) => void
 }) {
   const [display, setDisplay] = useState(value === 0 ? '' : value.toLocaleString('zh-TW'))
   const [focused, setFocused] = useState(false)
@@ -83,7 +83,6 @@ function MoneyField({ label, value, onChange, highlight }: {
       fullWidth
       inputProps={{ inputMode: 'numeric', style: { textAlign: 'right' } }}
       InputProps={{ startAdornment: <Typography sx={{ color: 'text.secondary', mr: 0.5, fontSize: 14 }}>$</Typography> }}
-      sx={highlight ? { '& .MuiOutlinedInput-root': { borderColor: 'primary.main' } } : undefined}
       onFocus={() => {
         setFocused(true)
         setDisplay(value === 0 ? '' : String(value))
@@ -190,7 +189,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         {/* 第一區：基本資料 */}
         <Section title="基本資料" icon="👤">
           <Grid container spacing={2}>
-            {/* 第一列：左姓名，右月份 */}
             <Grid item xs={6}>
               <TextField label="姓名 *" value={emp.name} fullWidth size="small"
                 error={!!errors.name} helperText={errors.name}
@@ -202,8 +200,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('month', e.target.value)} />
             </Grid>
-
-            {/* 第二列：左門市，右到職日 */}
             <Grid item xs={6}>
               <FormControl fullWidth size="small">
                 <InputLabel id="store-select-label">門市</InputLabel>
@@ -220,26 +216,16 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </FormControl>
             </Grid>
             <Grid item xs={6}>
-              <TextField
-                label="到職日"
-                type="date"
-                value={emp.hireDate}
-                fullWidth
-                size="small"
+              <TextField label="到職日" type="date" value={emp.hireDate} fullWidth size="small"
                 InputLabelProps={{ shrink: true }}
-                onChange={e => set('hireDate', e.target.value)}
-              />
+                onChange={e => set('hireDate', e.target.value)} />
             </Grid>
-
-            {/* 第三列：左發薪日期，右空白 */}
             <Grid item xs={6}>
               <TextField label="發薪日期" type="date" value={emp.payDate} fullWidth size="small"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('payDate', e.target.value)} />
             </Grid>
-            <Grid item xs={6}>
-              {/* 保留空白 */}
-            </Grid>
+            <Grid item xs={6} />
           </Grid>
         </Section>
 
@@ -260,7 +246,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </Grid>
             ))}
 
-            {/* 應發薪資 */}
             <Grid item xs={12}>
               <Paper variant="outlined" sx={{ p: 2, borderColor: emp.isGrossManual ? 'warning.main' : 'primary.main', borderWidth: 2, borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
@@ -291,7 +276,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </Grid>
             ))}
 
-            {/* 代扣合計 */}
             <Grid item xs={12}>
               <Paper variant="outlined" sx={{ p: 2, borderColor: emp.isDeductionManual ? 'warning.main' : 'error.light', borderWidth: 2, borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
@@ -330,7 +314,6 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               <MoneyField label="當月提撥退休金" value={emp.monthlyPensionContribution} onChange={money('monthlyPensionContribution')} />
             </Grid>
 
-            {/* 實發金額 */}
             <Grid item xs={12}>
               <Box sx={{ bgcolor: '#1a237e', borderRadius: 3, p: 2.5, color: 'white' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
@@ -367,6 +350,31 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
             </Grid>
           </Grid>
         </Section>
+
+        {/* 第六區：備註 */}
+        <Section title="備註" icon="📝" defaultOpen={true}>
+          <TextField
+            label="備註（非必填）"
+            value={emp.remark}
+            onChange={e => set('remark', e.target.value)}
+            multiline
+            minRows={4}
+            maxRows={10}
+            fullWidth
+            placeholder={`例如：\n・本月請假扣薪 2 天。\n・補發上月加班費。\n・年度績效獎金已併入本月薪資。\n・其他薪資說明事項……`}
+            inputProps={{ maxLength: 2000 }}
+            sx={{
+              '& .MuiOutlinedInput-root': { borderRadius: 2 },
+              '& textarea': { lineHeight: 1.7 },
+            }}
+          />
+          {emp.remark.length > 0 && (
+            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block', textAlign: 'right' }}>
+              {emp.remark.length} / 2000
+            </Typography>
+          )}
+        </Section>
+
       </Box>
 
       {/* Bottom Bar */}

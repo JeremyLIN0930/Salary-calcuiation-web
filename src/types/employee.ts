@@ -33,13 +33,15 @@ export interface Employee {
   totalDeductions: number
   isDeductionManual: boolean
   // 考勤資料
-  annualLeaveRemaining: number // 年度剩餘特別假
-  carriedOverLeave: number     // 結轉特別假
+  annualLeaveRemaining: number
+  carriedOverLeave: number
   // 退休金與實發
   companyPensionContribution: number
   monthlyPensionContribution: number
   netSalary: number
   isNetManual: boolean
+  // 備註
+  remark: string
 }
 
 export function createEmptyEmployee(): Employee {
@@ -78,6 +80,7 @@ export function createEmptyEmployee(): Employee {
     monthlyPensionContribution: 0,
     netSalary: 0,
     isNetManual: false,
+    remark: '',
   }
 }
 
