@@ -44,6 +44,9 @@ export class ScheduleMapper {
     const startDate = model.weekStart || new Date().toISOString().slice(0, 10)
     const endDate   = model.weekEnd   || new Date().toISOString().slice(0, 10)
 
+    const dayOfMonth = parseInt(startDate.slice(8, 10), 10) || 1
+    const weekNo = Math.min(Math.ceil(dayOfMonth / 7), 5)
+
     // Convert empty strings "" to null or omit undefined
     const cleanPayload: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(model)) {
@@ -56,6 +59,7 @@ export class ScheduleMapper {
     }
 
     const row: ScheduleWeekRow = {
+      week_no: weekNo,
       start_date: startDate,
       end_date: endDate,
       notes: JSON.stringify(cleanPayload),

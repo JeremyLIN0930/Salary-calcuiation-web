@@ -168,9 +168,13 @@ export class SupabaseScheduleRepository {
         console.log('✅ Successfully created schedule_months ID:', scheduleMonthId)
       }
 
-      // 3. Prepare schedule_weeks row with schedule_month_id
+      // 3. Prepare schedule_weeks row with schedule_month_id and week_no
       const dbRow = ScheduleMapper.modelToWeekDbRow(schedule)
       dbRow.schedule_month_id = scheduleMonthId
+      if (!dbRow.week_no) {
+        const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
+        dbRow.week_no = Math.min(Math.ceil(dayOfMonth / 7), 5)
+      }
 
       console.log('Schedule INSERT/UPSERT Payload', dbRow)
       console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
