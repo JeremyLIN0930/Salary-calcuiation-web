@@ -267,28 +267,61 @@ export class SupabaseScheduleRepository {
         dbRow.week_no = Math.min(Math.ceil(dayOfMonth / 7), 5)
       }
 
-      console.log('schedule_weeks INSERT', dbRow)
-      console.log('Schedule INSERT/UPSERT Payload', dbRow)
-      console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
+      console.log('Schedule Upsert Check - Month ID:', scheduleMonthId, 'Week No:', dbRow.week_no)
 
-      const result = dbRow.id
-        ? await supabase.from(this.tableName).upsert([dbRow]).select('*').single()
-        : await supabase.from(this.tableName).insert([dbRow]).select('*').single()
+      // Query schedule_weeks by schedule_month_id and week_no first to decide UPDATE or INSERT
+      let weekRowId: string | null = null
+      let weekData: any = null
 
-      console.log('④ Supabase Schedule Result:', result)
-      const { data, error } = result
+      const { data: existingWeek, error: findWeekErr } = await supabase
+        .from(this.tableName)
+        .select('*')
+        .eq('schedule_month_id', scheduleMonthId)
+        .eq('week_no', dbRow.week_no)
+        .maybeSingle()
 
-      if (error) {
-        console.error('code:', error.code)
-        console.error('message:', error.message)
-        console.error('details:', error.details)
-        console.error('hint:', error.hint)
-        console.error('status:', (error as any).status || (error as any).statusCode || 'N/A')
-        return errorResult(error, this.tableName, 'saveSchedule')
+      if (findWeekErr) {
+        console.warn('⚠️ Query schedule_weeks warning:', findWeekErr.message)
       }
 
-      const weekRowId = data.id
-      console.log('④ Supabase Schedule Success Data:\n' + JSON.stringify(data, null, 2))
+      if (existingWeek) {
+        weekRowId = existingWeek.id
+        console.log('✅ Found existing schedule_weeks ID:', weekRowId)
+        // UPDATE existing week
+        const updatePayload = {
+          ...dbRow,
+          updated_at: new Date().toISOString()
+        }
+        delete updatePayload.id // do not overwrite UUID primary key
+
+        const { data: updatedWeek, error: updateErr } = await supabase
+          .from(this.tableName)
+          .update(updatePayload)
+          .eq('id', weekRowId)
+          .select('*')
+          .single()
+
+        if (updateErr) {
+          console.error('Failed to update schedule_weeks:', updateErr.message)
+          return errorResult(updateErr, this.tableName, 'saveSchedule')
+        }
+        weekData = updatedWeek
+      } else {
+        console.log('🚀 Inserting new schedule_weeks')
+        // INSERT new week
+        const { data: insertedWeek, error: insertErr } = await supabase
+          .from(this.tableName)
+          .insert([dbRow])
+          .select('*')
+          .single()
+
+        if (insertErr) {
+          console.error('Failed to insert schedule_weeks:', insertErr.message)
+          return errorResult(insertErr, this.tableName, 'saveSchedule')
+        }
+        weekData = insertedWeek
+        weekRowId = insertedWeek.id
+      }
 
       // 4. Resolve Master Employee UUIDs by name, creating them if missing
       const { data: allMasterEmps } = await supabase
@@ -360,30 +393,84 @@ export class SupabaseScheduleRepository {
         }
       }
 
-      // 6. Delete old shifts for this week start fresh
-      const { error: delShiftsErr } = await supabase
+      // 6. Query existing shifts in DB for this week
+      const { data: dbShifts, error: queryShiftsErr } = await supabase
         .from('schedule_shifts')
-        .delete()
+        .select('id, employee_id, work_date')
         .eq('schedule_week_id', weekRowId)
 
-      if (delShiftsErr) {
-        console.error('❌ Failed to delete old schedule_shifts:', delShiftsErr)
+      if (queryShiftsErr) {
+        console.warn('⚠️ Query schedule_shifts warning:', queryShiftsErr.message)
       }
 
-      // 7. Bulk insert new shifts
-      if (shiftRows.length > 0) {
-        console.log(`🚀 [SupabaseScheduleRepository] Inserting ${shiftRows.length} shifts to schedule_shifts...`)
-        const { error: insShiftsErr } = await supabase
-          .from('schedule_shifts')
-          .insert(shiftRows)
+      const dbShiftMap = new Map<string, string>() // key: employeeId_date, value: id (UUID)
+      if (dbShifts) {
+        dbShifts.forEach(s => {
+          dbShiftMap.set(`${s.employee_id}_${s.work_date}`, s.id)
+        })
+      }
 
-        if (insShiftsErr) {
-          console.error('❌ Failed to insert schedule_shifts:', insShiftsErr)
+      const keptShiftIds = new Set<string>()
+
+      // 7. Upsert each shift (SELECT first/Map match then UPDATE or INSERT)
+      for (const shiftRow of shiftRows) {
+        const key = `${shiftRow.employee_id}_${shiftRow.work_date}`
+        const existingShiftId = dbShiftMap.get(key)
+
+        if (existingShiftId) {
+          keptShiftIds.add(existingShiftId)
+          // UPDATE
+          const { error: updErr } = await supabase
+            .from('schedule_shifts')
+            .update({
+              shift_type: shiftRow.shift_type,
+              start_time: shiftRow.start_time,
+              end_time: shiftRow.end_time,
+              is_day_off: shiftRow.is_day_off,
+              remarks: shiftRow.remarks,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingShiftId)
+
+          if (updErr) {
+            console.error('❌ Failed to update schedule_shift:', updErr.message)
+          }
+        } else {
+          // INSERT
+          const { data: newShift, error: insErr } = await supabase
+            .from('schedule_shifts')
+            .insert([shiftRow])
+            .select('id')
+            .single()
+
+          if (insErr) {
+            console.error('❌ Failed to insert schedule_shift:', insErr.message)
+          } else if (newShift) {
+            keptShiftIds.add(newShift.id)
+          }
         }
       }
 
-      // 8. Reconstruct fully populated schedule model to return
-      const savedModel = ScheduleMapper.weekToModel(data as ScheduleWeekRow)
+      // 8. Delete any shifts that are no longer present in the updated roster
+      const deleteIds: string[] = []
+      if (dbShifts) {
+        dbShifts.forEach(s => {
+          if (!keptShiftIds.has(s.id)) {
+            deleteIds.push(s.id)
+          }
+        })
+      }
+
+      if (deleteIds.length > 0) {
+        console.log(`🚀 [SupabaseScheduleRepository] Deleting ${deleteIds.length} removed shifts...`)
+        await supabase
+          .from('schedule_shifts')
+          .delete()
+          .in('id', deleteIds)
+      }
+
+      // 9. Reconstruct fully populated schedule model to return
+      const savedModel = ScheduleMapper.weekToModel(weekData as ScheduleWeekRow)
       await this.populateSchedulesWithShifts([savedModel])
 
       return successResult(savedModel)
