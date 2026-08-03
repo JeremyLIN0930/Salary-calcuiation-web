@@ -1,125 +1,171 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Select, FormControl, InputLabel, Stack, Snackbar, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel,
+  TextField, Stack, Box, Typography,
 } from '@mui/material'
-import { useSchedule } from '../../context/ScheduleContext'
-import { ScheduleRecord } from '../../types/schedule'
-
-function newId() { return Math.random().toString(36).slice(2) }
+import { Shift, ShiftType, SHIFT_TYPE_CONFIG } from '../../types/schedule'
 
 interface Props {
   open: boolean
-  initial?: ScheduleRecord
-  defaultDate?: string  // 'YYYY-MM-DD'
+  employeeName: string
+  date: string
+  dayLabel: string
+  shift?: Shift
   onClose: () => void
-  onSave: (r: ScheduleRecord) => void
+  onSave: (shift: Shift) => void
+  onClear: () => void
 }
 
-export default function ScheduleDialog({ open, initial, defaultDate, onClose, onSave }: Props) {
-  const { state } = useSchedule()
+export default function ScheduleDialog({
+  open, employeeName, date, dayLabel, shift, onClose, onSave, onClear,
+}: Props) {
+  const [type, setType]           = useState<ShiftType>('work')
+  const [startTime, setStartTime] = useState('07:00')
+  const [endTime, setEndTime]     = useState('15:00')
+  const [remark, setRemark]       = useState('')
 
-  const [staffId, setStaffId]   = useState(initial?.staffId ?? '')
-  const [date, setDate]         = useState(initial?.date ?? defaultDate ?? '')
-  const [shiftId, setShiftId]   = useState(initial?.shiftId ?? '')
-  const [note, setNote]         = useState(initial?.note ?? '')
-  const [errors, setErrors]     = useState<Record<string, string>>({})
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
-      setStaffId(initial?.staffId ?? '')
-      setDate(initial?.date ?? defaultDate ?? '')
-      setShiftId(initial?.shiftId ?? '')
-      setNote(initial?.note ?? '')
-      setErrors({})
+      if (shift) {
+        setType(shift.type || 'work')
+        setStartTime(shift.startTime || '07:00')
+        setEndTime(shift.endTime || '15:00')
+        setRemark(shift.remark || '')
+      } else {
+        setType('work')
+        setStartTime('07:00')
+        setEndTime('15:00')
+        setRemark('')
+      }
     }
-  }, [open, initial, defaultDate])
-
-  const validate = () => {
-    const e: Record<string, string> = {}
-    if (!staffId)    e.staffId = '請選擇員工'
-    if (!date)       e.date    = '請選擇日期'
-    if (!shiftId)    e.shiftId = '請選擇班別'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
+  }, [open, shift])
 
   const handleSave = () => {
-    if (!validate()) return
-    const staff = state.staff.find(s => s.id === staffId)
-    const shift = state.shifts.find(s => s.id === shiftId)
-    if (!staff || !shift) return
-
-    onSave({
-      id:         initial?.id ?? newId(),
-      staffId:    staff.id,
-      staffName:  staff.name,
+    const updated: Shift = {
       date,
-      shiftId:    shift.id,
-      shiftName:  shift.name,
-      shiftColor: shift.color,
-      note,
-    })
+      type,
+      startTime: type === 'work' ? startTime : undefined,
+      endTime: type === 'work' ? endTime : undefined,
+      remark: remark.trim() ? remark.trim() : undefined,
+    }
+    onSave(updated)
+    onClose()
+  }
+
+  const handleClear = () => {
+    onClear()
     onClose()
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs"
-      PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle fontWeight={700}>{initial ? '編輯排班' : '新增排班'}</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+    >
+      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+        {employeeName} · {dayLabel}
+        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+          {date}
+        </Typography>
+      </DialogTitle>
+
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
-          {/* Staff */}
-          <FormControl size="small" fullWidth error={!!errors.staffId}>
-            <InputLabel>員工 *</InputLabel>
-            <Select value={staffId} label="員工 *" onChange={e => setStaffId(e.target.value)}>
-              {state.staff.length === 0 ? (
-                <MenuItem disabled value="">請先在「排班員工管理」新增員工</MenuItem>
-              ) : state.staff.map(s => (
-                <MenuItem key={s.id} value={s.id}>
-                  {s.name}{s.store ? ` · ${s.store}` : ''}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.staffId && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.staffId}</Typography>}
-          </FormControl>
-
-          {/* Date */}
-          <TextField
-            label="日期 *" type="date" value={date} size="small" fullWidth
-            InputLabelProps={{ shrink: true }}
-            error={!!errors.date} helperText={errors.date}
-            onChange={e => setDate(e.target.value)}
-          />
-
-          {/* Shift */}
-          <FormControl size="small" fullWidth error={!!errors.shiftId}>
-            <InputLabel>班別 *</InputLabel>
-            <Select value={shiftId} label="班別 *" onChange={e => setShiftId(e.target.value)}>
-              {state.shifts.length === 0 ? (
-                <MenuItem disabled value="">請先在「班別設定」新增班別</MenuItem>
-              ) : state.shifts.map(s => (
-                <MenuItem key={s.id} value={s.id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: s.color }} />
-                    {s.name}{s.startTime ? ` (${s.startTime}–${s.endTime})` : ''}
+          {/* Shift Type Radio Selection */}
+          <FormControl component="fieldset">
+            <FormLabel component="legend" sx={{ fontSize: 13, fontWeight: 700, mb: 1 }}>
+              班別選取
+            </FormLabel>
+            <RadioGroup
+              row
+              value={type}
+              onChange={e => setType(e.target.value as ShiftType)}
+              sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}
+            >
+              {(Object.keys(SHIFT_TYPE_CONFIG) as ShiftType[]).map(t => {
+                const conf = SHIFT_TYPE_CONFIG[t]
+                const checked = type === t
+                return (
+                  <Box
+                    key={t}
+                    onClick={() => setType(t)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 2,
+                      border: '1.5px solid',
+                      borderColor: checked ? 'primary.main' : '#E5E7EB',
+                      bgcolor: conf.bg,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <Radio size="small" checked={checked} value={t} sx={{ p: 0.5 }} />
+                    <Typography variant="body2" fontWeight={700} sx={{ color: conf.color, ml: 0.5 }}>
+                      {conf.label}
+                    </Typography>
                   </Box>
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.shiftId && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.shiftId}</Typography>}
+                )
+              })}
+            </RadioGroup>
           </FormControl>
 
-          {/* Note */}
+          {/* Time Picker (Only when type === 'work') */}
+          {type === 'work' && (
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="開始時間 *"
+                type="time"
+                value={startTime}
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 300 }} // 5 min steps
+                onChange={e => setStartTime(e.target.value)}
+              />
+              <TextField
+                label="結束時間 *"
+                type="time"
+                value={endTime}
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 300 }}
+                onChange={e => setEndTime(e.target.value)}
+              />
+            </Stack>
+          )}
+
+          {/* Remark */}
           <TextField
-            label="備註（選填）" value={note} size="small" fullWidth multiline rows={2}
-            onChange={e => setNote(e.target.value)}
+            label="備註（選填）"
+            value={remark}
+            size="small"
+            fullWidth
+            placeholder="例如：支援、換班說明"
+            onChange={e => setRemark(e.target.value)}
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-        <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>取消</Button>
-        <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2 }}>儲存</Button>
+
+      <DialogActions sx={{ px: 3, pb: 2, gap: 1, justifyContent: 'space-between' }}>
+        <Button variant="text" color="error" size="small" onClick={handleClear}>
+          清空此排班
+        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>
+            取消
+          </Button>
+          <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2 }}>
+            確定
+          </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   )

@@ -1,7 +1,7 @@
 import React from 'react'
 import {
   Box, Typography, Card, CardContent, CardActionArea,
-  Stack, Divider,
+  Stack,
 } from '@mui/material'
 import { useEmployees } from '../context/EmployeeContext'
 import { useSchedule } from '../context/ScheduleContext'
@@ -23,15 +23,15 @@ const ScheduleBigIcon = () => (
 )
 
 export default function DashboardPage({ onNavigate }: Props) {
-  const { state: salaryState } = useEmployees()
+  const { state: salaryState }   = useEmployees()
   const { state: scheduleState } = useSchedule()
 
   const today = new Date()
   const todayStr = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-  const ymStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const todayYmd = today.toISOString().slice(0, 10)
 
-  const todaySchedules = scheduleState.records.filter(r => r.date === today.toISOString().slice(0, 10))
-  const monthSchedules = scheduleState.records.filter(r => r.date.startsWith(ymStr))
+  // Find active schedule for today
+  const activeTodaySchedule = scheduleState.schedules.find(s => s.weekStart <= todayYmd && s.weekEnd >= todayYmd)
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
@@ -73,9 +73,9 @@ export default function DashboardPage({ onNavigate }: Props) {
               </Box>
               <Box>
                 <Typography variant="subtitle1" fontWeight={800}>排班管理</Typography>
-                <Typography variant="caption" color="text.secondary">月曆排班、排班表 PDF 匯出</Typography>
+                <Typography variant="caption" color="text.secondary">週排班表、排班表 PDF 匯出</Typography>
                 <Typography variant="body2" fontWeight={700} sx={{ color: '#7B1FA2', mt: 0.5 }}>
-                  本月 {monthSchedules.length} 筆排班記錄
+                  {scheduleState.schedules.length} 張週班表
                 </Typography>
               </Box>
             </Box>
@@ -83,52 +83,28 @@ export default function DashboardPage({ onNavigate }: Props) {
         </Card>
       </Stack>
 
-      {/* Today's Schedule */}
+      {/* Today's Schedule Overview */}
       <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1.5, letterSpacing: 1 }}>
-        今日排班
+        本週排班狀態
       </Typography>
       <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, mb: 3 }}>
-        <CardContent sx={{ p: 2 }}>
-          {todaySchedules.length === 0 ? (
-            <Typography variant="body2" color="text.disabled" sx={{ py: 1, textAlign: 'center' }}>
-              今日無排班記錄
-            </Typography>
+        <CardContent sx={{ p: 2.5 }}>
+          {activeTodaySchedule ? (
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} color="primary.main">
+                【{activeTodaySchedule.storeId}】{activeTodaySchedule.storeName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                週次：{activeTodaySchedule.weekStart} ～ {activeTodaySchedule.weekEnd} （共 {activeTodaySchedule.employees.length} 位員工）
+              </Typography>
+            </Box>
           ) : (
-            <Stack spacing={1}>
-              {todaySchedules.map(r => (
-                <Box key={r.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: r.shiftColor, flexShrink: 0 }} />
-                  <Typography variant="body2" fontWeight={600}>{r.staffName}</Typography>
-                  <Box sx={{ px: 1, py: 0.2, bgcolor: r.shiftColor, color: '#fff', borderRadius: 1, fontSize: 12, fontWeight: 700 }}>
-                    {r.shiftName}
-                  </Box>
-                  {r.note && <Typography variant="caption" color="text.secondary">{r.note}</Typography>}
-                </Box>
-              ))}
-            </Stack>
+            <Typography variant="body2" color="text.disabled" sx={{ py: 1, textAlign: 'center' }}>
+              本週尚無建立排班表
+            </Typography>
           )}
         </CardContent>
       </Card>
-
-      {/* Stats */}
-      <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1.5, letterSpacing: 1 }}>
-        本月概況
-      </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-        {[
-          { label: '薪資員工數', value: salaryState.employees.length, unit: '人', color: 'primary.main' },
-          { label: '排班員工數', value: scheduleState.staff.length, unit: '人', color: '#7B1FA2' },
-          { label: '班別設定數', value: scheduleState.shifts.length, unit: '種', color: '#388E3C' },
-          { label: '本月排班筆數', value: monthSchedules.length, unit: '筆', color: '#F57C00' },
-        ].map(s => (
-          <Card key={s.label} elevation={0} sx={{ flex: 1, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" fontWeight={900} sx={{ color: s.color }}>{s.value}</Typography>
-              <Typography variant="caption" color="text.secondary">{s.label}（{s.unit}）</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
     </Box>
   )
 }
