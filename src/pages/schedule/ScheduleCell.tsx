@@ -32,8 +32,10 @@ export default function ScheduleCell({ shift, onClick }: Props) {
 
   let displayText = '—'
   if (shift.type === 'work') {
-    if (shift.startTime && shift.endTime) {
-      displayText = `${shift.startTime}－${shift.endTime}`
+    const s = shift.startTime ? shift.startTime.trim().slice(0, 5) : ''
+    const e = shift.endTime ? shift.endTime.trim().slice(0, 5) : ''
+    if (s && e) {
+      displayText = `${s}－${e}`
     } else {
       displayText = '上班'
     }

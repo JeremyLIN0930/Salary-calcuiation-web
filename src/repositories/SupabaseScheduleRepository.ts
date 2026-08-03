@@ -4,6 +4,7 @@ import { ScheduleWeekRow } from '../types/database'
 import { ScheduleMapper, isValidUuid } from '../mappers/ScheduleMapper'
 import { DEFAULT_COMPANY_ID } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
+import { formatTimeHHmm } from '../utils/dateUtils'
 
 export interface ShiftTemplate {
   id: string
@@ -116,8 +117,8 @@ export class SupabaseScheduleRepository {
             return {
               date: dateStr,
               type: (dbShift.shift_type || '') as ShiftType,
-              startTime: dbShift.start_time || undefined,
-              endTime: dbShift.end_time || undefined,
+              startTime: formatTimeHHmm(dbShift.start_time) || undefined,
+              endTime: formatTimeHHmm(dbShift.end_time) || undefined,
               remark: dbShift.remarks || undefined
             }
           }

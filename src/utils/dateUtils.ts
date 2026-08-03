@@ -26,3 +26,17 @@ export function getMonday(d: Date): Date {
 export function formatDateISO(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
+
+/**
+ * Format HH:mm:ss or HH:mm string to HH:mm (without seconds).
+ * e.g., "07:00:00" -> "07:00"
+ */
+export function formatTimeHHmm(timeStr?: string | null): string {
+  if (!timeStr) return ''
+  const trimmed = timeStr.trim()
+  if (!trimmed) return ''
+  if (trimmed.length >= 5) {
+    return trimmed.slice(0, 5)
+  }
+  return trimmed
+}

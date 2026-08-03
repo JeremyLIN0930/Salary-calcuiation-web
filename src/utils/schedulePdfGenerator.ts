@@ -46,8 +46,10 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
       }
 
       if (shift.type === 'work') {
-        const timeText = (shift.startTime && shift.endTime)
-          ? `${shift.startTime}－${shift.endTime}`
+        const s = shift.startTime ? shift.startTime.trim().slice(0, 5) : ''
+        const e = shift.endTime ? shift.endTime.trim().slice(0, 5) : ''
+        const timeText = (s && e)
+          ? `${s}－${e}`
           : '上班'
         return `<td style="border: 1px solid #000; text-align: center; font-size: 12px; font-weight: bold; color: #000; padding: 6px 2px;">${timeText}</td>`
       }

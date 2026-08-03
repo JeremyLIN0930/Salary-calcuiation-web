@@ -41,8 +41,8 @@ export default function ScheduleDialog({
       setErrorMsg('')
       if (shift) {
         setType(shift.type || 'work')
-        setStartTime(shift.startTime || '07:00')
-        setEndTime(shift.endTime || '15:00')
+        setStartTime(shift.startTime ? shift.startTime.trim().slice(0, 5) : '07:00')
+        setEndTime(shift.endTime ? shift.endTime.trim().slice(0, 5) : '15:00')
         setRemark(shift.remark || '')
       } else {
         setType('work')
