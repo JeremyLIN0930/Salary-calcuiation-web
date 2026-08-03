@@ -1,11 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Box, Button, Typography, Card, CardContent,
   Stack, Divider, Chip, IconButton, Tooltip, Dialog,
-  DialogTitle, DialogContent, DialogContentText, DialogActions
+  DialogTitle, DialogContent, DialogContentText, DialogActions,
+  TextField, InputAdornment, Grid, CircularProgress,
 } from '@mui/material'
 import { useEmployees } from '../context/EmployeeContext'
+import { useSnackbar } from '../context/SnackbarContext'
 import { Employee } from '../types/employee'
+import { PDFService } from '../services/pdfService'
 
 const AddSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -32,6 +35,11 @@ const DelSvg = () => (
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
   </svg>
 )
+const SearchSvg = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+  </svg>
+)
 
 interface Props {
   onAddEmployee: () => void
@@ -40,12 +48,32 @@ interface Props {
 
 export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const { state, dispatch } = useEmployees()
+  const { showSnackbar } = useSnackbar()
+
+  const [search, setSearch]             = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting]       = useState(false)
+
+  const filteredEmployees = useMemo(() => {
+    if (!search.trim()) return state.employees
+    const q = search.trim().toLowerCase()
+    return state.employees.filter(e =>
+      e.name.toLowerCase().includes(q) ||
+      e.month.toLowerCase().includes(q) ||
+      e.store.toLowerCase().includes(q)
+    )
+  }, [state.employees, search])
 
   const handleCopy = (emp: Employee) => {
-    const copied: Employee = { ...emp, id: Math.random().toString(36).slice(2), name: '' }
+    const copied: Employee = {
+      ...emp,
+      id: Math.random().toString(36).slice(2),
+      name: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
     dispatch({ type: 'ADD', payload: copied })
+    showSnackbar(`已複製「${emp.name || '員工'}」的薪資範本！`, 'info')
     onEditEmployee(copied)
   }
 
@@ -53,11 +81,11 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     if (state.employees.length === 0) return
     setExporting(true)
     try {
-      const { generatePayrollPDF } = await import('../utils/pdfGenerator')
-      await generatePayrollPDF(state.employees)
+      await PDFService.exportPayroll(state.employees)
+      showSnackbar('全體薪資單 PDF 已成功匯出下載！', 'success')
     } catch (err) {
       console.error('PDF export error:', err)
-      alert('PDF 產生失敗，請重試。')
+      showSnackbar('PDF 產生失敗，請重試。', 'error')
     } finally {
       setExporting(false)
     }
@@ -66,95 +94,141 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const totalNet = state.employees.reduce((s, e) => s + (e.netSalary ?? 0), 0)
 
   return (
-    <Box sx={{ bgcolor: '#f5f6fa', minHeight: '100vh' }}>
-      {/* Header */}
-      <Box sx={{
-        background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-        px: 3, pt: 5, pb: 3.5,
-      }}>
-        <Typography variant="h5" fontWeight={900} sx={{ color: 'white', letterSpacing: 2, mb: 0.5 }}>
-          薪資計算系統
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 2.5 }}>
-          員工薪資計算暨薪資單產生
-        </Typography>
-        {state.employees.length > 0 && (
-          <Stack direction="row" spacing={2}>
-            <Box sx={{ bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2, px: 2, py: 1 }}>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>員工人數</Typography>
-              <Typography variant="h6" fontWeight={700} sx={{ color: 'white' }}>{state.employees.length}</Typography>
-            </Box>
-            <Box sx={{ bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2, px: 2, py: 1 }}>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>總實發金額</Typography>
-              <Typography variant="h6" fontWeight={700} sx={{ color: 'white' }}>
-                $ {totalNet.toLocaleString('zh-TW')}
-              </Typography>
-            </Box>
-          </Stack>
-        )}
-      </Box>
+    <Box sx={{ maxWidth: 1000, mx: 'auto', px: 2, pt: 3, pb: 10 }}>
+      {/* ── Page Header ── */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={900} color="primary.main">
+            💰 薪資管理
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            建立、管理與匯出員工薪資資料。
+          </Typography>
+        </Box>
 
-      {/* Main Content */}
-      <Box sx={{ maxWidth: 720, mx: 'auto', px: 2, py: 2.5 }}>
-        {/* Action Buttons */}
-        <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
-          <Button variant="contained" fullWidth onClick={onAddEmployee}
-            sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 700, fontSize: 15, boxShadow: '0 4px 12px rgba(21,101,192,0.3)' }}>
-            <AddSvg /> 新增員工
-          </Button>
-          <Button variant="outlined" fullWidth onClick={handleExport}
+        <Stack direction="row" spacing={1.5}>
+          <Button
+            variant="outlined"
+            size="medium"
             disabled={state.employees.length === 0 || exporting}
-            sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 700, fontSize: 15, borderWidth: 1.5 }}>
-            <PdfSvg /> {exporting ? '產生中...' : '匯出全部 PDF'}
+            onClick={handleExport}
+            sx={{ borderRadius: 2.5, px: 2, fontWeight: 700 }}
+          >
+            {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
+            匯出全部 PDF
+          </Button>
+
+          <Button
+            variant="contained"
+            size="medium"
+            onClick={onAddEmployee}
+            sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700, fontSize: 15 }}
+          >
+            <AddSvg />
+            新增薪資
           </Button>
         </Stack>
+      </Box>
 
-        {/* Empty State */}
-        {state.employees.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 10 }}>
-            <Typography sx={{ fontSize: 64, mb: 2 }}>👥</Typography>
-            <Typography variant="h6" fontWeight={600} color="text.secondary" mb={1}>
-              尚無員工資料
-            </Typography>
-            <Typography variant="body2" color="text.disabled" mb={3}>
-              點擊「新增員工」開始建立薪資單
-            </Typography>
-            <Button variant="contained" onClick={onAddEmployee} sx={{ borderRadius: 2, px: 4 }}>
-              <AddSvg /> 新增第一位員工
-            </Button>
-          </Box>
-        ) : (
-          <Stack spacing={1.5}>
-            {state.employees.map(emp => (
-              <EmployeeCard
-                key={emp.id}
+      {/* ── Summary & Search Bar ── */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} alignItems="center" justifyContent="space-between">
+        <TextField
+          placeholder="搜尋員工姓名、月份、門市..."
+          value={search}
+          size="small"
+          fullWidth
+          sx={{ maxWidth: { sm: 360 }, bgcolor: 'white', borderRadius: 2 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchSvg />
+              </InputAdornment>
+            ),
+          }}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        {state.employees.length > 0 && (
+          <Stack direction="row" spacing={2}>
+            <Chip
+              label={`總共 ${state.employees.length} 筆薪資`}
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 700, py: 2 }}
+            />
+            <Chip
+              label={`總實發：$ ${totalNet.toLocaleString('zh-TW')}`}
+              color="success"
+              sx={{ fontWeight: 700, py: 2, color: 'white' }}
+            />
+          </Stack>
+        )}
+      </Stack>
+
+      {/* ── Employee Salary List ── */}
+      {state.employees.length === 0 ? (
+        <Card variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 4, bgcolor: '#FAFAFA' }}>
+          <Typography variant="h6" fontWeight={700} color="text.secondary" sx={{ mb: 1 }}>
+            目前沒有薪資資料
+          </Typography>
+          <Typography variant="body2" color="text.disabled" sx={{ mb: 3 }}>
+            點擊「新增薪資」按鈕，建立第一筆員工薪資。
+          </Typography>
+          <Button variant="contained" onClick={onAddEmployee} sx={{ borderRadius: 2.5, px: 3, fontWeight: 700 }}>
+            <AddSvg />
+            新增薪資
+          </Button>
+        </Card>
+      ) : filteredEmployees.length === 0 ? (
+        <Card variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 4 }}>
+          <Typography variant="body1" color="text.secondary">
+            找不到符合「{search}」的薪資資料
+          </Typography>
+        </Card>
+      ) : (
+        <Grid container spacing={2}>
+          {filteredEmployees.map(emp => (
+            <Grid item xs={12} key={emp.id}>
+              <EmployeeSalaryCard
                 employee={emp}
                 onEdit={() => onEditEmployee(emp)}
                 onCopy={() => handleCopy(emp)}
                 onDelete={() => setDeleteTarget(emp)}
               />
-            ))}
-          </Stack>
-        )}
-      </Box>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
-      {/* Delete Confirm Dialog */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}
-        PaperProps={{ sx: { borderRadius: 3, minWidth: 280 } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>確定刪除此員工？</DialogTitle>
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        PaperProps={{ sx: { borderRadius: 3, minWidth: 320 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>確定刪除此薪資資料？</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            即將刪除「{deleteTarget?.name ?? ''}」的薪資資料，此動作無法復原。
+            即將刪除「{deleteTarget?.name || '未命名'}」{deleteTarget?.month} 的薪資資料，刪除後無法復原。
           </DialogContentText>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setDeleteTarget(null)} sx={{ borderRadius: 2 }}>取消</Button>
-          <Button variant="contained" color="error" sx={{ borderRadius: 2 }}
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setDeleteTarget(null)} sx={{ borderRadius: 2 }}>
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2 }}
             onClick={() => {
-              if (deleteTarget) dispatch({ type: 'DELETE', payload: deleteTarget.id })
+              if (deleteTarget) {
+                dispatch({ type: 'DELETE', payload: deleteTarget.id })
+                showSnackbar(`已刪除「${deleteTarget.name}」的薪資資料`, 'info')
+              }
               setDeleteTarget(null)
-            }}>
-            刪除
+            }}
+          >
+            確定刪除
           </Button>
         </DialogActions>
       </Dialog>
@@ -162,8 +236,8 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   )
 }
 
-// Employee Card
-function EmployeeCard({ employee, onEdit, onCopy, onDelete }: {
+// ── Salary Card Component ──
+function EmployeeSalaryCard({ employee, onEdit, onCopy, onDelete }: {
   employee: Employee; onEdit: () => void; onCopy: () => void; onDelete: () => void
 }) {
   const monthDisplay = employee.month
@@ -171,64 +245,102 @@ function EmployeeCard({ employee, onEdit, onCopy, onDelete }: {
     : '—'
 
   return (
-    <Card elevation={0} sx={{
-      borderRadius: 3, border: '1px solid', borderColor: 'divider',
-      transition: 'all 0.2s',
-      '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.10)', transform: 'translateY(-1px)' },
-    }}>
-      <CardContent sx={{ pb: '12px !important' }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1.5 }}>
-          {/* Avatar */}
-          <Box sx={{
-            width: 44, height: 44, bgcolor: 'primary.main', borderRadius: 2,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 1.5, flexShrink: 0,
-          }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'white' }}>
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 4,
+        p: 1,
+        transition: 'all 0.15s',
+        '&:hover': { borderColor: 'primary.main', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' },
+      }}
+    >
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+          {/* Employee Avatar & Name Info */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: 'primary.main',
+                borderRadius: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 900,
+                fontSize: 18,
+              }}
+            >
               {employee.name ? employee.name.charAt(0) : '?'}
-            </Typography>
-          </Box>
-
-          {/* Info */}
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
-              <Typography variant="subtitle1" fontWeight={700} noWrap>{employee.name || '（未命名）'}</Typography>
-              {employee.store && <Chip label={employee.store} size="small" sx={{ height: 20, fontSize: 11 }} />}
             </Box>
-            <Typography variant="caption" color="text.secondary">
-              {monthDisplay}{employee.hireDate ? ` · 到職：${employee.hireDate}` : ''}
-            </Typography>
+
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="subtitle1" fontWeight={800} color="text.primary">
+                  {employee.name || '（未命名）'}
+                </Typography>
+                {employee.store && (
+                  <Chip label={employee.store} size="small" variant="outlined" color="primary" sx={{ height: 22, fontWeight: 700 }} />
+                )}
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {monthDisplay} {employee.hireDate ? ` · 到職：${employee.hireDate}` : ''}
+              </Typography>
+            </Box>
           </Box>
 
-          {/* Actions */}
-          <Box sx={{ display: 'flex', ml: 0.5 }}>
-            <Tooltip title="編輯"><IconButton size="small" onClick={onEdit} sx={{ color: 'primary.main' }}><EditSvg /></IconButton></Tooltip>
-            <Tooltip title="複製此員工"><IconButton size="small" onClick={onCopy} sx={{ color: 'text.secondary' }}><CopySvg /></IconButton></Tooltip>
-            <Tooltip title="刪除"><IconButton size="small" onClick={onDelete} sx={{ color: 'error.main' }}><DelSvg /></IconButton></Tooltip>
-          </Box>
+          {/* Action Icons */}
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="編輯薪資">
+              <IconButton size="small" onClick={onEdit} sx={{ color: 'primary.main' }}>
+                <EditSvg />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="複製員工">
+              <IconButton size="small" onClick={onCopy} sx={{ color: 'text.secondary' }}>
+                <CopySvg />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="刪除薪資">
+              <IconButton size="small" onClick={onDelete} sx={{ color: 'error.main' }}>
+                <DelSvg />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         </Box>
 
-        <Divider sx={{ mb: 1.5 }} />
+        <Divider sx={{ my: 1.5 }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary">應發薪資</Typography>
-            <Typography variant="body2" fontWeight={600}>
+        {/* Salary Figures */}
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={4}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              應發薪資
+            </Typography>
+            <Typography variant="body1" fontWeight={700}>
               $ {(employee.grossSalary ?? 0).toLocaleString('zh-TW')}
             </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">代扣合計</Typography>
-            <Typography variant="body2" fontWeight={600} color="error.main">
+          </Grid>
+
+          <Grid item xs={4}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              代扣合計
+            </Typography>
+            <Typography variant="body1" fontWeight={700} color="error.main">
               − $ {(employee.totalDeductions ?? 0).toLocaleString('zh-TW')}
             </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="caption" color="text.secondary">實發金額</Typography>
-            <Typography variant="subtitle2" fontWeight={800} color="primary.main">
+          </Grid>
+
+          <Grid item xs={4} sx={{ textAlign: 'right' }}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              實發金額
+            </Typography>
+            <Typography variant="subtitle1" fontWeight={900} color="success.main">
               $ {(employee.netSalary ?? 0).toLocaleString('zh-TW')}
             </Typography>
-          </Box>
-        </Box>
+          </Grid>
+        </Grid>
       </CardContent>
     </Card>
   )

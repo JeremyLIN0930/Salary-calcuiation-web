@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import {
   Box, Button, TextField, Grid, Typography, AppBar, Toolbar,
-  IconButton, Chip, Alert, Snackbar, Paper, MenuItem, Select, FormControl, InputLabel, Divider
+  IconButton, Chip, Paper, MenuItem, Select, FormControl, InputLabel,
+  Card, CardContent, Divider, Stack, CircularProgress,
 } from '@mui/material'
 import { Employee, Store, createEmptyEmployee, calcGross, calcDeductions } from '../types/employee'
 import { useEmployees } from '../context/EmployeeContext'
 import { useMasterEmployees } from '../context/MasterEmployeeContext'
+import { useSnackbar } from '../context/SnackbarContext'
 import { MasterEmployee } from '../types/masterEmployee'
 
 function MasterEmployeeSelect({ onSelect }: { onSelect: (emp: MasterEmployee) => void }) {
@@ -44,49 +46,21 @@ const SaveSvg = () => (
   </svg>
 )
 
-function SectionHeader({ title, icon, expanded, onToggle }: {
-  title: string; icon: string; expanded: boolean; onToggle: () => void
+function SectionCard({ title, icon, children }: {
+  title: string; icon: string; children: React.ReactNode
 }) {
   return (
-    <Box
-      onClick={onToggle}
-      sx={{
-        display: 'flex', alignItems: 'center', px: 2.5, py: 1.8,
-        cursor: 'pointer', userSelect: 'none', bgcolor: 'background.paper',
-        borderRadius: expanded ? '12px 12px 0 0' : 3,
-        '&:hover': { bgcolor: '#f0f4ff' }, transition: 'background 0.15s',
-        border: '1px solid', borderColor: 'divider',
-        borderBottom: expanded ? 'none' : '1px solid',
-      }}
-    >
-      <Typography sx={{ mr: 1, fontSize: 18 }}>{icon}</Typography>
-      <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1, color: 'text.primary', letterSpacing: 0.3 }}>
-        {title}
-      </Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 20, lineHeight: 1 }}>
-        {expanded ? '▲' : '▼'}
-      </Typography>
-    </Box>
-  )
-}
-
-function Section({ title, icon, children, defaultOpen = true }: {
-  title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <Box sx={{ mb: 2 }}>
-      <SectionHeader title={title} icon={icon} expanded={open} onToggle={() => setOpen(o => !o)} />
-      {open && (
-        <Box sx={{
-          bgcolor: 'background.paper', p: 2.5,
-          border: '1px solid', borderColor: 'divider',
-          borderTop: 'none', borderRadius: '0 0 12px 12px'
-        }}>
-          {children}
+    <Card variant="outlined" sx={{ borderRadius: 4, mb: 3, p: 1 }}>
+      <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.5 }}>
+          <Typography sx={{ mr: 1, fontSize: 20 }}>{icon}</Typography>
+          <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontSize: 18 }}>
+            {title}
+          </Typography>
         </Box>
-      )}
-    </Box>
+        {children}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -106,7 +80,7 @@ function MoneyField({ label, value, onChange }: {
     <TextField
       label={label}
       value={display}
-      size="small"
+      size="medium"
       fullWidth
       inputProps={{ inputMode: 'numeric', style: { textAlign: 'right' } }}
       InputProps={{ startAdornment: <Typography sx={{ color: 'text.secondary', mr: 0.5, fontSize: 14 }}>$</Typography> }}
@@ -136,7 +110,7 @@ function PlainField({ label, value, onChange }: {
       label={label}
       type="number"
       value={value || ''}
-      size="small"
+      size="medium"
       fullWidth
       inputProps={{ min: 0, style: { textAlign: 'right' } }}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
@@ -150,10 +124,11 @@ interface Props {
 }
 
 export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
-  const { dispatch } = useEmployees()
+  const { dispatch }   = useEmployees()
+  const { showSnackbar } = useSnackbar()
+
   const [emp, setEmp] = useState<Employee>(() => {
     if (editEmployee) {
-      // Backfill audit fields for records created before PRD Ch.2
       const now = new Date().toISOString()
       return {
         ...editEmployee,
@@ -163,8 +138,9 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
     }
     return createEmptyEmployee()
   })
+
   const [errors, setErrors] = useState<{ name?: string; month?: string; store?: string }>({})
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Auto-calc gross
   useEffect(() => {
@@ -200,47 +176,91 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
     if (!emp.month)       e.month = '月份為必填'
     if (!emp.store)       e.store = '門市為必填'
     if (Object.keys(e).length) { setErrors(e); return }
+
     setErrors({})
+    setSaving(true)
+
     const now = new Date().toISOString()
     const record: Employee = {
       ...emp,
       updatedAt: now,
       createdAt: emp.createdAt || now,
     }
+
     if (editEmployee) dispatch({ type: 'UPDATE', payload: record })
     else              dispatch({ type: 'ADD',    payload: record })
-    setSaved(true)
-    setTimeout(onBack, 800)
+
+    showSnackbar('薪資單已成功儲存！', 'success')
+    setTimeout(() => {
+      setSaving(false)
+      onBack()
+    }, 400)
   }
 
   return (
-    <Box sx={{ bgcolor: '#f5f6fa', minHeight: '100vh', pb: 14 }}>
-      {/* Header */}
+    <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh', pb: 14 }}>
+      {/* Top Header */}
       <AppBar position="sticky" elevation={0}
-        sx={{ bgcolor: 'white', borderBottom: '1px solid #e0e0e0' }}>
-        <Toolbar>
+        sx={{ bgcolor: 'white', borderBottom: '1px solid #E5E7EB' }}>
+        <Toolbar sx={{ maxWidth: 840, width: '100%', mx: 'auto', px: 2 }}>
           <IconButton onClick={onBack} edge="start" sx={{ mr: 1, color: 'text.primary' }}>
             <ArrowBackSvg />
           </IconButton>
-          <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1, color: 'text.primary', fontSize: 17 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1, color: 'text.primary', fontSize: 18 }}>
             {editEmployee ? '編輯員工薪資' : '新增員工薪資'}
           </Typography>
-          {emp.name && <Chip label={emp.name} size="small" color="primary" variant="outlined" />}
+          {emp.name && <Chip label={emp.name} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700 }} />}
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ maxWidth: 720, mx: 'auto', px: 2, pt: 2 }}>
+      <Box sx={{ maxWidth: 840, mx: 'auto', px: 2, pt: 3 }}>
 
-        {/* 第一區：基本資料 */}
-        <Section title="基本資料" icon="👤">
-          <Grid container spacing={2}>
+        {/* ── 3 Summary Highlight Cards ── */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#EFF6FF', borderColor: '#BFDBFE' }}>
+              <Typography variant="caption" fontWeight={700} color="primary.main">
+                應發薪資
+              </Typography>
+              <Typography variant="h5" fontWeight={900} color="primary.main" sx={{ mt: 0.5 }}>
+                $ {(emp.grossSalary ?? 0).toLocaleString('zh-TW')}
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#FFF1F2', borderColor: '#FECDD3' }}>
+              <Typography variant="caption" fontWeight={700} color="error.main">
+                代扣合計
+              </Typography>
+              <Typography variant="h5" fontWeight={900} color="error.main" sx={{ mt: 0.5 }}>
+                − $ {(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#1A237E', color: 'white' }}>
+              <Typography variant="caption" fontWeight={700} sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                實發金額
+              </Typography>
+              <Typography variant="h5" fontWeight={900} sx={{ mt: 0.5 }}>
+                $ {(emp.netSalary ?? 0).toLocaleString('zh-TW')}
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* ── 第一區：基本資料 ── */}
+        <SectionCard title="基本資料" icon="📋">
+          <Grid container spacing={2.5}>
             <Grid item xs={12} sm={6}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                   label="姓名 *"
                   value={emp.name}
                   fullWidth
-                  size="small"
+                  size="medium"
                   error={!!errors.name}
                   helperText={errors.name}
                   onChange={e => set('name', e.target.value)}
@@ -254,14 +274,16 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 />
               </Box>
             </Grid>
+
             <Grid item xs={12} sm={6}>
-              <TextField label="月份 *" type="month" value={emp.month} fullWidth size="small"
+              <TextField label="月份 *" type="month" value={emp.month} fullWidth size="medium"
                 error={!!errors.month} helperText={errors.month}
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('month', e.target.value)} />
             </Grid>
+
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small" error={!!errors.store}>
+              <FormControl fullWidth size="medium" error={!!errors.store}>
                 <InputLabel id="store-select-label">門市 *</InputLabel>
                 <Select
                   labelId="store-select-label"
@@ -278,22 +300,24 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 )}
               </FormControl>
             </Grid>
+
             <Grid item xs={12} sm={6}>
-              <TextField label="到職日" type="date" value={emp.hireDate} fullWidth size="small"
+              <TextField label="到職日" type="date" value={emp.hireDate} fullWidth size="medium"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('hireDate', e.target.value)} />
             </Grid>
+
             <Grid item xs={12} sm={6}>
-              <TextField label="發薪日期" type="date" value={emp.payDate} fullWidth size="small"
+              <TextField label="發薪日期" type="date" value={emp.payDate} fullWidth size="medium"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('payDate', e.target.value)} />
             </Grid>
           </Grid>
-        </Section>
+        </SectionCard>
 
-        {/* 第二區：薪資資料 */}
-        <Section title="薪資資料" icon="💰">
-          <Grid container spacing={2}>
+        {/* ── 第二區：薪資資料 ── */}
+        <SectionCard title="薪資資料" icon="💰">
+          <Grid container spacing={2.5}>
             {([
               ['本薪', 'baseSalary'], ['伙食津貼', 'mealAllowance'],
               ['職務津貼', 'positionAllowance'], ['其他津貼', 'otherAllowance'],
@@ -309,11 +333,11 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
             ))}
 
             <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, borderColor: emp.isGrossManual ? 'warning.main' : 'primary.main', borderWidth: 2, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                  <Typography variant="body2" fontWeight={700} color="primary.main">應發薪資</Typography>
-                  {emp.isGrossManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 10 }} />}
-                  {!emp.isGrossManual && <Chip label="自動計算" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: 10 }} />}
+              <Paper variant="outlined" sx={{ p: 2.5, borderColor: emp.isGrossManual ? 'warning.main' : 'primary.main', borderWidth: 2, borderRadius: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800} color="primary.main">應發薪資小計</Typography>
+                  {emp.isGrossManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 11 }} />}
+                  {!emp.isGrossManual && <Chip label="自動計算" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: 11 }} />}
                 </Box>
                 <MoneyField label="應發薪資" value={emp.grossSalary}
                   onChange={v => { set('isGrossManual', true); set('grossSalary', v) }} />
@@ -323,11 +347,11 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </Paper>
             </Grid>
           </Grid>
-        </Section>
+        </SectionCard>
 
-        {/* 第三區：代扣資料 */}
-        <Section title="代扣資料" icon="📋">
-          <Grid container spacing={2}>
+        {/* ── 第三區：代扣資料 ── */}
+        <SectionCard title="代扣資料" icon="🧾">
+          <Grid container spacing={2.5}>
             {([
               ['勞保費', 'laborInsurance'], ['健保費', 'healthInsurance'],
               ['勞退個人自提', 'laborPension'], ['所得稅', 'incomeTax'],
@@ -339,10 +363,10 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
             ))}
 
             <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, borderColor: emp.isDeductionManual ? 'warning.main' : 'error.light', borderWidth: 2, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                  <Typography variant="body2" fontWeight={700} color="error.main">代扣合計</Typography>
-                  {emp.isDeductionManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 10 }} />}
+              <Paper variant="outlined" sx={{ p: 2.5, borderColor: emp.isDeductionManual ? 'warning.main' : 'error.light', borderWidth: 2, borderRadius: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800} color="error.main">代扣合計小計</Typography>
+                  {emp.isDeductionManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 11 }} />}
                 </Box>
                 <MoneyField label="代扣合計" value={emp.totalDeductions}
                   onChange={v => { set('isDeductionManual', true); set('totalDeductions', v) }} />
@@ -352,11 +376,11 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </Paper>
             </Grid>
           </Grid>
-        </Section>
+        </SectionCard>
 
-        {/* 第四區：考勤資料 */}
-        <Section title="考勤資料" icon="🕐">
-          <Grid container spacing={2}>
+        {/* ── 第四區：考勤資料 ── */}
+        <SectionCard title="考勤資料" icon="🕐">
+          <Grid container spacing={2.5}>
             <Grid item xs={12} sm={6}>
               <PlainField label="年度剩餘特別假（日）" value={emp.annualLeaveRemaining} onChange={money('annualLeaveRemaining')} />
             </Grid>
@@ -364,11 +388,11 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               <PlainField label="結轉特別假（日）" value={emp.carriedOverLeave} onChange={money('carriedOverLeave')} />
             </Grid>
           </Grid>
-        </Section>
+        </SectionCard>
 
-        {/* 第五區：退休金與實發 */}
-        <Section title="退休金與實發金額" icon="🏦">
-          <Grid container spacing={2}>
+        {/* ── 第五區：退休金與實發金額 ── */}
+        <SectionCard title="退休金與實發金額" icon="🏦">
+          <Grid container spacing={2.5}>
             <Grid item xs={12} sm={6}>
               <MoneyField label="公司提撥退休金" value={emp.companyPensionContribution} onChange={money('companyPensionContribution')} />
             </Grid>
@@ -377,9 +401,9 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
             </Grid>
 
             <Grid item xs={12}>
-              <Box sx={{ bgcolor: '#1a237e', borderRadius: 3, p: 2.5, color: 'white' }}>
+              <Box sx={{ bgcolor: '#1A237E', borderRadius: 4, p: 3, color: 'white' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
                     實發金額（應發薪資 − 代扣合計）
                   </Typography>
                   {emp.isNetManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 10 }} />}
@@ -388,7 +412,7 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                   $ {(emp.netSalary ?? 0).toLocaleString('zh-TW')}
                 </Typography>
                 <TextField
-                  label="手動修改實發金額"
+                  label="手動修改實发金額"
                   size="small"
                   fullWidth
                   value={emp.isNetManual ? (emp.netSalary || '') : ''}
@@ -411,12 +435,12 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               </Box>
             </Grid>
           </Grid>
-        </Section>
+        </SectionCard>
 
-        {/* 第六區：備註 */}
-        <Section title="備註" icon="📝" defaultOpen={true}>
+        {/* ── 第六區：備註 (獨立 100% 寬度 Card) ── */}
+        <SectionCard title="備註" icon="📝">
           <TextField
-            label="備註（非必填）"
+            label="備註說明（選填）"
             value={emp.remark}
             onChange={e => set('remark', e.target.value)}
             multiline
@@ -426,7 +450,7 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
             placeholder={`例如：\n・本月請假扣薪 2 天。\n・補發上月加班費。\n・年度績效獎金已併入本月薪資。\n・其他薪資說明事項……`}
             inputProps={{ maxLength: 2000 }}
             sx={{
-              '& .MuiOutlinedInput-root': { borderRadius: 2 },
+              '& .MuiOutlinedInput-root': { borderRadius: 3 },
               '& textarea': { lineHeight: 1.7 },
             }}
           />
@@ -435,31 +459,35 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
               {emp.remark.length} / 2000
             </Typography>
           )}
-        </Section>
+        </SectionCard>
 
       </Box>
 
-      {/* Bottom Bar */}
+      {/* Fixed Bottom Save Bar */}
       <Box sx={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        bgcolor: 'white', borderTop: '1px solid #e0e0e0',
-        px: 2, py: 1.5, display: 'flex', gap: 1.5,
+        bgcolor: 'white', borderTop: '1px solid #E5E7EB',
+        px: 2, py: 1.5, display: 'flex', gap: 1.5, zIndex: 1000,
         boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
       }}>
-        <Button variant="outlined" fullWidth onClick={onBack}
-          sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, maxWidth: 720, mx: 'auto' }}>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={onBack}
+          sx={{ borderRadius: 2.5, py: 1.2, fontWeight: 700, maxWidth: 840, mx: 'auto' }}
+        >
           取消
         </Button>
-        <Button variant="contained" fullWidth onClick={handleSave}
-          sx={{ borderRadius: 2, py: 1.2, fontWeight: 700, maxWidth: 720, mx: 'auto' }}>
-          <SaveSvg /> 儲存此員工
+        <Button
+          variant="contained"
+          fullWidth
+          disabled={saving}
+          onClick={handleSave}
+          sx={{ borderRadius: 2.5, py: 1.2, fontWeight: 700, maxWidth: 840, mx: 'auto' }}
+        >
+          {saving ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <><SaveSvg /> 儲存此薪資單</>}
         </Button>
       </Box>
-
-      <Snackbar open={saved} autoHideDuration={2000} onClose={() => setSaved(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <Alert severity="success" sx={{ borderRadius: 2 }}>已成功儲存！</Alert>
-      </Snackbar>
     </Box>
   )
 }
