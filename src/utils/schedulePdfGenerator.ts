@@ -124,7 +124,11 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   return div
 }
 
-export async function createSchedulePDFDoc(schedule: Schedule): Promise<{ doc: jsPDF; blob: Blob; url: string; fileName: string }> {
+export async function createSchedulePDFDoc(
+  schedule: Schedule,
+  customFileName?: string,
+  weekIndex?: number
+): Promise<{ doc: jsPDF; blob: Blob; url: string; fileName: string }> {
   console.log('[PDF Debug] Starting createSchedulePDFDoc for store:', schedule.storeName)
   const { default: html2canvas } = await import('html2canvas')
 
@@ -160,7 +164,8 @@ export async function createSchedulePDFDoc(schedule: Schedule): Promise<{ doc: j
     const url = URL.createObjectURL(blob)
     console.log('[PDF Debug] Schedule PDF URL:', url)
 
-    const fileName = `排班表_${schedule.storeName}_${schedule.weekStart}.pdf`
+    const { getScheduleFileName } = await import('./pdfFileNameHelper')
+    const fileName = customFileName || getScheduleFileName(schedule, 'single', weekIndex)
     return { doc, blob, url, fileName }
   } catch (err) {
     console.error('[PDF Debug] createSchedulePDFDoc Error:', err)
@@ -172,7 +177,7 @@ export async function createSchedulePDFDoc(schedule: Schedule): Promise<{ doc: j
   }
 }
 
-export async function generateSchedulePDF(schedule: Schedule): Promise<void> {
-  const { doc, fileName } = await createSchedulePDFDoc(schedule)
+export async function generateSchedulePDF(schedule: Schedule, customFileName?: string, weekIndex?: number): Promise<void> {
+  const { doc, fileName } = await createSchedulePDFDoc(schedule, customFileName, weekIndex)
   doc.save(fileName)
 }

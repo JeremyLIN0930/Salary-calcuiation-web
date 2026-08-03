@@ -15,6 +15,7 @@ import EmptyState from '../../components/common/EmptyState'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { groupSchedulesByMonth, ScheduleMonthGroup, getMonthKeyFromSchedule } from '../../utils/scheduleMigration'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
+import { PDFService } from '../../services/pdfService'
 
 const AddSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -199,13 +200,12 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
 
   // ── Handlers: PDF Export 4 Modes ──────────────────────────────────────────
 
-  // ① Single week PDF
-  const handleExportSingleWeekPDF = async (schedule: Schedule, e: React.MouseEvent) => {
+  // ① Single week PDF: 排班表_YYYY年MM月_第X週_門市.pdf
+  const handleExportSingleWeekPDF = async (schedule: Schedule, weekIndex: number, e: React.MouseEvent) => {
     e.stopPropagation()
     setExporting(true)
     try {
-      const { generateSchedulePDF } = await import('../../utils/schedulePdfGenerator')
-      await generateSchedulePDF(schedule)
+      await PDFService.exportSchedule(schedule, 'single', weekIndex)
       showSnackbar('該週排班表 PDF 已成功匯出下載！', 'success')
     } catch (err) {
       console.error(err)
@@ -215,15 +215,14 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ② Multi-selected weeks PDF
+  // ② Multi-selected weeks PDF: 排班表_YYYY年MM月_多週.pdf
   const handleExportSelectedWeeksPDF = async () => {
     if (selectedWeekIds.length === 0) return
     const selectedScheds = state.schedules.filter(s => selectedWeekIds.includes(s.id))
     setExporting(true)
     try {
-      const { generateSchedulePDF } = await import('../../utils/schedulePdfGenerator')
       for (const sched of selectedScheds) {
-        await generateSchedulePDF(sched)
+        await PDFService.exportSchedule(sched, 'multi')
       }
       showSnackbar(`已成功匯出勾選的 ${selectedScheds.length} 週排班表 PDF！`, 'success')
     } catch (err) {
@@ -234,7 +233,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ③ Entire Month PDF (Each week 1 page)
+  // ③ Entire Month PDF: 排班表_YYYY年MM月_門市.pdf
   const handleExportMonthPDF = async (monthGroup: ScheduleMonthGroup, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     if (monthGroup.schedules.length === 0) {
@@ -243,9 +242,8 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
     setExporting(true)
     try {
-      const { generateSchedulePDF } = await import('../../utils/schedulePdfGenerator')
       for (const sched of monthGroup.schedules) {
-        await generateSchedulePDF(sched)
+        await PDFService.exportSchedule(sched, 'month')
       }
       showSnackbar(`已成功匯出「${monthGroup.displayTitle}」全體 ${monthGroup.schedules.length} 週排班表 PDF！`, 'success')
     } catch (err) {
@@ -256,7 +254,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ④ All Months PDF
+  // ④ All Months PDF: 排班表_全部月份.pdf
   const handleExportAllMonthsPDF = async () => {
     if (state.schedules.length === 0) {
       showSnackbar('系統尚無排班資料可供匯出。', 'warning')
@@ -264,10 +262,9 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
     setExporting(true)
     try {
-      const { generateSchedulePDF } = await import('../../utils/schedulePdfGenerator')
       const sorted = [...state.schedules].sort((a, b) => b.weekStart.localeCompare(a.weekStart))
       for (const sched of sorted) {
-        await generateSchedulePDF(sched)
+        await PDFService.exportSchedule(sched, 'all')
       }
       showSnackbar(`已成功匯出所有月份（共 ${sorted.length} 週）排班表 PDF！`, 'success')
     } catch (err) {
@@ -681,7 +678,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={(e) => handleExportSingleWeekPDF(sched, e)}
+                          onClick={(e) => handleExportSingleWeekPDF(sched, index + 1, e)}
                           disabled={exporting}
                           sx={{ borderRadius: 2, height: 44, fontWeight: 700 }}
                         >

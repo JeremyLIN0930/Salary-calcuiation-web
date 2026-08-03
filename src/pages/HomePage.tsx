@@ -198,7 +198,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const handleExportSingleEmpPDF = async (emp: Employee) => {
     setExporting(true)
     try {
-      await PDFService.exportPayroll([emp])
+      await PDFService.exportPayroll([emp], 'single', emp.month)
       showSnackbar(`已成功匯出「${emp.name}」的薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)
@@ -214,7 +214,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     const selectedEmps = state.employees.filter(e => selectedEmpIds.includes(e.id))
     setExporting(true)
     try {
-      await PDFService.exportPayroll(selectedEmps)
+      await PDFService.exportPayroll(selectedEmps, 'multi', activeMonthKey || undefined)
       showSnackbar(`已成功匯出勾選的 ${selectedEmps.length} 位員工薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)
@@ -232,7 +232,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
     setExporting(true)
     try {
-      await PDFService.exportPayroll(monthGroup.employees)
+      await PDFService.exportPayroll(monthGroup.employees, 'month', monthGroup.monthKey)
       showSnackbar(`已成功匯出「${monthGroup.displayTitle}」全體 ${monthGroup.employees.length} 位員工薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)
@@ -252,7 +252,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     try {
       // Sort employees by month descending
       const sorted = [...state.employees].sort((a, b) => b.month.localeCompare(a.month))
-      await PDFService.exportPayroll(sorted)
+      await PDFService.exportPayroll(sorted, 'all')
       showSnackbar(`已成功匯出所有月份（共 ${sorted.length} 筆）薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)

@@ -395,7 +395,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
   return div
 }
 
-export async function generatePayrollPDF(employees: Employee[]): Promise<void> {
+export async function generatePayrollPDF(employees: Employee[], customFileName?: string): Promise<void> {
   if (!employees || employees.length === 0) return
 
   const { default: html2canvas } = await import('html2canvas')
@@ -429,6 +429,10 @@ export async function generatePayrollPDF(employees: Employee[]): Promise<void> {
 
   document.body.removeChild(container)
 
-  const date = new Date().toLocaleDateString('zh-TW').replace(/\//g, '-')
-  doc.save(`薪資單_${date}.pdf`)
+  const defaultName = employees.length === 1 && employees[0].month
+    ? `薪資單_${employees[0].month.replace('-', '年')}月_${employees[0].name || '員工'}.pdf`
+    : `薪資單_匯出.pdf`
+
+  const finalFileName = customFileName || defaultName
+  doc.save(finalFileName)
 }
