@@ -15,14 +15,15 @@ export default function ScheduleCell({ shift, onClick }: Props) {
         onClick={onClick}
         sx={{
           cursor: 'pointer',
-          py: 1.2,
+          height: 60,
+          py: 1,
           px: 0.5,
           userSelect: 'none',
           borderRight: '1px solid #E5E7EB',
           '&:hover': { bgcolor: '#F3F4F6' },
         }}
       >
-        <Typography variant="body2" color="text.disabled">—</Typography>
+        <Typography variant="body2" color="text.disabled" sx={{ fontSize: 16 }}>—</Typography>
       </TableCell>
     )
   }
@@ -46,6 +47,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
       onClick={onClick}
       sx={{
         cursor: 'pointer',
+        height: 60,
         py: 1,
         px: 0.5,
         userSelect: 'none',
@@ -55,13 +57,13 @@ export default function ScheduleCell({ shift, onClick }: Props) {
         '&:hover': { opacity: 0.85 },
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
-          variant="body2"
-          fontWeight={shift.type === 'work' ? 600 : 700}
+          variant="body1"
+          fontWeight={shift.type === 'work' ? 700 : 900}
           sx={{
             color: conf.color,
-            fontSize: shift.type === 'work' ? 13 : 15,
+            fontSize: shift.type === 'work' ? 14 : 16,
             whiteSpace: 'nowrap',
             letterSpacing: shift.type === 'work' ? 0 : 2,
           }}
@@ -69,7 +71,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
           {displayText}
         </Typography>
         {shift.remark && (
-          <Typography variant="caption" sx={{ fontSize: 10, color: '#6B7280', mt: 0.2 }}>
+          <Typography variant="caption" sx={{ fontSize: 11, color: '#6B7280', mt: 0.2 }}>
             {shift.remark}
           </Typography>
         )}

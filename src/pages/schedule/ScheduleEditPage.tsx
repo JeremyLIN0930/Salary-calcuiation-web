@@ -5,6 +5,9 @@ import {
   CircularProgress, Card,
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
+import { useSnackbar } from '../../context/SnackbarContext'
+import { PDFService } from '../../services/pdfService'
+import PDFPreviewModal from '../../components/common/PDFPreviewModal'
 import { Schedule, ScheduleEmployee } from '../../types/schedule'
 import ScheduleTable from './ScheduleTable'
 
@@ -123,16 +126,19 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
     setToast(`已複製上一週（${prev.weekStart}）的員工與班表`)
   }
 
-  // Export PDF
-  const handleExportPDF = async () => {
+  const { showSnackbar } = useSnackbar()
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
+
+  // Export PDF via Service
+  const handleConfirmDownloadPDF = async () => {
     setExporting(true)
     try {
-      const { generateSchedulePDF } = await import('../../utils/schedulePdfGenerator')
-      await generateSchedulePDF(schedule)
-      setToast('PDF 已成功匯出下載！')
+      await PDFService.exportSchedule(schedule)
+      showSnackbar('排班表 PDF 已成功匯出下載！', 'success')
+      setPdfPreviewOpen(false)
     } catch (err) {
       console.error(err)
-      setToast('PDF 匯出失敗，請再試一次')
+      showSnackbar('PDF 匯出失敗，請再試一次', 'error')
     } finally {
       setExporting(false)
     }
@@ -189,11 +195,11 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
               variant="contained"
               size="small"
               disabled={exporting}
-              onClick={handleExportPDF}
+              onClick={() => setPdfPreviewOpen(true)}
               sx={{ borderRadius: 2, fontWeight: 700 }}
             >
               {exporting ? <CircularProgress size={16} sx={{ mr: 1, color: '#fff' }} /> : <PdfSvg />}
-              匯出 PDF
+              預覽 / 匯出 PDF
             </Button>
           </Stack>
         </Box>
@@ -242,6 +248,15 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* PDF Preview & Export Modal */}
+      <PDFPreviewModal
+        open={pdfPreviewOpen}
+        title={`【${schedule.storeId}】${schedule.storeName} 週排班表`}
+        loading={exporting}
+        onClose={() => setPdfPreviewOpen(false)}
+        onConfirmDownload={handleConfirmDownloadPDF}
+      />
 
       {/* Toast Snackbar */}
       <Snackbar

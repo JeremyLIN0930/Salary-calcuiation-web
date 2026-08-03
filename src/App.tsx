@@ -23,20 +23,37 @@ const SettingsPage           = React.lazy(() => import('./pages/settings/Setting
 const theme = createTheme({
   palette: {
     primary:    { main: '#1976D2' },
+    error:      { main: '#E53935' },
+    success:    { main: '#43A047' },
+    warning:    { main: '#FFB300' },
     background: { default: '#F5F7FA', paper: '#ffffff' },
+    divider:    '#E5E7EB',
   },
   typography: {
-    fontFamily: '"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif',
+    fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
+    h4:     { fontSize: '28px', fontWeight: 900 },
+    h6:     { fontSize: '20px', fontWeight: 800 },
+    body1:  { fontSize: '15px' },
+    body2:  { fontSize: '15px' },
+    button: { fontSize: '15px', fontWeight: 700 },
+    caption:{ fontSize: '14px' },
   },
-  shape: { borderRadius: 10 },
+  shape: { borderRadius: 12 },
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { textTransform: 'none', fontWeight: 600, borderRadius: 10, height: 40 },
+        root: { textTransform: 'none', fontWeight: 700, borderRadius: 12, height: 48 },
       },
     },
     MuiCard: {
-      styleOverrides: { root: { boxShadow: 'none' } },
+      styleOverrides: {
+        root: { borderRadius: 16, boxShadow: 'none' },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: { borderRadius: 10 },
+      },
     },
   },
 })
