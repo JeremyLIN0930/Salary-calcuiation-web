@@ -3,7 +3,7 @@ import {
   Box, Card, CardHeader, CardContent, Typography, Button,
   IconButton, Chip, Stack, Divider, Paper, Collapse, CircularProgress, Grid,
 } from '@mui/material'
-import { supabase } from '../../lib/supabase'
+import { supabase, isSupabaseEnvConfigured } from '../../lib/supabase'
 import { debugLogger, LogEntry } from '../../utils/debugLogger'
 import { supabaseEmployeeRepository } from '../../repositories/SupabaseEmployeeRepository'
 import { supabaseSalaryRepository } from '../../repositories/SupabaseSalaryRepository'
@@ -11,7 +11,6 @@ import { supabaseScheduleRepository } from '../../repositories/SupabaseScheduleR
 import { supabaseStoreRepository } from '../../repositories/SupabaseStoreRepository'
 import { supabaseSettingsRepository } from '../../repositories/SupabaseSettingsRepository'
 
-// Icons
 const BugSvg = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19 8h-1.81a5.985 5.985 0 00-1.82-1.96l.93-.93a.996.996 0 10-1.41-1.41l-1.47 1.47C12.86 5.06 12.44 5 12 5s-.86.06-1.43.17L9.1 3.7A.996.996 0 107.69 5.11l.93.93C7.69 6.78 6.94 7.58 6.81 8H5c-.55 0-1 .45-1 1s.45 1 1 1h1.09c-.06.33-.09.66-.09 1v1H4c-.55 0-1 .45-1 1s.45 1 1 1h2v1c0 .34.03.67.09 1H5c-.55 0-1 .45-1 1s.45 1 1 1h1.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H19c.55 0 1-.45 1-1s-.45-1-1-1h-1.09c.06-.33.09-.66.09-1v-1h2c.55 0 1-.45 1-1s-.45-1-1-1h-2v-1c0-.34-.03-.67-.09-1H19c.55 0 1-.45 1-1s-.45-1-1-1zm-7 11c-2.76 0-5-2.24-5-5v-4c0-2.76 2.24-5 5-5s5 2.24 5 5v4c0 2.76-2.24 5-5 5z"/>
@@ -46,14 +45,13 @@ interface Counts {
 }
 
 export default function DeveloperDebugPanel() {
-  // Only render in development mode
   if (!import.meta.env.DEV) {
     return null
   }
 
   const [expanded, setExpanded] = useState(false)
   const [closed, setClosed] = useState(false)
-  const [status, setStatus] = useState<'Connected' | 'Disconnected' | 'Connecting...'>('Connecting...')
+  const [status, setStatus] = useState<'🟢 Connected' | '🔴 Disconnected' | '🟡 Connecting...'>('🟡 Connecting...')
   const [lastSyncTime, setLastSyncTime] = useState<string>('Never')
   const [lastSyncResult, setLastSyncResult] = useState<'Success' | 'Failed'>('Success')
   const [lastError, setLastError] = useState<string>('None')
@@ -72,26 +70,28 @@ export default function DeveloperDebugPanel() {
     settings: 0,
   })
 
-  const projectUrl = import.meta.env.VITE_SUPABASE_URL || 'Not configured'
+  const projectUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jqrkyculdldsyhoowhdv.supabase.co'
 
-  // Ping Supabase Health Check
+  // Health Ping to test companies table
   const pingSupabase = useCallback(async () => {
     try {
       const { error } = await supabase.from('companies').select('*').limit(1)
+
       if (error && error.code !== 'PGRST116') {
-        setStatus('Disconnected')
+        setStatus('🔴 Disconnected')
         setLastSyncResult('Failed')
-        setLastError(error.message || 'Connection Error')
+        setLastError(error.message || 'Connection Failed')
       } else {
-        setStatus('Connected')
+        setStatus('🟢 Connected')
         setLastSyncResult('Success')
+        setLastError('None')
         const now = new Date()
         setLastSyncTime(now.toLocaleDateString() + ' ' + now.toLocaleTimeString())
       }
     } catch (err: any) {
-      setStatus('Disconnected')
+      setStatus('🔴 Disconnected')
       setLastSyncResult('Failed')
-      setLastError(err?.message || 'Network Disconnected')
+      setLastError(err?.message || 'Network Error')
     }
   }, [])
 
@@ -123,7 +123,7 @@ export default function DeveloperDebugPanel() {
         employees: empCount,
         salaryMonths: salMonths,
         salaryRecords: salRecords.length,
-        salaryItems: salRecords.length * 5, // Estimated dynamic items
+        salaryItems: salRecords.length * 5,
         scheduleMonths: schedMonths,
         scheduleWeeks: schedWeeks.length,
         scheduleShifts: totalShifts,
@@ -131,7 +131,7 @@ export default function DeveloperDebugPanel() {
         settings: setRes.data ? 1 : 0,
       })
     } catch (err) {
-      console.warn('[DebugPanel] Failed to fetch counts:', err)
+      console.warn('[DebugPanel] Counts fetch error:', err)
     }
   }, [])
 
@@ -160,23 +160,23 @@ export default function DeveloperDebugPanel() {
     return () => clearInterval(timer)
   }, [pingSupabase, fetchCounts])
 
-  // Handle Manual Connection Test
+  // Handle Manual Connection Test (Select 1 or companies)
   const handleTestConnection = async () => {
     setTesting(true)
-    setStatus('Connecting...')
+    setStatus('🟡 Connecting...')
     try {
       const { error } = await supabase.from('companies').select('*').limit(1)
       if (error && error.code !== 'PGRST116') {
-        setStatus('Disconnected')
+        setStatus('🔴 Disconnected')
         setLastError(error.message)
         debugLogger.addLog('Test Connection', 'Failed', error.message)
       } else {
-        setStatus('Connected')
+        setStatus('🟢 Connected')
         setLastError('None')
         debugLogger.addLog('Test Connection', 'Success', 'Connection Success')
       }
     } catch (err: any) {
-      setStatus('Disconnected')
+      setStatus('🔴 Disconnected')
       setLastError(err?.message || 'Error')
       debugLogger.addLog('Test Connection', 'Failed', err?.message)
     } finally {
@@ -200,6 +200,8 @@ export default function DeveloperDebugPanel() {
     )
   }
 
+  const isConnected = status === '🟢 Connected'
+
   return (
     <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 99999, width: expanded ? 360 : 260 }}>
       <Card
@@ -212,7 +214,6 @@ export default function DeveloperDebugPanel() {
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
         }}
       >
-        {/* Header */}
         <CardHeader
           sx={{ p: 1.5, pb: expanded ? 1 : 1.5 }}
           title={
@@ -239,15 +240,15 @@ export default function DeveloperDebugPanel() {
         {!expanded && (
           <Box sx={{ px: 1.5, pb: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="body2" fontWeight={800} sx={{ color: isConnected ? '#4ADE80' : '#F87171' }}>
+                {status}
+              </Typography>
               <Chip
-                label={status}
+                label={isConnected ? 'Supabase' : 'Dexie (Offline)'}
                 size="small"
-                color={status === 'Connected' ? 'success' : status === 'Connecting...' ? 'warning' : 'error'}
+                color={isConnected ? 'primary' : 'default'}
                 sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
               />
-              <Typography variant="caption" color="#94A3B8">
-                Storage: Supabase
-              </Typography>
             </Stack>
           </Box>
         )}
@@ -257,7 +258,6 @@ export default function DeveloperDebugPanel() {
           <CardContent sx={{ p: 2, pt: 0, maxHeight: 480, overflowY: 'auto' }}>
             <Divider sx={{ borderColor: '#334155', my: 1 }} />
 
-            {/* Supabase Status */}
             <Typography variant="caption" color="#94A3B8" fontWeight={700}>
               【Supabase Status】
             </Typography>
@@ -265,20 +265,17 @@ export default function DeveloperDebugPanel() {
               <Typography variant="body2" fontWeight={700}>
                 Status:
               </Typography>
-              <Chip
-                label={status}
-                size="small"
-                color={status === 'Connected' ? 'success' : status === 'Connecting...' ? 'warning' : 'error'}
-                sx={{ height: 22, fontSize: 11, fontWeight: 800 }}
-              />
+              <Typography variant="body2" fontWeight={800} sx={{ color: isConnected ? '#4ADE80' : status === '🟡 Connecting...' ? '#FBBF24' : '#F87171' }}>
+                {status}
+              </Typography>
             </Stack>
 
             <Box sx={{ mt: 1 }}>
               <Typography variant="caption" color="#94A3B8" display="block" noWrap title={projectUrl}>
-                URL: {projectUrl}
+                Project URL: {projectUrl}
               </Typography>
               <Typography variant="caption" color="#94A3B8" display="block">
-                Storage Mode: <strong>Supabase</strong> (Dexie Fallback)
+                Storage: <strong style={{ color: isConnected ? '#60A5FA' : '#F87171' }}>{isConnected ? 'Supabase' : 'Dexie (Offline)'}</strong>
               </Typography>
               <Typography variant="caption" color="#94A3B8" display="block">
                 Last Sync: {lastSyncTime}
@@ -287,11 +284,10 @@ export default function DeveloperDebugPanel() {
                 Result: <span style={{ color: lastSyncResult === 'Success' ? '#4ADE80' : '#F87171' }}>{lastSyncResult}</span>
               </Typography>
               <Typography variant="caption" color="#94A3B8" display="block" noWrap title={lastError}>
-                Error: {lastError}
+                Last Error: {lastError}
               </Typography>
             </Box>
 
-            {/* Action Buttons */}
             <Stack direction="row" spacing={1} sx={{ mt: 1.5, mb: 1.5 }}>
               <Button
                 variant="contained"
@@ -320,7 +316,6 @@ export default function DeveloperDebugPanel() {
 
             <Divider sx={{ borderColor: '#334155', my: 1 }} />
 
-            {/* Data Counts */}
             <Typography variant="caption" color="#94A3B8" fontWeight={700}>
               【Database Counts】
             </Typography>
@@ -339,7 +334,6 @@ export default function DeveloperDebugPanel() {
 
             <Divider sx={{ borderColor: '#334155', my: 1.5 }} />
 
-            {/* Sync Log */}
             <Typography variant="caption" color="#94A3B8" fontWeight={700}>
               【Sync Log (Last 20)】
             </Typography>
