@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
-import { Schedule } from '../types/schedule'
+import { Schedule, ScheduleEmployee, Shift, ShiftType } from '../types/schedule'
 import { ScheduleWeekRow } from '../types/database'
-import { ScheduleMapper } from '../mappers/ScheduleMapper'
+import { ScheduleMapper, isValidUuid } from '../mappers/ScheduleMapper'
 import { DEFAULT_COMPANY_ID } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
@@ -27,6 +27,88 @@ const DEFAULT_SHIFT_TEMPLATES: ShiftTemplate[] = [
 
 export class SupabaseScheduleRepository {
   private tableName = 'schedule_weeks'
+
+  /**
+   * Helper to fetch and reconstruct the employees and shifts array for a list of schedules.
+   */
+  private async populateSchedulesWithShifts(schedules: Schedule[]): Promise<void> {
+    if (schedules.length === 0) return
+
+    const weekIds = schedules.map(s => s.id).filter(Boolean)
+
+    // 1. Fetch all shifts for these week ids
+    const { data: shiftsData, error: shiftsError } = await supabase
+      .from('schedule_shifts')
+      .select('*')
+      .in('schedule_week_id', weekIds)
+
+    if (shiftsError) {
+      console.error('[SupabaseScheduleRepository] Failed to fetch schedule_shifts:', shiftsError)
+      return
+    }
+
+    const shifts = shiftsData || []
+
+    // 2. Fetch all master employees to map employee_id -> name
+    const { data: empsData, error: empsError } = await supabase
+      .from('master_employees')
+      .select('id, name')
+
+    const empMap = new Map<string, string>()
+    if (empsError) {
+      console.error('[SupabaseScheduleRepository] Failed to fetch master_employees:', empsError)
+    } else if (empsData) {
+      empsData.forEach(e => empMap.set(e.id, e.name))
+    }
+
+    // 3. Group shifts by week_id
+    const shiftsByWeek = new Map<string, typeof shifts>()
+    shifts.forEach(s => {
+      const wId = s.schedule_week_id
+      if (!shiftsByWeek.has(wId)) {
+        shiftsByWeek.set(wId, [])
+      }
+      shiftsByWeek.get(wId)!.push(s)
+    })
+
+    // 4. Populate each schedule
+    for (const sch of schedules) {
+      const schShifts = shiftsByWeek.get(sch.id) || []
+      
+      // Group shifts by employee_id to build the ScheduleEmployee list
+      const empShiftsMap = new Map<string, any[]>()
+      schShifts.forEach(s => {
+        const empId = s.employee_id
+        if (!empShiftsMap.has(empId)) {
+          empShiftsMap.set(empId, [])
+        }
+        empShiftsMap.get(empId)!.push(s)
+      })
+
+      const schEmployees: ScheduleEmployee[] = []
+      empShiftsMap.forEach((empShifts, empId) => {
+        const empName = empMap.get(empId) || '未命名員工'
+        const employeeShifts: Shift[] = empShifts.map(s => ({
+          date: s.work_date,
+          type: s.shift_type as ShiftType,
+          startTime: s.start_time || undefined,
+          endTime: s.end_time || undefined,
+          remark: s.remarks || undefined
+        }))
+
+        schEmployees.push({
+          id: empId,
+          name: empName,
+          shifts: employeeShifts
+        })
+      })
+
+      // Sort employees by name to keep order consistent
+      schEmployees.sort((a, b) => a.name.localeCompare(b.name))
+
+      sch.employees = schEmployees
+    }
+  }
 
   async getMonths(): Promise<RepositoryResult<string[]>> {
     try {
@@ -87,6 +169,10 @@ export class SupabaseScheduleRepository {
       }
       const rows = (data || []) as ScheduleWeekRow[]
       const models = rows.map(row => ScheduleMapper.weekToModel(row))
+      
+      // Load shifts and reconstruct employees/shifts
+      await this.populateSchedulesWithShifts(models)
+      
       return successResult(models)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getWeeks')
@@ -108,7 +194,12 @@ export class SupabaseScheduleRepository {
       if (error) {
         return errorResult(error, this.tableName, 'getSchedule')
       }
-      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekRow))
+      const model = ScheduleMapper.weekToModel(data as ScheduleWeekRow)
+      
+      // Load shifts for this single schedule
+      await this.populateSchedulesWithShifts([model])
+      
+      return successResult(model)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getSchedule')
     }
@@ -196,8 +287,106 @@ export class SupabaseScheduleRepository {
         return errorResult(error, this.tableName, 'saveSchedule')
       }
 
+      const weekRowId = data.id
       console.log('④ Supabase Schedule Success Data:\n' + JSON.stringify(data, null, 2))
-      return successResult(ScheduleMapper.weekToModel(data as ScheduleWeekRow))
+
+      // 4. Resolve Master Employee UUIDs by name, creating them if missing
+      const { data: allMasterEmps } = await supabase
+        .from('master_employees')
+        .select('id, name')
+
+      const masterEmpMap = new Map<string, string>()
+      if (allMasterEmps) {
+        allMasterEmps.forEach(e => masterEmpMap.set(e.name.trim(), e.id))
+      }
+
+      const employeesToSave = schedule.employees || []
+      const resolvedEmployees: { id: string; name: string; shifts: Shift[] }[] = []
+
+      for (const emp of employeesToSave) {
+        let realUuid = ''
+        const trimmedName = emp.name.trim()
+
+        if (isValidUuid(emp.id)) {
+          realUuid = emp.id
+        } else if (masterEmpMap.has(trimmedName)) {
+          realUuid = masterEmpMap.get(trimmedName)!
+        } else {
+          // Dynamic insert into master_employees to preserve FK referential integrity
+          console.log(`🚀 [SupabaseScheduleRepository] Dynamically creating master_employee for: ${trimmedName}`)
+          const { data: newEmpRow, error: newEmpErr } = await supabase
+            .from('master_employees')
+            .insert([{
+              name: trimmedName,
+              company_id: DEFAULT_COMPANY_ID,
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select('id')
+            .single()
+
+          if (newEmpErr) {
+            console.error('Failed to auto-create master employee:', newEmpErr)
+            continue
+          }
+          realUuid = newEmpRow.id
+          masterEmpMap.set(trimmedName, realUuid)
+        }
+
+        resolvedEmployees.push({
+          id: realUuid,
+          name: trimmedName,
+          shifts: emp.shifts || []
+        })
+      }
+
+      // 5. Prepare schedule_shifts insertion rows
+      const shiftRows: any[] = []
+      for (const emp of resolvedEmployees) {
+        for (const shift of emp.shifts) {
+          shiftRows.push({
+            schedule_week_id: weekRowId,
+            employee_id: emp.id,
+            work_date: shift.date,
+            shift_type: shift.type,
+            start_time: shift.startTime || null,
+            end_time: shift.endTime || null,
+            is_day_off: shift.type === 'off',
+            remarks: shift.remark || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+
+      // 6. Delete old shifts for this week start fresh
+      const { error: delShiftsErr } = await supabase
+        .from('schedule_shifts')
+        .delete()
+        .eq('schedule_week_id', weekRowId)
+
+      if (delShiftsErr) {
+        console.error('❌ Failed to delete old schedule_shifts:', delShiftsErr)
+      }
+
+      // 7. Bulk insert new shifts
+      if (shiftRows.length > 0) {
+        console.log(`🚀 [SupabaseScheduleRepository] Inserting ${shiftRows.length} shifts to schedule_shifts...`)
+        const { error: insShiftsErr } = await supabase
+          .from('schedule_shifts')
+          .insert(shiftRows)
+
+        if (insShiftsErr) {
+          console.error('❌ Failed to insert schedule_shifts:', insShiftsErr)
+        }
+      }
+
+      // 8. Reconstruct fully populated schedule model to return
+      const savedModel = ScheduleMapper.weekToModel(data as ScheduleWeekRow)
+      await this.populateSchedulesWithShifts([savedModel])
+
+      return successResult(savedModel)
     } catch (err: unknown) {
       console.error('❌ Supabase saveSchedule Exception:', err)
       return errorResult(err, this.tableName, 'saveSchedule')
@@ -210,19 +399,16 @@ export class SupabaseScheduleRepository {
 
   async bulkSaveSchedules(schedules: Partial<Schedule>[]): Promise<RepositoryResult<Schedule[]>> {
     try {
-      const dbRows = schedules.map(s => ScheduleMapper.modelToWeekDbRow(s))
-      console.log('🚀 [SupabaseScheduleRepository.bulkSaveSchedules] UPSERT Payload:', JSON.stringify(dbRows, null, 2))
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .upsert(dbRows)
-        .select('*')
-
-      if (error) {
-        return errorResult(error, this.tableName, 'bulkSaveSchedules')
+      const savedModels: Schedule[] = []
+      for (const s of schedules) {
+        const res = await this.saveSchedule(s)
+        if (res.success && res.data) {
+          savedModels.push(res.data)
+        } else {
+          return errorResult(res.error || 'Bulk save failed at individual week', this.tableName, 'bulkSaveSchedules')
+        }
       }
-      const rows = (data || []) as ScheduleWeekRow[]
-      const models = rows.map(row => ScheduleMapper.weekToModel(row))
-      return successResult(models)
+      return successResult(savedModels)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'bulkSaveSchedules')
     }
@@ -230,6 +416,13 @@ export class SupabaseScheduleRepository {
 
   async deleteSchedule(id: string): Promise<RepositoryResult<boolean>> {
     try {
+      // 1. Delete associated shifts first
+      await supabase
+        .from('schedule_shifts')
+        .delete()
+        .eq('schedule_week_id', id)
+
+      // 2. Delete the week row
       const { error } = await supabase
         .from(this.tableName)
         .delete()
