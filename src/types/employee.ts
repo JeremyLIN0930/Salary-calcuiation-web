@@ -2,6 +2,8 @@ export type Store = '慶東門市' | '南醫門市'
 
 export interface Employee {
   id: string
+  /** 預留：未來與共用員工名單連結 */
+  employeeId?: string
   // 基本資料
   name: string
   month: string
@@ -42,9 +44,13 @@ export interface Employee {
   isNetManual: boolean
   // 備註
   remark: string
+  // 追蹤欄位
+  createdAt: string   // ISO 8601
+  updatedAt: string   // ISO 8601
 }
 
 export function createEmptyEmployee(): Employee {
+  const now = new Date().toISOString()
   return {
     id: Math.random().toString(36).slice(2),
     name: '',
@@ -81,6 +87,8 @@ export function createEmptyEmployee(): Employee {
     netSalary: 0,
     isNetManual: false,
     remark: '',
+    createdAt: now,
+    updatedAt: now,
   }
 }
 

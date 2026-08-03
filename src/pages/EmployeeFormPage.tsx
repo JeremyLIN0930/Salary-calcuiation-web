@@ -124,8 +124,19 @@ interface Props {
 
 export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
   const { dispatch } = useEmployees()
-  const [emp, setEmp] = useState<Employee>(editEmployee ? { ...editEmployee } : createEmptyEmployee())
-  const [errors, setErrors] = useState<{ name?: string; month?: string }>({})
+  const [emp, setEmp] = useState<Employee>(() => {
+    if (editEmployee) {
+      // Backfill audit fields for records created before PRD Ch.2
+      const now = new Date().toISOString()
+      return {
+        ...editEmployee,
+        createdAt: editEmployee.createdAt ?? now,
+        updatedAt: editEmployee.updatedAt ?? now,
+      }
+    }
+    return createEmptyEmployee()
+  })
+  const [errors, setErrors] = useState<{ name?: string; month?: string; store?: string }>({})
   const [saved, setSaved] = useState(false)
 
   // Auto-calc gross
@@ -159,11 +170,18 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
   const handleSave = () => {
     const e: typeof errors = {}
     if (!emp.name.trim()) e.name = '姓名為必填'
-    if (!emp.month) e.month = '月份為必填'
+    if (!emp.month)       e.month = '月份為必填'
+    if (!emp.store)       e.store = '門市為必填'
     if (Object.keys(e).length) { setErrors(e); return }
     setErrors({})
-    if (editEmployee) dispatch({ type: 'UPDATE', payload: emp })
-    else dispatch({ type: 'ADD', payload: emp })
+    const now = new Date().toISOString()
+    const record: Employee = {
+      ...emp,
+      updatedAt: now,
+      createdAt: emp.createdAt || now,
+    }
+    if (editEmployee) dispatch({ type: 'UPDATE', payload: record })
+    else              dispatch({ type: 'ADD',    payload: record })
     setSaved(true)
     setTimeout(onBack, 800)
   }
@@ -201,18 +219,21 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 onChange={e => set('month', e.target.value)} />
             </Grid>
             <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="store-select-label">門市</InputLabel>
+              <FormControl fullWidth size="small" error={!!errors.store}>
+                <InputLabel id="store-select-label">門市 *</InputLabel>
                 <Select
                   labelId="store-select-label"
                   value={emp.store}
-                  label="門市"
-                  onChange={e => set('store', e.target.value as Store)}
+                  label="門市 *"
+                  onChange={e => { set('store', e.target.value as Store); setErrors(p => ({ ...p, store: undefined })) }}
                 >
                   <MenuItem value=""><em>請選擇門市</em></MenuItem>
                   <MenuItem value="慶東門市">慶東門市</MenuItem>
                   <MenuItem value="南醫門市">南醫門市</MenuItem>
                 </Select>
+                {errors.store && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.store}</Typography>
+                )}
               </FormControl>
             </Grid>
             <Grid item xs={6}>
