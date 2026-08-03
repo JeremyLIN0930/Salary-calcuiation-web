@@ -41,8 +41,8 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   const rowsHtml = displayEmployees.map(emp => {
     const shiftCells = weekDaysInfo.map(wd => {
       const shift = emp.shifts.find(s => s.date === wd.dateStr)
-      if (!shift) {
-        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 6px 2px;">-</td>`
+      if (!shift || !shift.type || shift.type.trim() === '') {
+        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 6px 2px;"></td>`
       }
 
       if (shift.type === 'work') {
@@ -62,7 +62,10 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
         sick: '病',
         personal: '事',
       }
-      const label = labelMap[shift.type] || '休'
+      const label = labelMap[shift.type] || ''
+      if (!label) {
+        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 6px 2px;"></td>`
+      }
       const isRed = shift.type === 'off' || shift.type === 'personal'
       return `<td style="border: 1px solid #000; text-align: center; font-size: 15px; font-weight: 900; color: ${isRed ? '#c00' : '#000'}; padding: 6px 2px;">${label}</td>`
     }).join('')
