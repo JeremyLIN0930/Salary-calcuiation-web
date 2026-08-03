@@ -26,14 +26,13 @@ export class SupabaseEmployeeRepository {
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('① Supabase SELECT Error:', error)
+        console.error('Supabase SELECT Error:', error)
         return errorResult(error, this.tableName, 'getAll')
       }
 
-      console.log('① Supabase SELECT Raw Data:', data)
+      console.log("Supabase SELECT", data)
       const rows = (data || []) as MasterEmployeeRow[]
       const models = rows.map(row => EmployeeMapper.toModel(row))
-      console.log('② Mapped MasterEmployees:', models)
       return successResult(models)
     } catch (err: unknown) {
       console.error('① Supabase SELECT Exception:', err)

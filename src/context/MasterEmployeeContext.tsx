@@ -93,12 +93,13 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
         console.log('[MasterEmployee] Loading from Supabase master_employees...')
         const result = await supabaseEmployeeRepository.getAll()
         if (result.success && result.data) {
-          console.log('③ Context setEmployees:', result.data)
+          console.log("Employees From Repository", result.data)
+          console.log("State Before Set", state)
           dispatch({ type: 'SET', payload: result.data as MasterEmployee[] })
+          console.log("State After Set", result.data)
         } else {
           console.error('[MasterEmployee] Supabase load failed:', result.error)
-          const fallback = EmployeeRepository.getAll()
-          dispatch({ type: 'SET', payload: fallback })
+          dispatch({ type: 'SET', payload: [] })
         }
       } else {
         const dexieData = EmployeeRepository.getAll()

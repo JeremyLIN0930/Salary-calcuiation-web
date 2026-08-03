@@ -17,20 +17,22 @@ export function isValidUuid(val?: string | null): boolean {
 }
 
 const STORE_NAME_MAP: Record<string, string> = {
-  [DEFAULT_STORE_ID]: '慶東門市',
+  [DEFAULT_STORE_ID]: '總店',
 }
 
 export class EmployeeMapper {
   static toModel(row: MasterEmployeeRow): MasterEmployee {
+    console.log("Before Mapping", row)
+
     let resolvedStoreName = row.stores?.store_name || ''
     if (!resolvedStoreName && row.store_id) {
-      resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '慶東門市' : row.store_id)
+      resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '總店' : row.store_id)
     }
     if (!resolvedStoreName) {
-      resolvedStoreName = '慶東門市'
+      resolvedStoreName = '總店'
     }
 
-    return {
+    const employee: MasterEmployee = {
       id: row.id || '',
       name: row.name || '',
       store: resolvedStoreName,
@@ -39,6 +41,9 @@ export class EmployeeMapper {
       createdAt: row.created_at || new Date().toISOString(),
       updatedAt: row.updated_at || new Date().toISOString(),
     }
+
+    console.log("After Mapping", employee)
+    return employee
   }
 
   static toDbRow(model: Partial<MasterEmployee>): MasterEmployeeRow {
