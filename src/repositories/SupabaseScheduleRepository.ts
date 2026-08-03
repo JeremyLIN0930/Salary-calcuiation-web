@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { Schedule } from '../types/schedule'
 import { ScheduleWeekRow } from '../types/database'
 import { ScheduleMapper } from '../mappers/ScheduleMapper'
+import { DEFAULT_COMPANY_ID } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export interface ShiftTemplate {
@@ -115,7 +116,62 @@ export class SupabaseScheduleRepository {
 
   async saveSchedule(schedule: Partial<Schedule>): Promise<RepositoryResult<Schedule>> {
     try {
+      // 1. Extract year and month from weekStart (e.g., "2026-08-03" -> year 2026, month 8)
+      const startDateStr = schedule.weekStart || new Date().toISOString().slice(0, 10)
+      const yearVal  = parseInt(startDateStr.slice(0, 4), 10) || new Date().getFullYear()
+      const monthNum = parseInt(startDateStr.slice(5, 7), 10) || (new Date().getMonth() + 1)
+
+      // 2. Query schedule_months to find existing parent month row
+      let scheduleMonthId: string | null = null
+      const { data: existingMonth, error: findMonthErr } = await supabase
+        .from('schedule_months')
+        .select('id')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('year', yearVal)
+        .eq('month', monthNum)
+        .maybeSingle()
+
+      if (findMonthErr) {
+        console.warn('⚠️ Query schedule_months warning:', findMonthErr.message)
+      }
+
+      if (existingMonth?.id) {
+        scheduleMonthId = existingMonth.id
+        console.log('✅ Found existing schedule_months ID:', scheduleMonthId)
+      } else {
+        // Create new schedule_months row
+        const monthPayload = {
+          company_id: DEFAULT_COMPANY_ID,
+          year: yearVal,
+          month: monthNum,
+          status: 'draft',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        console.log('🚀 [SupabaseScheduleRepository] Creating schedule_months parent row:', monthPayload)
+        const { data: newMonth, error: createMonthErr } = await supabase
+          .from('schedule_months')
+          .insert([monthPayload])
+          .select('id')
+          .single()
+
+        if (createMonthErr) {
+          console.error('code:', createMonthErr.code)
+          console.error('message:', createMonthErr.message)
+          console.error('details:', createMonthErr.details)
+          console.error('hint:', createMonthErr.hint)
+          console.error('status:', (createMonthErr as any).status || 'N/A')
+          return errorResult(createMonthErr, 'schedule_months', 'saveSchedule')
+        }
+
+        scheduleMonthId = newMonth.id
+        console.log('✅ Successfully created schedule_months ID:', scheduleMonthId)
+      }
+
+      // 3. Prepare schedule_weeks row with schedule_month_id
       const dbRow = ScheduleMapper.modelToWeekDbRow(schedule)
+      dbRow.schedule_month_id = scheduleMonthId
+
       console.log('Schedule INSERT/UPSERT Payload', dbRow)
       console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
 

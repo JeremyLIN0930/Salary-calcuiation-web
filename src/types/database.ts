@@ -91,8 +91,9 @@ export interface SalaryMonthRow {
 export interface ScheduleMonthRow {
   id?: string
   company_id?: string | null
-  month: string
+  store_id?: string | null
   year?: number | null
+  month?: number | string | null
   notes?: string | null
   status?: string | null
   created_at?: string | null
@@ -101,6 +102,8 @@ export interface ScheduleMonthRow {
 
 export interface ScheduleWeekRow {
   id?: string
+  schedule_month_id?: string | null
+  week_no?: number | null
   start_date?: string | null
   end_date?: string | null
   notes?: string | null
