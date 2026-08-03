@@ -284,6 +284,51 @@ export class SupabaseScheduleRepository {
     }
   }
 
+  async getScheduleByMonthStoreWeek(storeId: string, year: number, month: number, weekNo: number): Promise<RepositoryResult<Schedule>> {
+    try {
+      const { data: dbStores } = await supabase
+        .from('stores')
+        .select('id, store_code, store_name')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+
+      let resolvedStoreId = storeId
+      if (dbStores && dbStores.length > 0) {
+        if (!isValidUuid(storeId)) {
+          const match = dbStores.find(s => s.store_code === storeId || s.store_name === storeId)
+          if (match) resolvedStoreId = match.id
+        }
+      }
+
+      const { data: parentMonth } = await supabase
+        .from('schedule_months')
+        .select('id')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('store_id', resolvedStoreId)
+        .eq('year', year)
+        .eq('month', month)
+        .maybeSingle()
+
+      if (!parentMonth?.id) {
+        return errorResult('Schedule month not found', this.tableName, 'getScheduleByMonthStoreWeek')
+      }
+
+      const { data: weekData, error: weekErr } = await supabase
+        .from(this.tableName)
+        .select('*')
+        .eq('schedule_month_id', parentMonth.id)
+        .eq('week_no', weekNo)
+        .single()
+
+      if (weekErr || !weekData) {
+        return errorResult(weekErr || 'Schedule week not found', this.tableName, 'getScheduleByMonthStoreWeek')
+      }
+
+      return this.getSchedule(weekData.id)
+    } catch (err: unknown) {
+      return errorResult(err, this.tableName, 'getScheduleByMonthStoreWeek')
+    }
+  }
+
   async saveSchedule(schedule: Partial<Schedule>): Promise<RepositoryResult<Schedule>> {
     try {
       // 1. Extract year and month from weekStart (e.g., "2026-08-03" -> year 2026, month 8)

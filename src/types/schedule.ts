@@ -23,6 +23,7 @@ export interface Schedule {
   storeName: string   // 店名, e.g. '慶東門市' | '南醫門市'
   weekStart: string   // YYYY-MM-DD (Monday)
   weekEnd: string     // YYYY-MM-DD (Sunday)
+  weekNo?: number     // 週次 (e.g., 1, 2, 3, 4, 5)
   employees: ScheduleEmployee[]
   remark: string
   createdAt: string

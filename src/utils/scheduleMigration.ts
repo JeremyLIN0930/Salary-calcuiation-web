@@ -38,8 +38,17 @@ export function groupSchedulesByMonth(schedules: Schedule[]): ScheduleMonthGroup
 
   return sortedMonthKeys.map(monthKey => {
     const monthSchedules = map.get(monthKey) || []
-    // Sort weekly schedules inside month by weekStart ascending (Week 1, Week 2...)
-    monthSchedules.sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+    // Sort weekly schedules inside month by weekNo ascending, then storeCode/storeName
+    monthSchedules.sort((a: Schedule, b: Schedule) => {
+      const weekNoA = a.weekNo || Math.min(Math.ceil(parseInt((a.weekStart || '').slice(8, 10), 10) / 7), 5) || 1
+      const weekNoB = b.weekNo || Math.min(Math.ceil(parseInt((b.weekStart || '').slice(8, 10), 10) / 7), 5) || 1
+      if (weekNoA !== weekNoB) {
+        return weekNoA - weekNoB
+      }
+      const codeA = a.storeCode || a.storeName || ''
+      const codeB = b.storeCode || b.storeName || ''
+      return codeA.localeCompare(codeB)
+    })
 
     const [y, m] = monthKey.split('-')
     const displayTitle = y && m ? `${y} 年 ${m} 月` : monthKey

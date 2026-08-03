@@ -86,7 +86,8 @@ export function getScheduleFileName(
   const storePart = store ? `_${store}` : ''
 
   if (type === 'single') {
-    const weekStr = weekIndex !== undefined ? `_第${weekIndex}週` : ''
+    const wNo = schedule.weekNo || weekIndex || 1
+    const weekStr = `_第${wNo}週`
     return `排班表_${ym}${weekStr}${storePart}.pdf`
   }
 

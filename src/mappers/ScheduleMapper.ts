@@ -36,13 +36,18 @@ export class ScheduleMapper {
     const storeCode = parsed.storeCode || (row as any).stores?.store_code || (storeName.includes('南醫') ? '002' : '001')
     const storeId = parsed.storeId || (row as any).store_id || (storeCode === '002' ? 'c468eee2-8135-5b1b-9bb1-77d73325ecef' : 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb')
 
+    const startDateVal = row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10)
+    const dayOfMonth = parseInt(startDateVal.slice(8, 10), 10) || 1
+    const computedWeekNo = row.week_no || parsed.weekNo || Math.min(Math.ceil(dayOfMonth / 7), 5)
+
     return {
       id: row.id || parsed.id || '',
       storeId,
       storeCode,
       storeName,
-      weekStart: row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10),
+      weekStart: startDateVal,
       weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
+      weekNo: computedWeekNo,
       employees: (row as any).employees || parsed.employees || [],
       remark: remarkVal,
       createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),

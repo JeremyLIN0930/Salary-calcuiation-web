@@ -640,8 +640,9 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         />
       ) : (
         <Grid container spacing={2.5}>
-          {filteredSchedulesInMonth.map((sched, index) => {
+          {filteredSchedulesInMonth.map((sched) => {
             const isSelected = selectedWeekIds.includes(sched.id)
+            const weekNo = sched.weekNo || Math.min(Math.ceil(parseInt((sched.weekStart || '').slice(8, 10), 10) / 7), 5) || 1
             return (
               <Grid item xs={12} key={sched.id}>
                 <Card
@@ -664,7 +665,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                         />
                         <Box>
                           <Typography variant="h6" fontWeight={800} color="text.primary">
-                            第 {index + 1} 週 ({sched.weekStart} ～ {sched.weekEnd})
+                            第 {weekNo} 週 ({sched.weekStart} ～ {sched.weekEnd})
                           </Typography>
                           <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                             <Chip label={formatStoreTitle(sched)} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
@@ -678,7 +679,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={(e) => handleExportSingleWeekPDF(sched, index + 1, e)}
+                          onClick={(e) => handleExportSingleWeekPDF(sched, weekNo, e)}
                           disabled={exporting}
                           sx={{ borderRadius: 2, height: 44, fontWeight: 700 }}
                         >
