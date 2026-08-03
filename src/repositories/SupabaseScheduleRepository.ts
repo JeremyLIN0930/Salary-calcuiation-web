@@ -30,8 +30,8 @@ const DEFAULT_SHIFT_TEMPLATES: ShiftTemplate[] = [
 
 // ── Repository ────────────────────────────────────────────────────────────────
 export class SupabaseScheduleRepository {
-  // ✅ schedule_shifts stores the actual weekly shift data (per schedule/week)
-  private tableName = 'schedule_shifts'
+  // ✅ schedule_weeks stores weekly schedule data (weekStart, weekEnd, employees, shifts)
+  private tableName = 'schedule_weeks'
   // shift_templates is not in Supabase DB — always use defaults as fallback
   private templateTable = 'shift_templates'
 

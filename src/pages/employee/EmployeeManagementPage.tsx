@@ -26,7 +26,7 @@ const DelSvg = () => (
 )
 
 export default function EmployeeManagementPage() {
-  const { state, dispatch } = useMasterEmployees()
+  const { state, addEmployee, updateEmployee, deleteEmployee } = useMasterEmployees()
   const { showSnackbar }    = useSnackbar()
 
   const [dialogOpen, setDialogOpen]     = useState(false)
@@ -59,7 +59,7 @@ export default function EmployeeManagementPage() {
     setDialogOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       setErrors({ name: '姓名為必填' })
       return
@@ -75,8 +75,12 @@ export default function EmployeeManagementPage() {
         remark,
         updatedAt: now,
       }
-      dispatch({ type: 'UPDATE', payload: updated })
-      showSnackbar('員工資料已成功更新！')
+      const ok = await updateEmployee(updated)
+      if (ok) {
+        showSnackbar('員工資料已成功更新！')
+      } else {
+        showSnackbar('更新失敗，請確認網路連線或重試。', 'error')
+      }
     } else {
       const newEmp: MasterEmployee = {
         id: Math.random().toString(36).slice(2),
@@ -87,17 +91,25 @@ export default function EmployeeManagementPage() {
         createdAt: now,
         updatedAt: now,
       }
-      dispatch({ type: 'ADD', payload: newEmp })
-      showSnackbar('全新員工資料已成功建立！')
+      const ok = await addEmployee(newEmp)
+      if (ok) {
+        showSnackbar('全新員工資料已成功建立！')
+      } else {
+        showSnackbar('新增失敗，請確認網路連線或重試。', 'error')
+      }
     }
 
     setDialogOpen(false)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteTarget) {
-      dispatch({ type: 'DELETE', payload: deleteTarget.id })
-      showSnackbar('員工資料已刪除！')
+      const ok = await deleteEmployee(deleteTarget.id)
+      if (ok) {
+        showSnackbar('員工資料已刪除！')
+      } else {
+        showSnackbar('刪除失敗，請確認網路連線或重試。', 'error')
+      }
       setDeleteTarget(null)
     }
   }
