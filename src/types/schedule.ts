@@ -18,7 +18,8 @@ export interface ScheduleEmployee {
 
 export interface Schedule {
   id: string
-  storeId: string     // 店號, e.g. '101'
+  storeId: string     // 店號, e.g. '101' or UUID
+  storeCode?: string  // 門市編號, e.g. '001' | '002'
   storeName: string   // 店名, e.g. '慶東門市' | '南醫門市'
   weekStart: string   // YYYY-MM-DD (Monday)
   weekEnd: string     // YYYY-MM-DD (Sunday)
@@ -26,6 +27,23 @@ export interface Schedule {
   remark: string
   createdAt: string
   updatedAt: string
+}
+
+export function formatStoreTitle(sch?: { storeCode?: string; storeId?: string; storeName?: string } | null): string {
+  if (!sch) return ''
+  const name = sch.storeName || '門市'
+  const isUuid = (str?: string) => typeof str === 'string' && str.includes('-') && str.length > 20
+  
+  let code = sch.storeCode
+  if (!code && sch.storeId && !isUuid(sch.storeId)) {
+    code = sch.storeId
+  }
+  if (!code) {
+    if (name.includes('慶東')) code = '001'
+    else if (name.includes('南醫')) code = '002'
+  }
+
+  return code ? `【${code}】${name}` : name
 }
 
 // Helper to get ShiftType label

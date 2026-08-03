@@ -10,6 +10,7 @@ import PageContainer from '../components/common/PageContainer'
 import SectionCard from '../components/common/SectionCard'
 import EmptyState from '../components/common/EmptyState'
 import { SyncService } from '../services/supabase/sync.service'
+import { formatStoreTitle } from '../types/schedule'
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
@@ -395,7 +396,7 @@ export default function DashboardPage({ onNavigate }: Props) {
                   >
                     <Box>
                       <Typography variant="body1" fontWeight={800}>
-                        【{sch.storeId}】{sch.storeName}
+                        {formatStoreTitle(sch)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {sch.weekStart} ～ {sch.weekEnd}

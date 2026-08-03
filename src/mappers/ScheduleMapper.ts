@@ -17,11 +17,12 @@ export function isValidUuid(val?: string | null): boolean {
 export class ScheduleMapper {
   static weekToModel(row: ScheduleWeekRow): Schedule {
     let remarkVal = ''
+    let parsed: any = {}
     if (row.notes) {
       const trimmed = row.notes.trim()
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
-          const parsed = JSON.parse(trimmed)
+          parsed = JSON.parse(trimmed)
           remarkVal = typeof parsed.remark === 'string' ? parsed.remark : ''
         } catch {
           remarkVal = ''
@@ -31,16 +32,21 @@ export class ScheduleMapper {
       }
     }
 
+    const storeName = parsed.storeName || (row as any).stores?.store_name || '慶東門市'
+    const storeCode = parsed.storeCode || (row as any).stores?.store_code || (storeName.includes('南醫') ? '002' : '001')
+    const storeId = parsed.storeId || (row as any).store_id || (storeCode === '002' ? 'c468eee2-8135-5b1b-9bb1-77d73325ecef' : 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb')
+
     return {
-      id: row.id || '',
-      storeId: 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb',
-      storeName: '慶東門市',
-      weekStart: row.start_date || new Date().toISOString().slice(0, 10),
-      weekEnd: row.end_date || new Date().toISOString().slice(0, 10),
-      employees: [],
+      id: row.id || parsed.id || '',
+      storeId,
+      storeCode,
+      storeName,
+      weekStart: row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10),
+      weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
+      employees: parsed.employees || [],
       remark: remarkVal,
-      createdAt: row.created_at || new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString(),
+      createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),
+      updatedAt: row.updated_at || parsed.updatedAt || new Date().toISOString(),
     }
   }
 

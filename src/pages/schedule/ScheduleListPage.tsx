@@ -7,7 +7,7 @@ import {
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
 import { useSnackbar } from '../../context/SnackbarContext'
-import { Schedule, ScheduleEmployee } from '../../types/schedule'
+import { Schedule, ScheduleEmployee, formatStoreTitle } from '../../types/schedule'
 import CreateScheduleDialog from './CreateScheduleDialog'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
@@ -667,7 +667,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                             第 {index + 1} 週 ({sched.weekStart} ～ {sched.weekEnd})
                           </Typography>
                           <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                            <Chip label={sched.storeName || '門市'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                            <Chip label={formatStoreTitle(sched)} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
                             <Chip label={`${sched.employees.length} 位員工`} size="small" color="primary" variant="filled" sx={{ fontWeight: 700 }} />
                           </Stack>
                         </Box>

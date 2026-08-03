@@ -8,7 +8,7 @@ import { useSchedule } from '../../context/ScheduleContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { PDFService } from '../../services/pdfService'
 import PDFPreviewModal from '../../components/common/PDFPreviewModal'
-import { Schedule, ScheduleEmployee } from '../../types/schedule'
+import { Schedule, ScheduleEmployee, formatStoreTitle } from '../../types/schedule'
 import ScheduleTable from './ScheduleTable'
 
 const ArrowBackSvg = () => (
@@ -242,7 +242,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="h6" fontWeight={800} color="primary.main">
-                  {schedule.storeName} — 週排班表
+                  {formatStoreTitle(schedule)} — 週排班表
                 </Typography>
                 {/* Save Status Badge */}
                 {isSaving ? (
