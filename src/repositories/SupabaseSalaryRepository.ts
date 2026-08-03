@@ -57,7 +57,7 @@ export class SupabaseSalaryRepository {
       }
       console.log('🚀 [SupabaseSalaryRepository.createMonth] INSERT Payload:\n' + JSON.stringify(dbRow, null, 2))
       
-      const result = await supabase.from(this.tableName).insert([dbRow])
+      const result = await supabase.from(this.tableName).insert([dbRow]).select('*').single()
       console.log('④ Supabase createMonth Result:', result)
 
       if (result.error) {
@@ -162,11 +162,9 @@ export class SupabaseSalaryRepository {
       const dbRow = SalaryMapper.toDbRow(salaryData)
       console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
 
-      const result = await supabase
-        .from(this.tableName)
-        .upsert([dbRow])
-        .select('*')
-        .single()
+      const result = dbRow.id
+        ? await supabase.from(this.tableName).upsert([dbRow]).select('*').single()
+        : await supabase.from(this.tableName).insert([dbRow]).select('*').single()
 
       console.log('④ Supabase Result:', result)
 
