@@ -9,6 +9,10 @@ import { useEmployees } from '../context/EmployeeContext'
 import { useSnackbar } from '../context/SnackbarContext'
 import { Employee } from '../types/employee'
 import { PDFService } from '../services/pdfService'
+import PageHeader from '../components/common/PageHeader'
+import PageContainer from '../components/common/PageContainer'
+import EmptyState from '../components/common/EmptyState'
+import ConfirmDialog from '../components/common/ConfirmDialog'
 
 const AddSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -94,41 +98,36 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const totalNet = state.employees.reduce((s, e) => s + (e.netSalary ?? 0), 0)
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto', px: 2, pt: 3, pb: 10 }}>
+    <PageContainer>
       {/* ── Page Header ── */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={900} color="primary.main">
-            💰 薪資管理
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            建立、管理與匯出員工薪資資料。
-          </Typography>
-        </Box>
+      <PageHeader
+        title="💰 薪資管理"
+        subtitle="建立、管理與匯出員工薪資資料。"
+        action={
+          <>
+            <Button
+              variant="outlined"
+              size="medium"
+              disabled={state.employees.length === 0 || exporting}
+              onClick={handleExport}
+              sx={{ borderRadius: 2.5, px: 2, fontWeight: 700 }}
+            >
+              {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
+              匯出全部 PDF
+            </Button>
 
-        <Stack direction="row" spacing={1.5}>
-          <Button
-            variant="outlined"
-            size="medium"
-            disabled={state.employees.length === 0 || exporting}
-            onClick={handleExport}
-            sx={{ borderRadius: 2.5, px: 2, fontWeight: 700 }}
-          >
-            {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
-            匯出全部 PDF
-          </Button>
-
-          <Button
-            variant="contained"
-            size="medium"
-            onClick={onAddEmployee}
-            sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700, fontSize: 15 }}
-          >
-            <AddSvg />
-            新增薪資
-          </Button>
-        </Stack>
-      </Box>
+            <Button
+              variant="contained"
+              size="medium"
+              onClick={onAddEmployee}
+              sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700, fontSize: 15 }}
+            >
+              <AddSvg />
+              新增薪資
+            </Button>
+          </>
+        }
+      />
 
       {/* ── Summary & Search Bar ── */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} alignItems="center" justifyContent="space-between">
@@ -167,24 +166,16 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
 
       {/* ── Employee Salary List ── */}
       {state.employees.length === 0 ? (
-        <Card variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 4, bgcolor: '#FAFAFA' }}>
-          <Typography variant="h6" fontWeight={700} color="text.secondary" sx={{ mb: 1 }}>
-            目前沒有薪資資料
-          </Typography>
-          <Typography variant="body2" color="text.disabled" sx={{ mb: 3 }}>
-            點擊「新增薪資」按鈕，建立第一筆員工薪資。
-          </Typography>
-          <Button variant="contained" onClick={onAddEmployee} sx={{ borderRadius: 2.5, px: 3, fontWeight: 700 }}>
-            <AddSvg />
-            新增薪資
-          </Button>
-        </Card>
+        <EmptyState
+          title="目前沒有薪資資料"
+          subtitle="點擊「新增薪資」按鈕，建立第一筆員工薪資。"
+          actionLabel="新增薪資"
+          onAction={onAddEmployee}
+        />
       ) : filteredEmployees.length === 0 ? (
-        <Card variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 4 }}>
-          <Typography variant="body1" color="text.secondary">
-            找不到符合「{search}」的薪資資料
-          </Typography>
-        </Card>
+        <EmptyState
+          title={`找不到符合「${search}」的薪資資料`}
+        />
       ) : (
         <Grid container spacing={2}>
           {filteredEmployees.map(emp => (
@@ -201,38 +192,22 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       )}
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog
+      <ConfirmDialog
         open={!!deleteTarget}
+        title="確定刪除此薪資資料？"
+        content={`即將刪除「${deleteTarget?.name || '未命名'}」${deleteTarget?.month} 的薪資資料，刪除後無法復原。`}
+        confirmText="確定刪除"
+        confirmColor="error"
         onClose={() => setDeleteTarget(null)}
-        PaperProps={{ sx: { borderRadius: 3, minWidth: 320 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 800 }}>確定刪除此薪資資料？</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            即將刪除「{deleteTarget?.name || '未命名'}」{deleteTarget?.month} 的薪資資料，刪除後無法復原。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setDeleteTarget(null)} sx={{ borderRadius: 2 }}>
-            取消
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 2 }}
-            onClick={() => {
-              if (deleteTarget) {
-                dispatch({ type: 'DELETE', payload: deleteTarget.id })
-                showSnackbar(`已刪除「${deleteTarget.name}」的薪資資料`, 'info')
-              }
-              setDeleteTarget(null)
-            }}
-          >
-            確定刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        onConfirm={() => {
+          if (deleteTarget) {
+            dispatch({ type: 'DELETE', payload: deleteTarget.id })
+            showSnackbar(`已刪除「${deleteTarget.name}」的薪資資料`, 'info')
+          }
+          setDeleteTarget(null)
+        }}
+      />
+    </PageContainer>
   )
 }
 

@@ -46,23 +46,8 @@ const SaveSvg = () => (
   </svg>
 )
 
-function SectionCard({ title, icon, children }: {
-  title: string; icon: string; children: React.ReactNode
-}) {
-  return (
-    <Card variant="outlined" sx={{ borderRadius: 4, mb: 3, p: 1 }}>
-      <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.5 }}>
-          <Typography sx={{ mr: 1, fontSize: 20 }}>{icon}</Typography>
-          <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontSize: 18 }}>
-            {title}
-          </Typography>
-        </Box>
-        {children}
-      </CardContent>
-    </Card>
-  )
-}
+import SectionCard from '../components/common/SectionCard'
+import SummaryCard from '../components/common/SummaryCard'
 
 function MoneyField({ label, value, onChange }: {
   label: string; value: number; onChange: (v: number) => void
@@ -218,36 +203,27 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         {/* ── 3 Summary Highlight Cards ── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#EFF6FF', borderColor: '#BFDBFE' }}>
-              <Typography variant="caption" fontWeight={700} color="primary.main">
-                應發薪資
-              </Typography>
-              <Typography variant="h5" fontWeight={900} color="primary.main" sx={{ mt: 0.5 }}>
-                $ {(emp.grossSalary ?? 0).toLocaleString('zh-TW')}
-              </Typography>
-            </Card>
+            <SummaryCard
+              title="應發薪資"
+              value={`$ ${(emp.grossSalary ?? 0).toLocaleString('zh-TW')}`}
+              color="primary"
+            />
           </Grid>
 
           <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#FFF1F2', borderColor: '#FECDD3' }}>
-              <Typography variant="caption" fontWeight={700} color="error.main">
-                代扣合計
-              </Typography>
-              <Typography variant="h5" fontWeight={900} color="error.main" sx={{ mt: 0.5 }}>
-                − $ {(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}
-              </Typography>
-            </Card>
+            <SummaryCard
+              title="代扣合計"
+              value={`− $ ${(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}`}
+              color="error"
+            />
           </Grid>
 
           <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ borderRadius: 3, p: 2, bgcolor: '#1A237E', color: 'white' }}>
-              <Typography variant="caption" fontWeight={700} sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                實發金額
-              </Typography>
-              <Typography variant="h5" fontWeight={900} sx={{ mt: 0.5 }}>
-                $ {(emp.netSalary ?? 0).toLocaleString('zh-TW')}
-              </Typography>
-            </Card>
+            <SummaryCard
+              title="實發金額"
+              value={`$ ${(emp.netSalary ?? 0).toLocaleString('zh-TW')}`}
+              color="indigo"
+            />
           </Grid>
         </Grid>
 
