@@ -61,10 +61,10 @@ export class SupabaseScheduleRepository {
       empsData.forEach(e => empMap.set(e.id, e.name))
     }
 
-    // 3. Group shifts by week_id
+    // 3. Group shifts by schedule_week_id
     const shiftsByWeek = new Map<string, typeof shifts>()
     shifts.forEach(s => {
-      const wId = s.schedule_week_id
+      const wId = (s.schedule_week_id || '').toLowerCase()
       if (!shiftsByWeek.has(wId)) {
         shiftsByWeek.set(wId, [])
       }
@@ -73,7 +73,8 @@ export class SupabaseScheduleRepository {
 
     // 4. Populate each schedule
     for (const sch of schedules) {
-      const schShifts = shiftsByWeek.get(sch.id) || []
+      const schIdKey = (sch.id || '').toLowerCase()
+      const schShifts = shiftsByWeek.get(schIdKey) || []
       
       // Group shifts by employee_id to build the ScheduleEmployee list
       const empShiftsMap = new Map<string, any[]>()
@@ -107,7 +108,11 @@ export class SupabaseScheduleRepository {
       schEmployees.sort((a, b) => a.name.localeCompare(b.name))
 
       sch.employees = schEmployees
-      console.log("populateSchedulesWithShifts result", schEmployees)
+
+      console.log("Schedule ID", sch.id)
+      console.log("Shifts", schShifts)
+      console.log("Employees", schEmployees)
+      console.log("Returned Schedule", sch)
     }
   }
 
