@@ -19,11 +19,9 @@ interface Props {
 
 const QUICK_SHIFTS = [
   { label: '🌞 早班', type: 'work' as ShiftType, start: '07:00', end: '15:00' },
-  { label: '🌇 晚班', type: 'work' as ShiftType, start: '15:00', end: '23:00' },
-  { label: '🏢 全天', type: 'work' as ShiftType, start: '09:00', end: '18:00' },
-  { label: '🌙 夜班', type: 'work' as ShiftType, start: '22:00', end: '06:00' },
-  { label: '🏖 休',   type: 'off' as ShiftType },
-  { label: '📅 公',   type: 'public' as ShiftType },
+  { label: '🌆 晚班', type: 'work' as ShiftType, start: '15:00', end: '23:00' },
+  { label: '🌙 大夜班', type: 'work' as ShiftType, start: '23:00', end: '07:00' },
+  { label: '🛌 休',   type: 'off' as ShiftType },
   { label: '🌿 特',   type: 'annual' as ShiftType },
   { label: '🤒 病',   type: 'sick' as ShiftType },
   { label: '📝 事',   type: 'personal' as ShiftType },

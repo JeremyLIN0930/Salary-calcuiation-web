@@ -2,9 +2,10 @@ import React, { useState, useMemo } from 'react'
 import {
   Box, Typography, Button, TextField, Stack, Paper,
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Card,
+  CircularProgress, Card, FormControl, Select, MenuItem, InputLabel,
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
+import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { PDFService } from '../../services/pdfService'
 import PDFPreviewModal from '../../components/common/PDFPreviewModal'
@@ -41,10 +42,41 @@ interface Props {
 
 export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: Props) {
   const { state, dispatch } = useSchedule()
+  const { state: masterState } = useMasterEmployees()
+  const { showSnackbar } = useSnackbar()
+
   const [schedule, setSchedule] = useState<Schedule>(initialSchedule)
   const [toast, setToast]       = useState('')
   const [exporting, setExporting] = useState(false)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
+
+  // Master Employee selection for quick add
+  const [selectedMasterEmpId, setSelectedMasterEmpId] = useState('')
+
+  const handleImportMasterEmployee = () => {
+    if (!selectedMasterEmpId) return
+    const masterEmp = masterState.employees.find(m => m.id === selectedMasterEmpId)
+    if (!masterEmp) return
+
+    const empName = masterEmp.name.trim()
+    const isDuplicate = schedule.employees.some(e => e.name.trim() === empName)
+
+    if (isDuplicate) {
+      showSnackbar('此員工已在本週排班中。', 'warning')
+      return
+    }
+
+    const newScheduleEmp: ScheduleEmployee = {
+      id: Math.random().toString(36).slice(2),
+      name: empName,
+      shifts: [],
+    }
+
+    const updated = [...schedule.employees, newScheduleEmp]
+    handleSaveAll(updated)
+    setSelectedMasterEmpId('')
+    showSnackbar('已加入排班。', 'success')
+  }
 
   // Compute 7 dates (Mon-Sun)
   const weekDates = useMemo(() => {
@@ -126,7 +158,6 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
     setToast(`已複製上一週（${prev.weekStart}）的員工與班表`)
   }
 
-  const { showSnackbar } = useSnackbar()
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
 
   // Export PDF via Service
@@ -204,6 +235,42 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
           </Stack>
         </Box>
       </Paper>
+
+      {/* ── 帶入員工（Master Employee Import） ── */}
+      <Card variant="outlined" sx={{ borderRadius: 3, p: 2, mb: 2.5, bgcolor: '#FAFAFA' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <Typography variant="body1" fontWeight={700} sx={{ whiteSpace: 'nowrap', minWidth: 80 }}>
+            👤 帶入員工：
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 200, flexGrow: { sm: 1 }, maxW: { sm: 320 } }}>
+            <InputLabel id="select-master-emp-label">選擇共用員工</InputLabel>
+            <Select
+              labelId="select-master-emp-label"
+              value={selectedMasterEmpId}
+              label="選擇共用員工"
+              onChange={e => setSelectedMasterEmpId(e.target.value)}
+            >
+              {masterState.employees.length === 0 ? (
+                <MenuItem value="" disabled><em>尚無員工，請至員工管理建立</em></MenuItem>
+              ) : (
+                masterState.employees.map(m => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.name} {m.store ? `(${m.store})` : ''}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            disabled={!selectedMasterEmpId}
+            onClick={handleImportMasterEmployee}
+            sx={{ borderRadius: 2, fontWeight: 700, px: 2.5, whiteSpace: 'nowrap', height: 40 }}
+          >
+            加入排班
+          </Button>
+        </Stack>
+      </Card>
 
       {/* Main Weekly Table */}
       <ScheduleTable

@@ -66,12 +66,9 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
     }).join('')
 
     return `
-      <tr style="height: 38px;">
-        <td style="border: 1px solid #000; width: 60px; text-align: center; font-size: 13px;"></td>
-        <td style="border: 1px solid #000; width: 110px; text-align: center; font-size: 14px; font-weight: bold; padding: 4px 8px;">${emp.name}</td>
+      <tr style="height: 42px;">
+        <td style="border: 1px solid #000; width: 140px; text-align: center; font-size: 15px; font-weight: bold; padding: 4px 8px;">${emp.name}</td>
         ${shiftCells}
-        <td style="border: 1px solid #000; width: 50px; text-align: center; font-size: 13px;"></td>
-        <td style="border: 1px solid #000; width: 60px; text-align: center; font-size: 13px;"></td>
       </tr>
     `
   }).join('')
@@ -80,7 +77,7 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   div.style.cssText = [
     'width: 1123px', // A4 Landscape
     'min-height: 794px',
-    'padding: 30px 40px',
+    'padding: 35px 45px',
     'box-sizing: border-box',
     'background: #ffffff',
     'font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif',
@@ -89,15 +86,15 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   ].join(';')
 
   div.innerHTML = `
-    <div style="text-align: center; font-size: 22px; font-weight: bold; letter-spacing: 4px; margin-bottom: 20px;">
+    <div style="text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 6px; margin-bottom: 24px;">
       排 班 表
     </div>
 
     <!-- Info bar -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; font-size: 15px; font-weight: bold;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; font-size: 16px; font-weight: bold;">
       <div>
         <span>店號：${schedule.storeId}</span>
-        <span style="margin-left: 30px;">店名：${schedule.storeName}</span>
+        <span style="margin-left: 35px;">店名：${schedule.storeName}</span>
       </div>
       <div>
         <span>列印日期：${printDate}</span>
@@ -107,12 +104,9 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
     <!-- Schedule Grid Table -->
     <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; table-layout: fixed;">
       <thead>
-        <tr style="height: 36px; background-color: #f2f2f2;">
-          <th style="border: 1px solid #000; width: 60px; text-align: center; font-size: 13px;">角色</th>
-          <th style="border: 1px solid #000; width: 110px; text-align: center; font-size: 14px;">員工姓名</th>
-          ${weekDaysInfo.map(w => `<th style="border: 1px solid #000; text-align: center; font-size: 13px;">${w.display}</th>`).join('')}
-          <th style="border: 1px solid #000; width: 50px; text-align: center; font-size: 13px;">合計</th>
-          <th style="border: 1px solid #000; width: 60px; text-align: center; font-size: 13px;">簽名</th>
+        <tr style="height: 40px; background-color: #f2f2f2;">
+          <th style="border: 1px solid #000; width: 140px; text-align: center; font-size: 15px;">員工姓名</th>
+          ${weekDaysInfo.map(w => `<th style="border: 1px solid #000; text-align: center; font-size: 14px;">${w.display}</th>`).join('')}
         </tr>
       </thead>
       <tbody>
