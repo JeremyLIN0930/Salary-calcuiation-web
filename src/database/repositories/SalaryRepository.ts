@@ -1,14 +1,21 @@
 import { Employee } from '../../types/employee'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../../utils/storage'
+import { db } from '../db'
 
 export class SalaryRepository {
+  private static cache: Employee[] | null = null
+
   static getAll(): Employee[] {
-    return loadFromStorage<Employee[]>(STORAGE_KEYS.SALARIES, [])
+    if (!this.cache) {
+      db.salaries.toArray().then(items => {
+        this.cache = items
+      })
+      return this.cache || []
+    }
+    return this.cache
   }
 
   static getById(id: string): Employee | undefined {
-    const list = this.getAll()
-    return list.find(item => item.id === id)
+    return this.getAll().find(item => item.id === id)
   }
 
   static save(salary: Employee): void {
@@ -19,7 +26,9 @@ export class SalaryRepository {
     } else {
       list.unshift(salary)
     }
-    saveToStorage(STORAGE_KEYS.SALARIES, list)
+    this.cache = list
+
+    db.salaries.put(salary).catch(err => console.error('SalaryRepository save error:', err))
   }
 
   static update(salary: Employee): void {
@@ -28,6 +37,7 @@ export class SalaryRepository {
 
   static delete(id: string): void {
     const list = this.getAll().filter(item => item.id !== id)
-    saveToStorage(STORAGE_KEYS.SALARIES, list)
+    this.cache = list
+    db.salaries.delete(id).catch(err => console.error('SalaryRepository delete error:', err))
   }
 }

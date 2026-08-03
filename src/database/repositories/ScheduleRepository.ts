@@ -1,14 +1,21 @@
 import { Schedule } from '../../types/schedule'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../../utils/storage'
+import { db } from '../db'
 
 export class ScheduleRepository {
+  private static cache: Schedule[] | null = null
+
   static getAll(): Schedule[] {
-    return loadFromStorage<Schedule[]>(STORAGE_KEYS.SCHEDULES, [])
+    if (!this.cache) {
+      db.schedules.toArray().then(items => {
+        this.cache = items
+      })
+      return this.cache || []
+    }
+    return this.cache
   }
 
   static getById(id: string): Schedule | undefined {
-    const list = this.getAll()
-    return list.find(item => item.id === id)
+    return this.getAll().find(item => item.id === id)
   }
 
   static save(schedule: Schedule): void {
@@ -19,7 +26,9 @@ export class ScheduleRepository {
     } else {
       list.unshift(schedule)
     }
-    saveToStorage(STORAGE_KEYS.SCHEDULES, list)
+    this.cache = list
+
+    db.schedules.put(schedule).catch(err => console.error('ScheduleRepository save error:', err))
   }
 
   static update(schedule: Schedule): void {
@@ -28,6 +37,7 @@ export class ScheduleRepository {
 
   static delete(id: string): void {
     const list = this.getAll().filter(item => item.id !== id)
-    saveToStorage(STORAGE_KEYS.SCHEDULES, list)
+    this.cache = list
+    db.schedules.delete(id).catch(err => console.error('ScheduleRepository delete error:', err))
   }
 }

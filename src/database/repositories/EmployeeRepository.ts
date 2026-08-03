@@ -1,17 +1,27 @@
 import { MasterEmployee } from '../../types/masterEmployee'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../../utils/storage'
+import { db } from '../db'
 
 export class EmployeeRepository {
+  private static cache: MasterEmployee[] | null = null
+
   static getAll(): MasterEmployee[] {
-    return loadFromStorage<MasterEmployee[]>(STORAGE_KEYS.MASTER_EMPLOYEES, [])
+    if (!this.cache) {
+      // Async fetch to prime cache asynchronously
+      db.employees.toArray().then(items => {
+        this.cache = items
+      })
+      // Sync fallback to empty or cached
+      return this.cache || []
+    }
+    return this.cache
   }
 
   static getById(id: string): MasterEmployee | undefined {
-    const list = this.getAll()
-    return list.find(item => item.id === id)
+    return this.getAll().find(item => item.id === id)
   }
 
   static save(employee: MasterEmployee): void {
+    // Update local cache for instant sync return
     const list = this.getAll()
     const index = list.findIndex(item => item.id === employee.id)
     if (index >= 0) {
@@ -19,7 +29,10 @@ export class EmployeeRepository {
     } else {
       list.unshift(employee)
     }
-    saveToStorage(STORAGE_KEYS.MASTER_EMPLOYEES, list)
+    this.cache = list
+
+    // Persist asynchronously to IndexedDB
+    db.employees.put(employee).catch(err => console.error('EmployeeRepository save error:', err))
   }
 
   static update(employee: MasterEmployee): void {
@@ -28,6 +41,7 @@ export class EmployeeRepository {
 
   static delete(id: string): void {
     const list = this.getAll().filter(item => item.id !== id)
-    saveToStorage(STORAGE_KEYS.MASTER_EMPLOYEES, list)
+    this.cache = list
+    db.employees.delete(id).catch(err => console.error('EmployeeRepository delete error:', err))
   }
 }

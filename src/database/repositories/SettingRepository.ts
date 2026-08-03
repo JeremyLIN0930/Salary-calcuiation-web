@@ -1,14 +1,21 @@
 import { SystemSettings, DEFAULT_SETTINGS } from '../../types/settings'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '../../utils/storage'
+import { db } from '../db'
 
 export class SettingRepository {
+  private static cache: SystemSettings = DEFAULT_SETTINGS
+
   static getAll(): SystemSettings[] {
-    const item = this.get()
-    return [item]
+    return [this.get()]
   }
 
   static get(): SystemSettings {
-    return loadFromStorage<SystemSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS)
+    db.settings.get('main_settings').then(s => {
+      if (s) {
+        const { id, ...rest } = s
+        this.cache = rest
+      }
+    })
+    return this.cache
   }
 
   static getById(_id: string): SystemSettings | undefined {
@@ -16,7 +23,8 @@ export class SettingRepository {
   }
 
   static save(settings: SystemSettings): void {
-    saveToStorage(STORAGE_KEYS.SETTINGS, settings)
+    this.cache = settings
+    db.settings.put({ id: 'main_settings', ...settings }).catch(err => console.error('SettingRepository save error:', err))
   }
 
   static update(settings: SystemSettings): void {
@@ -24,6 +32,7 @@ export class SettingRepository {
   }
 
   static delete(_id: string): void {
-    saveToStorage(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS)
+    this.cache = DEFAULT_SETTINGS
+    db.settings.delete('main_settings').catch(err => console.error('SettingRepository delete error:', err))
   }
 }
