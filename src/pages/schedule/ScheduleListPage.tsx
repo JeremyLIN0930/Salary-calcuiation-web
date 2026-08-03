@@ -127,7 +127,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     // Check if month already exists
     const exists = monthGroups.some(g => g.monthKey === formattedMonth)
     if (exists) {
-      showSnackbar(`「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月」已經建立過了！`, 'warning')
+      showSnackbar(`「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月已存在。」`, 'warning')
       return
     }
 
@@ -335,7 +335,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     return (
       <PageContainer maxWidth={1200}>
         <PageHeader
-          title="📅 排班管理 V2.0"
+          title="📅 排班管理"
           subtitle="依月份分類管理週班表、預覽編輯與 PDF 匯出"
           action={
             <Stack direction="row" spacing={1.5}>
@@ -479,7 +479,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               <FormControl size="small" fullWidth>
                 <InputLabel>年份</InputLabel>
                 <Select value={inputYear} label="年份" onChange={e => setInputYear(Number(e.target.value))}>
-                  {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+                  {Array.from({ length: 101 }, (_, i) => currentYear - 50 + i).map(y => (
                     <MenuItem key={y} value={y}>{y} 年</MenuItem>
                   ))}
                 </Select>
