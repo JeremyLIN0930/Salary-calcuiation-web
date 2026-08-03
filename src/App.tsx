@@ -5,6 +5,7 @@ import { ScheduleProvider } from './context/ScheduleContext'
 import { SettingsProvider } from './context/SettingsContext'
 import { MasterEmployeeProvider } from './context/MasterEmployeeContext'
 import { SnackbarProvider } from './context/SnackbarContext'
+import { StoreProvider } from './context/StoreContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import MainLayout, { AppModule } from './components/layout/MainLayout'
 import { Employee } from './types/employee'
@@ -146,16 +147,18 @@ export default function App() {
         <CssBaseline />
         <SnackbarProvider>
           <SettingsProvider>
-            <MasterEmployeeProvider>
-              <EmployeeProvider>
-                <ScheduleProvider>
-                  <AppContent />
-                  <React.Suspense fallback={null}>
-                    <DeveloperDebugPanel />
-                  </React.Suspense>
-                </ScheduleProvider>
-              </EmployeeProvider>
-            </MasterEmployeeProvider>
+            <StoreProvider>
+              <MasterEmployeeProvider>
+                <EmployeeProvider>
+                  <ScheduleProvider>
+                    <AppContent />
+                    <React.Suspense fallback={null}>
+                      <DeveloperDebugPanel />
+                    </React.Suspense>
+                  </ScheduleProvider>
+                </EmployeeProvider>
+              </MasterEmployeeProvider>
+            </StoreProvider>
           </SettingsProvider>
         </SnackbarProvider>
       </ThemeProvider>

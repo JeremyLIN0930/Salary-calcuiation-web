@@ -1,14 +1,15 @@
 /**
  * EmployeeMapper.ts
  * Maps between React MasterEmployee Model and Supabase MasterEmployeeRow.
- * Converts store_id UUID -> store_name for UI display.
+ * Converts store_id UUID ↔ store_name.
  */
 
 import { MasterEmployee } from '../types/masterEmployee'
 import { MasterEmployeeRow } from '../types/database'
 
-export const DEFAULT_COMPANY_ID = '0553618d-1d44-4f24-b6d8-7981fd4c6427'
-export const DEFAULT_STORE_ID   = 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb'
+export const DEFAULT_COMPANY_ID = '0553618d-1d44-4f24-b6d8-7981fd4c6427' // 預設公司 UUID
+export const DEFAULT_STORE_ID   = 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb' // 慶東門市 (001) UUID
+export const NAN_YI_STORE_ID    = 'c468eee2-8135-5b1b-9bb1-77d73325ecef' // 南醫門市 (002) UUID
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -17,7 +18,8 @@ export function isValidUuid(val?: string | null): boolean {
 }
 
 const STORE_NAME_MAP: Record<string, string> = {
-  [DEFAULT_STORE_ID]: '總店',
+  [DEFAULT_STORE_ID]: '慶東門市',
+  [NAN_YI_STORE_ID]:  '南醫門市',
 }
 
 export class EmployeeMapper {
@@ -26,16 +28,18 @@ export class EmployeeMapper {
 
     let resolvedStoreName = row.stores?.store_name || ''
     if (!resolvedStoreName && row.store_id) {
-      resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '總店' : row.store_id)
+      resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '慶東門市' : row.store_id)
     }
     if (!resolvedStoreName) {
-      resolvedStoreName = '總店'
+      resolvedStoreName = '慶東門市'
     }
 
     const employee: MasterEmployee = {
       id: row.id || '',
       name: row.name || '',
       store: resolvedStoreName,
+      storeId: row.store_id || undefined,
+      storeName: resolvedStoreName,
       hireDate: row.hire_date || '',
       remark: row.notes || '',
       createdAt: row.created_at || new Date().toISOString(),
@@ -48,10 +52,23 @@ export class EmployeeMapper {
 
   static toDbRow(model: Partial<MasterEmployee>): MasterEmployeeRow {
     const now = new Date().toISOString()
+
+    // Determine target store_id UUID
+    let targetStoreId: string | null = null
+    if (isValidUuid(model.storeId)) {
+      targetStoreId = model.storeId!
+    } else if (isValidUuid(model.store)) {
+      targetStoreId = model.store!
+    } else if (model.store === '南醫門市') {
+      targetStoreId = NAN_YI_STORE_ID
+    } else {
+      targetStoreId = DEFAULT_STORE_ID
+    }
+
     const row: MasterEmployeeRow = {
       name: model.name || '',
       company_id: DEFAULT_COMPANY_ID,
-      store_id: isValidUuid(model.store) ? model.store! : DEFAULT_STORE_ID,
+      store_id: targetStoreId,
       hire_date: model.hireDate || null,
       notes: model.remark || null,
       is_active: true,

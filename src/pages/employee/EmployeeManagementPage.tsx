@@ -5,6 +5,7 @@ import {
   DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Stack, Tooltip,
 } from '@mui/material'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
+import { useStoreContext } from '../../context/StoreContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { MasterEmployee } from '../../types/masterEmployee'
 import { DEFAULT_STORES } from '../../types/store'
@@ -27,6 +28,7 @@ const DelSvg = () => (
 
 export default function EmployeeManagementPage() {
   const { state, addEmployee, updateEmployee, deleteEmployee } = useMasterEmployees()
+  const { stores: storeList } = useStoreContext()
   const { showSnackbar }    = useSnackbar()
 
   const [dialogOpen, setDialogOpen]     = useState(false)
@@ -34,7 +36,7 @@ export default function EmployeeManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<MasterEmployee | null>(null)
 
   const [name, setName]         = useState('')
-  const [store, setStore]       = useState('慶東門市')
+  const [storeId, setStoreId]   = useState<string>(storeList[0]?.id || DEFAULT_STORES[0].id)
   const [hireDate, setHireDate] = useState('')
   const [remark, setRemark]     = useState('')
   const [errors, setErrors]     = useState<Record<string, string>>({})
@@ -42,7 +44,7 @@ export default function EmployeeManagementPage() {
   const openAdd = () => {
     setEditingItem(null)
     setName('')
-    setStore('慶東門市')
+    setStoreId(storeList[0]?.id || DEFAULT_STORES[0].id)
     setHireDate('')
     setRemark('')
     setErrors({})
@@ -52,7 +54,8 @@ export default function EmployeeManagementPage() {
   const openEdit = (emp: MasterEmployee) => {
     setEditingItem(emp)
     setName(emp.name)
-    setStore(emp.store || '慶東門市')
+    const match = storeList.find(s => s.id === emp.storeId || s.name === emp.store || s.id === emp.store)
+    setStoreId(match ? match.id : (storeList[0]?.id || DEFAULT_STORES[0].id))
     setHireDate(emp.hireDate || '')
     setRemark(emp.remark || '')
     setErrors({})
@@ -65,12 +68,16 @@ export default function EmployeeManagementPage() {
       return
     }
 
+    const selectedStoreObj = storeList.find(s => s.id === storeId) || DEFAULT_STORES[0]
     const now = new Date().toISOString()
+
     if (editingItem) {
       const updated: MasterEmployee = {
         ...editingItem,
         name: name.trim(),
-        store,
+        store: selectedStoreObj.name,
+        storeId: selectedStoreObj.id,
+        storeName: selectedStoreObj.name,
         hireDate,
         remark,
         updatedAt: now,
@@ -83,9 +90,11 @@ export default function EmployeeManagementPage() {
       }
     } else {
       const newEmp: MasterEmployee = {
-        id: '', // Leave empty for new employee so Supabase PostgreSQL generates gen_random_uuid()
+        id: '', // Supabase gen_random_uuid()
         name: name.trim(),
-        store,
+        store: selectedStoreObj.name,
+        storeId: selectedStoreObj.id,
+        storeName: selectedStoreObj.name,
         hireDate,
         remark,
         createdAt: now,
@@ -146,27 +155,35 @@ export default function EmployeeManagementPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {state.employees.length === 0 ? (
+              {state.loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.disabled' }}>
-                    目前尚無共用員工資料，請點擊「新增員工」按鈕建立。
+                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                    資料載入中...
+                  </TableCell>
+                </TableRow>
+              ) : state.employees.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                    目前尚無員工資料，請點擊上方按鈕建立第一個員工。
                   </TableCell>
                 </TableRow>
               ) : (
                 state.employees.map(emp => (
                   <TableRow key={emp.id} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{emp.name}</TableCell>
-                    <TableCell>{emp.store || '—'}</TableCell>
+                    <TableCell>{emp.storeName || emp.store}</TableCell>
                     <TableCell>{emp.hireDate || '—'}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{emp.remark || '—'}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', maxWidth: 200 }}>
+                      {emp.remark || '—'}
+                    </TableCell>
                     <TableCell align="right">
-                      <Tooltip title="編輯員工">
-                        <IconButton size="small" color="primary" onClick={() => openEdit(emp)}>
+                      <Tooltip title="編輯">
+                        <IconButton size="small" onClick={() => openEdit(emp)} color="primary">
                           <EditSvg />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="刪除員工">
-                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(emp)}>
+                      <Tooltip title="刪除">
+                        <IconButton size="small" onClick={() => setDeleteTarget(emp)} color="error">
                           <DelSvg />
                         </IconButton>
                       </Tooltip>
@@ -196,9 +213,9 @@ export default function EmployeeManagementPage() {
 
             <FormControl fullWidth size="small">
               <InputLabel>門市</InputLabel>
-              <Select value={store} label="門市" onChange={e => setStore(e.target.value)}>
-                {DEFAULT_STORES.map(s => (
-                  <MenuItem key={s.id} value={s.name}>{s.name}</MenuItem>
+              <Select value={storeId} label="門市" onChange={e => setStoreId(e.target.value)}>
+                {storeList.map(s => (
+                  <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -228,26 +245,24 @@ export default function EmployeeManagementPage() {
           <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ borderRadius: 2 }}>
             取消
           </Button>
-          <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2 }}>
+          <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2, fontWeight: 700 }}>
             儲存
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirm Dialog */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>確定刪除員工？</DialogTitle>
+        <DialogTitle fontWeight={700}>確認刪除員工？</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            確定要從主員工名單中刪除「{deleteTarget?.name}」？此操作不會影響已儲存的歷史薪資或排班紀錄。
+            您確定要刪除員工「{deleteTarget?.name}」嗎？此操作將同時在主資料庫中抹除該員工，操作無法復原。
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setDeleteTarget(null)} sx={{ borderRadius: 2 }}>
-            取消
-          </Button>
-          <Button variant="contained" color="error" onClick={handleDelete} sx={{ borderRadius: 2 }}>
-            確定刪除
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDeleteTarget(null)}>取消</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>
+            確認刪除
           </Button>
         </DialogActions>
       </Dialog>
