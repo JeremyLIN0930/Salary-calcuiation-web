@@ -60,7 +60,7 @@ export class SalaryMapper {
       month: monthNum as any, // Supabase schema requires smallint (1-12)
       year: yearVal,
       notes: JSON.stringify(cleanPayload),
-      status: 'active',
+      status: 'draft',
       updated_at: model.updatedAt || now,
     }
 

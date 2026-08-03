@@ -51,7 +51,7 @@ export class SupabaseSalaryRepository {
         month: monthNum as any,
         year: yearVal,
         notes: monthKey,
-        status: 'active',
+        status: 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -160,6 +160,7 @@ export class SupabaseSalaryRepository {
   async saveSalary(salaryData: Partial<Employee>): Promise<RepositoryResult<Employee>> {
     try {
       const dbRow = SalaryMapper.toDbRow(salaryData)
+      console.log('Salary INSERT Payload', dbRow)
       console.log('③ Repository Payload (JSON):\n' + JSON.stringify(dbRow, null, 2))
 
       const result = dbRow.id

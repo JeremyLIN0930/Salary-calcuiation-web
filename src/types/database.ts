@@ -83,7 +83,7 @@ export interface SalaryMonthRow {
   month: string
   year?: number | null
   notes?: string | null
-  status?: string | null
+  status?: 'draft' | 'confirmed' | 'locked' | 'paid' | string | null
   created_at?: string | null
   updated_at?: string | null
 }

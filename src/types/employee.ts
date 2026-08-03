@@ -1,5 +1,7 @@
 export type Store = '慶東門市' | '南醫門市'
 
+export type SalaryStatus = 'draft' | 'confirmed' | 'locked' | 'paid'
+
 export interface Employee {
   id: string
   /** 預留：未來與共用員工名單連結 */
