@@ -83,7 +83,7 @@ export default function EmployeeManagementPage() {
       }
     } else {
       const newEmp: MasterEmployee = {
-        id: Math.random().toString(36).slice(2),
+        id: '', // Leave empty for new employee so Supabase PostgreSQL generates gen_random_uuid()
         name: name.trim(),
         store,
         hireDate,
@@ -91,6 +91,7 @@ export default function EmployeeManagementPage() {
         createdAt: now,
         updatedAt: now,
       }
+      console.log('① FORM Submit Payload:', newEmp)
       const ok = await addEmployee(newEmp)
       if (ok) {
         showSnackbar('全新員工資料已成功建立！')

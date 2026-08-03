@@ -129,9 +129,8 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
     }
 
     try {
-      console.log('[MasterEmployee] Inserting into master_employees:', emp.name)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await supabaseEmployeeRepository.create(emp as any)
+      console.log('② CONTEXT Payload:', emp)
+      const result = await supabaseEmployeeRepository.create(emp)
       if (result.success) {
         console.log('[MasterEmployee] Insert SUCCESS:', result.data)
         return true

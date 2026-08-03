@@ -46,7 +46,7 @@ export class SupabaseEmployeeRepository {
   async create(employee: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow(employee)
-      console.log('🚀 [SupabaseEmployeeRepository.create] INSERT Payload:', JSON.stringify(dbRow, null, 2))
+      console.log('③ REPOSITORY INSERT Payload:', JSON.stringify(dbRow, null, 2))
 
       const { data, error } = await supabase
         .from(this.tableName)
@@ -55,13 +55,13 @@ export class SupabaseEmployeeRepository {
         .single()
 
       if (error) {
-        console.error('❌ [SupabaseEmployeeRepository.create] Error:', error)
+        console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'create')
       }
-      console.log('✅ [SupabaseEmployeeRepository.create] Success:', data)
+      console.log('④ SUPABASE RESPONSE Data:', data)
       return successResult(EmployeeMapper.toModel(data as MasterEmployeeRow))
     } catch (err: unknown) {
-      console.error('❌ [SupabaseEmployeeRepository.create] Exception:', err)
+      console.error('④ SUPABASE RESPONSE Exception:', err)
       return errorResult(err, this.tableName, 'create')
     }
   }
