@@ -52,7 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'settings',  label: '系統設定', icon: <SettingsIcon /> },
 ]
 
-const DRAWER_WIDTH = 200
+const DRAWER_WIDTH = 260
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

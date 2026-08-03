@@ -33,16 +33,16 @@ const theme = createTheme({
     fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
     h4:     { fontSize: '28px', fontWeight: 900 },
     h6:     { fontSize: '20px', fontWeight: 800 },
-    body1:  { fontSize: '15px' },
-    body2:  { fontSize: '15px' },
-    button: { fontSize: '15px', fontWeight: 700 },
+    body1:  { fontSize: '16px' },
+    body2:  { fontSize: '16px' },
+    button: { fontSize: '16px', fontWeight: 700 },
     caption:{ fontSize: '14px' },
   },
   shape: { borderRadius: 12 },
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { textTransform: 'none', fontWeight: 700, borderRadius: 12, height: 48 },
+        root: { textTransform: 'none', fontWeight: 700, borderRadius: 12, height: 52 },
       },
     },
     MuiCard: {
