@@ -60,6 +60,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
     setRefreshing(true)
     setError(null)
     try {
+      console.log("⑤ refresh()")
       const result = await supabaseSalaryRepository.getSalaryRecords()
       if (result.success && result.data) {
         console.log('[SalaryContext] Loaded from Supabase salary_months:', result.data.length, 'records')
@@ -88,6 +89,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
   const saveSalary = async (emp: Partial<Employee>): Promise<boolean> => {
     setSaving(true)
     try {
+      console.log("② CONTEXT Payload", emp)
       const result = await supabaseSalaryRepository.saveSalary(emp)
       if (result.success && result.data) {
         await refresh()

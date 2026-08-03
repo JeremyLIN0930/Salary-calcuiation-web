@@ -114,8 +114,10 @@ export class SupabaseSalaryRepository {
       const { data, error } = await query.order('updated_at', { ascending: false })
 
       if (error) {
+        console.error('⑥ SELECT Query Error:', error)
         return errorResult(error, this.tableName, 'getSalaryRecords')
       }
+      console.log('⑥ SELECT Query Data:', data)
       const rows = (data || []) as SalaryMonthRow[]
       const models = rows.map(row => SalaryMapper.toModel(row))
       return successResult(models)
@@ -131,7 +133,7 @@ export class SupabaseSalaryRepository {
   async saveSalary(salaryData: Partial<Employee>): Promise<RepositoryResult<Employee>> {
     try {
       const dbRow = SalaryMapper.toDbRow(salaryData)
-      console.log('🚀 [SupabaseSalaryRepository.saveSalary] UPSERT Payload:', JSON.stringify(dbRow, null, 2))
+      console.log('③ Repository Payload', dbRow)
       const { data, error } = await supabase
         .from(this.tableName)
         .upsert([dbRow])
@@ -139,13 +141,13 @@ export class SupabaseSalaryRepository {
         .single()
 
       if (error) {
-        console.error('❌ [SupabaseSalaryRepository.saveSalary] Error:', error)
+        console.error('④ Supabase INSERT Response Error:', error)
         return errorResult(error, this.tableName, 'saveSalary')
       }
-      console.log('✅ [SupabaseSalaryRepository.saveSalary] Success:', data)
+      console.log('④ Supabase INSERT Response Data:', data)
       return successResult(SalaryMapper.toModel(data as SalaryMonthRow))
     } catch (err: unknown) {
-      console.error('❌ [SupabaseSalaryRepository.saveSalary] Exception:', err)
+      console.error('④ Supabase INSERT Response Exception:', err)
       return errorResult(err, this.tableName, 'saveSalary')
     }
   }

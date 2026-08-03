@@ -109,7 +109,7 @@ interface Props {
 }
 
 export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
-  const { dispatch }   = useEmployees()
+  const { saveSalary }   = useEmployees()
   const { showSnackbar } = useSnackbar()
 
   const [emp, setEmp] = useState<Employee>(() => {
@@ -155,7 +155,7 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
 
   const money = (key: keyof Employee) => (v: number) => setEmp(p => ({ ...p, [key]: v }))
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const e: typeof errors = {}
     if (!emp.name.trim()) e.name = '姓名為必填'
     if (!emp.month)       e.month = '月份為必填'
@@ -172,14 +172,17 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
       createdAt: emp.createdAt || now,
     }
 
-    if (editEmployee) dispatch({ type: 'UPDATE', payload: record })
-    else              dispatch({ type: 'ADD',    payload: record })
+    console.log("① FORM Payload", record)
+    const ok = await saveSalary(record)
 
-    showSnackbar('薪資單已成功儲存！', 'success')
-    setTimeout(() => {
+    if (ok) {
+      showSnackbar('薪資單已成功寫入 Supabase 並儲存！', 'success')
       setSaving(false)
       onBack()
-    }, 400)
+    } else {
+      showSnackbar('薪資單儲存失敗，請確認 Supabase 連線與 Console 錯誤！', 'error')
+      setSaving(false)
+    }
   }
 
   return (

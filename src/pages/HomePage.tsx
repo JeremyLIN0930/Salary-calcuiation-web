@@ -53,7 +53,7 @@ interface Props {
 }
 
 export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
-  const { state, dispatch } = useEmployees()
+  const { state, dispatch, deleteSalary, deleteMonth } = useEmployees()
   const { showSnackbar } = useSnackbar()
 
   // Navigation View State: 'MONTH_LIST' | 'MONTH_DETAIL'
@@ -264,14 +264,16 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
 
   // ── Handlers: Delete Month & Single Record ─────────────────────────────────
 
-  const handleConfirmDeleteMonth = () => {
+  const handleConfirmDeleteMonth = async () => {
     if (!deleteMonthKey) return
     const group = monthGroups.find(g => g.monthKey === deleteMonthKey)
     if (group) {
-      group.employees.forEach(emp => {
-        dispatch({ type: 'DELETE', payload: emp.id })
-      })
-      showSnackbar(`已刪除「${group.displayTitle}」及其所有員工薪資資料。`, 'info')
+      const ok = await deleteMonth(deleteMonthKey)
+      if (ok) {
+        showSnackbar(`已刪除「${group.displayTitle}」及其所有員工薪資資料。`, 'info')
+      } else {
+        showSnackbar(`刪除「${group.displayTitle}」失敗，請確認網路與 Console 錯誤。`, 'error')
+      }
     }
     setDeleteMonthKey(null)
     if (activeMonthKey === deleteMonthKey) {
@@ -279,10 +281,14 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
   }
 
-  const handleConfirmDeleteSingleEmp = () => {
+  const handleConfirmDeleteSingleEmp = async () => {
     if (!deleteTarget) return
-    dispatch({ type: 'DELETE', payload: deleteTarget.id })
-    showSnackbar(`已刪除「${deleteTarget.name || '員工'}」的薪資資料`, 'info')
+    const ok = await deleteSalary(deleteTarget.id)
+    if (ok) {
+      showSnackbar(`已刪除「${deleteTarget.name || '員工'}」的薪資資料`, 'info')
+    } else {
+      showSnackbar(`刪除失敗，請確認 Supabase 連線與 Console 錯誤。`, 'error')
+    }
     setDeleteTarget(null)
   }
 
