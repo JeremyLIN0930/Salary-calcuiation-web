@@ -3,7 +3,7 @@
  * Maps between React Employee Salary Model and Supabase SalaryMonthRow.
  * Converts month string "YYYY-MM" ↔ smallint month (1-12) for Supabase PostgreSQL schema.
  * Persists complete Employee Salary data via notes JSON stringification.
- * Cleans empty strings and undefined fields.
+ * Cleans empty strings to null or omits undefined fields.
  */
 
 import { Employee, createEmptyEmployee } from '../types/employee'
@@ -44,11 +44,15 @@ export class SalaryMapper {
     const yearVal  = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
     const monthNum = parseInt(monthStr.slice(5, 7), 10) || 8
 
-    // Omit empty strings and undefined before JSON serialization
+    // Convert empty strings "" to null or omit undefined
     const cleanPayload: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(model)) {
-      if (val === undefined || val === null || val === '') continue
-      cleanPayload[key] = val
+      if (val === undefined || val === null) continue
+      if (typeof val === 'string' && val.trim() === '') {
+        cleanPayload[key] = null
+      } else {
+        cleanPayload[key] = val
+      }
     }
 
     const row: SalaryMonthRow = {

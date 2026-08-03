@@ -62,26 +62,17 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await supabaseSalaryRepository.getSalaryRecords()
       if (result.success && result.data) {
+        console.log('[SalaryContext] Loaded from Supabase salary_months:', result.data.length, 'records')
         dispatch({ type: 'SET', payload: result.data })
-
-        // Optional local Dexie backup sync
-        try {
-          result.data.forEach(emp => SalaryRepository.save(emp))
-        } catch (dexieErr) {
-          console.warn('[Dexie Sync Warning]:', dexieErr)
-        }
       } else {
         console.error('[SalaryContext] Failed to load salaries from Supabase:', result.error)
         setError(result.error || '載入薪資資料失敗')
-        // Fallback to local Dexie data if offline
-        const localData = SalaryRepository.getAll()
-        if (localData && localData.length > 0) {
-          dispatch({ type: 'SET', payload: localData })
-        }
+        dispatch({ type: 'SET', payload: [] })
       }
     } catch (e: any) {
       console.error('[SalaryContext Error]:', e)
       setError(e?.message || '系統錯誤')
+      dispatch({ type: 'SET', payload: [] })
     } finally {
       setLoading(false)
       setRefreshing(false)

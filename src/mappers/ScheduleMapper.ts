@@ -2,7 +2,7 @@
  * ScheduleMapper.ts
  * Maps between React Schedule Model and Supabase ScheduleWeekRow.
  * Persists complete Schedule & Shifts data via notes JSON stringification.
- * Cleans empty strings and undefined fields.
+ * Cleans empty strings to null or omits undefined fields.
  */
 
 import { Schedule } from '../types/schedule'
@@ -44,11 +44,15 @@ export class ScheduleMapper {
     const startDate = model.weekStart || new Date().toISOString().slice(0, 10)
     const endDate   = model.weekEnd   || new Date().toISOString().slice(0, 10)
 
-    // Omit empty strings and undefined before JSON serialization
+    // Convert empty strings "" to null or omit undefined
     const cleanPayload: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(model)) {
-      if (val === undefined || val === null || val === '') continue
-      cleanPayload[key] = val
+      if (val === undefined || val === null) continue
+      if (typeof val === 'string' && val.trim() === '') {
+        cleanPayload[key] = null
+      } else {
+        cleanPayload[key] = val
+      }
     }
 
     const row: ScheduleWeekRow = {

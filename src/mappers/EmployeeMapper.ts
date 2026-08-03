@@ -2,6 +2,7 @@
  * EmployeeMapper.ts
  * Maps between React MasterEmployee Model and Supabase MasterEmployeeRow.
  * Converts store_id UUID ↔ store_name.
+ * Cleans empty strings to null for optional database columns (hire_date, notes).
  */
 
 import { MasterEmployee } from '../types/masterEmployee'
@@ -24,13 +25,11 @@ const STORE_NAME_MAP: Record<string, string> = {
 
 export class EmployeeMapper {
   static toModel(row: MasterEmployeeRow): MasterEmployee {
-    console.log("Before Mapping", row)
-
     let resolvedStoreName = row.stores?.store_name || ''
-    if (!resolvedStoreName && row.store_id) {
+    if ((!resolvedStoreName || resolvedStoreName === '總店') && row.store_id) {
       resolvedStoreName = STORE_NAME_MAP[row.store_id] || (isValidUuid(row.store_id) ? '慶東門市' : row.store_id)
     }
-    if (!resolvedStoreName) {
+    if (!resolvedStoreName || resolvedStoreName === '總店') {
       resolvedStoreName = '慶東門市'
     }
 
@@ -46,7 +45,6 @@ export class EmployeeMapper {
       updatedAt: row.updated_at || new Date().toISOString(),
     }
 
-    console.log("After Mapping", employee)
     return employee
   }
 
@@ -65,12 +63,16 @@ export class EmployeeMapper {
       targetStoreId = DEFAULT_STORE_ID
     }
 
+    // Convert empty strings "" to null for optional columns
+    const cleanHireDate = model.hireDate && model.hireDate.trim() !== '' ? model.hireDate.trim() : null
+    const cleanNotes    = model.remark && model.remark.trim() !== '' ? model.remark.trim() : null
+
     const row: MasterEmployeeRow = {
       name: model.name || '',
       company_id: DEFAULT_COMPANY_ID,
       store_id: targetStoreId,
-      hire_date: model.hireDate || null,
-      notes: model.remark || null,
+      hire_date: cleanHireDate,
+      notes: cleanNotes,
       is_active: true,
       updated_at: model.updatedAt || now,
     }
