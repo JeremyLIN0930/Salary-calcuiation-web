@@ -5,6 +5,33 @@ import {
 } from '@mui/material'
 import { Employee, Store, createEmptyEmployee, calcGross, calcDeductions } from '../types/employee'
 import { useEmployees } from '../context/EmployeeContext'
+import { useMasterEmployees } from '../context/MasterEmployeeContext'
+import { MasterEmployee } from '../types/masterEmployee'
+
+function MasterEmployeeSelect({ onSelect }: { onSelect: (emp: MasterEmployee) => void }) {
+  const { state } = useMasterEmployees()
+  if (state.employees.length === 0) return null
+
+  return (
+    <FormControl size="small" sx={{ minWidth: 120 }}>
+      <InputLabel id="master-emp-select-label">帶入員工</InputLabel>
+      <Select
+        labelId="master-emp-select-label"
+        value=""
+        label="帶入員工"
+        onChange={e => {
+          const selected = state.employees.find(m => m.id === e.target.value)
+          if (selected) onSelect(selected)
+        }}
+      >
+        <MenuItem value="" disabled><em>選擇共用員工</em></MenuItem>
+        {state.employees.map(m => (
+          <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  )
+}
 
 const ArrowBackSvg = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -207,18 +234,33 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         {/* 第一區：基本資料 */}
         <Section title="基本資料" icon="👤">
           <Grid container spacing={2}>
-            <Grid item xs={6}>
-              <TextField label="姓名 *" value={emp.name} fullWidth size="small"
-                error={!!errors.name} helperText={errors.name}
-                onChange={e => set('name', e.target.value)} />
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  label="姓名 *"
+                  value={emp.name}
+                  fullWidth
+                  size="small"
+                  error={!!errors.name}
+                  helperText={errors.name}
+                  onChange={e => set('name', e.target.value)}
+                />
+                <MasterEmployeeSelect
+                  onSelect={m => {
+                    set('name', m.name)
+                    if (m.store) set('store', m.store as Store)
+                    if (m.hireDate) set('hireDate', m.hireDate)
+                  }}
+                />
+              </Box>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField label="月份 *" type="month" value={emp.month} fullWidth size="small"
                 error={!!errors.month} helperText={errors.month}
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('month', e.target.value)} />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small" error={!!errors.store}>
                 <InputLabel id="store-select-label">門市 *</InputLabel>
                 <Select
@@ -236,17 +278,16 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
                 )}
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField label="到職日" type="date" value={emp.hireDate} fullWidth size="small"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('hireDate', e.target.value)} />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField label="發薪日期" type="date" value={emp.payDate} fullWidth size="small"
                 InputLabelProps={{ shrink: true }}
                 onChange={e => set('payDate', e.target.value)} />
             </Grid>
-            <Grid item xs={6} />
           </Grid>
         </Section>
 

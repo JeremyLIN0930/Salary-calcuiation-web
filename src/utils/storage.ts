@@ -1,17 +1,14 @@
 /**
- * LocalStorage utilities with type-safe get/set/remove helpers.
- * All data is JSON-serialised. Returns undefined if key does not exist or
- * if the stored value cannot be parsed.
+ * Type-safe LocalStorage utilities with 4 isolated storage keys.
+ * PRD Chapter 4: employees, salaries, schedules, settings MUST be independent.
  */
 
 export const STORAGE_KEYS = {
-  SALARY_EMPLOYEES: 'salary_employees_v1',
-  SCHEDULE_RECORDS: 'schedule_records_v1',
-  SCHEDULE_STAFF: 'schedule_staff_v1',
-  SHIFT_TEMPLATES: 'shift_templates_v1',
+  MASTER_EMPLOYEES: 'employees_v1',
+  SALARIES:         'salaries_v1',
+  SCHEDULES:        'schedules_v2',
+  SETTINGS:         'settings_v1',
 } as const
-
-export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 
 export function loadFromStorage<T>(key: string, fallback: T): T {
   try {

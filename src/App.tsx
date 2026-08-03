@@ -2,17 +2,22 @@ import React, { useState } from 'react'
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
 import { EmployeeProvider } from './context/EmployeeContext'
 import { ScheduleProvider } from './context/ScheduleContext'
+import { SettingsProvider } from './context/SettingsContext'
+import { MasterEmployeeProvider } from './context/MasterEmployeeContext'
+import { SnackbarProvider } from './context/SnackbarContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import MainLayout, { AppModule } from './components/layout/MainLayout'
 import { Employee } from './types/employee'
 import { Schedule } from './types/schedule'
 
 // ─── Lazy-loaded pages ────────────────────────────────────────────────────────
-const DashboardPage     = React.lazy(() => import('./pages/DashboardPage'))
-const HomePage          = React.lazy(() => import('./pages/HomePage'))
-const EmployeeFormPage  = React.lazy(() => import('./pages/EmployeeFormPage'))
-const ScheduleListPage  = React.lazy(() => import('./pages/schedule/ScheduleListPage'))
-const ScheduleEditPage  = React.lazy(() => import('./pages/schedule/ScheduleEditPage'))
+const DashboardPage          = React.lazy(() => import('./pages/DashboardPage'))
+const HomePage               = React.lazy(() => import('./pages/HomePage'))
+const EmployeeFormPage       = React.lazy(() => import('./pages/EmployeeFormPage'))
+const ScheduleListPage       = React.lazy(() => import('./pages/schedule/ScheduleListPage'))
+const ScheduleEditPage       = React.lazy(() => import('./pages/schedule/ScheduleEditPage'))
+const EmployeeManagementPage = React.lazy(() => import('./pages/employee/EmployeeManagementPage'))
+const SettingsPage           = React.lazy(() => import('./pages/settings/SettingsPage'))
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
@@ -63,7 +68,6 @@ function AppContent() {
   const goSalaryEdit = (emp: Employee) => { setEditEmployee(emp); setSalaryPage('form') }
   const goSalaryList = () => { setEditEmployee(undefined); setSalaryPage('list') }
 
-  // Hide nav when editing salary form or editing schedule table on small screens
   const hideNav = (module === 'salary' && salaryPage === 'form')
 
   return (
@@ -82,7 +86,7 @@ function AppContent() {
           <DashboardPage onNavigate={m => { setModule(m); setEditingSchedule(null) }} />
         )}
 
-        {/* ── Salary ── */}
+        {/* ── Salary Module ── */}
         {module === 'salary' && salaryPage === 'list' && (
           <HomePage onAddEmployee={goSalaryAdd} onEditEmployee={goSalaryEdit} />
         )}
@@ -90,7 +94,7 @@ function AppContent() {
           <EmployeeFormPage editEmployee={editEmployee} onBack={goSalaryList} />
         )}
 
-        {/* ── Schedule ── */}
+        {/* ── Schedule Module ── */}
         {module === 'schedule' && !editingSchedule && (
           <ScheduleListPage onSelectSchedule={s => setEditingSchedule(s)} />
         )}
@@ -99,6 +103,16 @@ function AppContent() {
             schedule={editingSchedule}
             onBack={() => setEditingSchedule(null)}
           />
+        )}
+
+        {/* ── Master Employee Module ── */}
+        {module === 'employee' && (
+          <EmployeeManagementPage />
+        )}
+
+        {/* ── Settings Module ── */}
+        {module === 'settings' && (
+          <SettingsPage />
         )}
       </React.Suspense>
     </MainLayout>
@@ -111,11 +125,17 @@ export default function App() {
     <ErrorBoundary>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <EmployeeProvider>
-          <ScheduleProvider>
-            <AppContent />
-          </ScheduleProvider>
-        </EmployeeProvider>
+        <SnackbarProvider>
+          <SettingsProvider>
+            <MasterEmployeeProvider>
+              <EmployeeProvider>
+                <ScheduleProvider>
+                  <AppContent />
+                </ScheduleProvider>
+              </EmployeeProvider>
+            </MasterEmployeeProvider>
+          </SettingsProvider>
+        </SnackbarProvider>
       </ThemeProvider>
     </ErrorBoundary>
   )

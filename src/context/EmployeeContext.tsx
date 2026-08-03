@@ -13,7 +13,7 @@ interface State {
 
 function loadInitialState(): State {
   return {
-    employees: loadFromStorage<Employee[]>(STORAGE_KEYS.SALARY_EMPLOYEES, []),
+    employees: loadFromStorage<Employee[]>(STORAGE_KEYS.SALARIES, []),
   }
 }
 
@@ -37,7 +37,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
 
   // Persist to LocalStorage whenever salary employees change
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SALARY_EMPLOYEES, state.employees)
+    saveToStorage(STORAGE_KEYS.SALARIES, state.employees)
   }, [state.employees])
 
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>
