@@ -7,7 +7,7 @@ import { useSnackbar } from '../../context/SnackbarContext'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
-import { DataService, BackupData } from '../../services/dataService'
+import { BackupService, BackupSchema } from '../../services/backup/backup.service'
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
@@ -23,7 +23,7 @@ export default function SettingsPage() {
 
   // Action states
   const [loading, setLoading] = useState(false)
-  const [importPendingData, setImportPendingData] = useState<BackupData | null>(null)
+  const [importPendingData, setImportPendingData] = useState<BackupSchema | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   // File input ref for import
@@ -38,8 +38,8 @@ export default function SettingsPage() {
   const handleExportAll = async () => {
     setLoading(true)
     try {
-      const { jsonStr, fileName } = await DataService.exportAllData()
-      DataService.downloadJsonFile(jsonStr, fileName)
+      const { jsonStr, fileName } = await BackupService.exportBackup()
+      BackupService.downloadFile(jsonStr, fileName)
       showSnackbar('所有資料已成功匯出！', 'success')
     } catch (err) {
       console.error('Export error:', err)
@@ -53,8 +53,8 @@ export default function SettingsPage() {
   const handleCreateBackup = async () => {
     setLoading(true)
     try {
-      const { jsonStr, fileName } = await DataService.exportAllData()
-      DataService.downloadJsonFile(jsonStr, fileName)
+      const { jsonStr, fileName } = await BackupService.exportBackup()
+      BackupService.downloadFile(jsonStr, fileName)
       showSnackbar('備份建立完成。', 'success')
     } catch (err) {
       console.error('Backup error:', err)
@@ -64,7 +64,7 @@ export default function SettingsPage() {
     }
   }
 
-  // ② 匯入資料 - 檔案選擇監聽
+  // ② 匯入資料 - 檔案選擇監聽與備份檔驗證
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -73,14 +73,11 @@ export default function SettingsPage() {
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string
-        const parsed = JSON.parse(content) as BackupData
-        if (!parsed || typeof parsed !== 'object') {
-          throw new Error('Invalid JSON format')
-        }
-        setImportPendingData(parsed)
-      } catch (err) {
-        console.error('JSON parse error:', err)
-        showSnackbar('無效的備份 JSON 檔案！', 'error')
+        const validatedBackup = BackupService.validateBackupJson(content)
+        setImportPendingData(validatedBackup)
+      } catch (err: any) {
+        console.error('Validation error:', err)
+        showSnackbar(err.message || '備份檔格式錯誤。', 'error')
       }
     }
     reader.readAsText(file)
@@ -94,14 +91,14 @@ export default function SettingsPage() {
     if (!importPendingData) return
     setLoading(true)
     try {
-      await DataService.importData(importPendingData)
+      await BackupService.restoreBackup(importPendingData)
       showSnackbar('資料匯入成功。', 'success')
       setTimeout(() => {
         window.location.reload()
       }, 800)
     } catch (err) {
-      console.error('Import error:', err)
-      showSnackbar('資料匯入失敗，請檢查檔案內容。', 'error')
+      console.error('Restore error:', err)
+      showSnackbar('備份檔格式錯誤。', 'error')
     } finally {
       setLoading(false)
       setImportPendingData(null)
@@ -112,7 +109,7 @@ export default function SettingsPage() {
   const handleConfirmClear = async () => {
     setLoading(true)
     try {
-      await DataService.clearAllData()
+      await BackupService.clearAllData()
       showSnackbar('所有資料已清除。', 'info')
       setTimeout(() => {
         window.location.reload()
