@@ -130,6 +130,34 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   }
 
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
+  const [pdfUrl, setPdfUrl]                 = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading]         = useState(false)
+  const [pdfError, setPdfError]             = useState<string | null>(null)
+
+  // Open Preview Modal & generate Blob
+  const handleOpenPdfPreview = async () => {
+    setPdfPreviewOpen(true)
+    setPdfLoading(true)
+    setPdfError(null)
+    setPdfUrl(null)
+
+    try {
+      console.log('[PDF Debug] Requesting Schedule PDF Blob for:', schedule.storeName)
+      const res = await PDFService.createSchedulePDFBlob(schedule)
+      console.log('[PDF Debug] Generated PDF Blob Size:', res.blob.size, 'URL:', res.url)
+
+      if (!res.blob || res.blob.size === 0) {
+        throw new Error('生成的 PDF 檔案大小為 0')
+      }
+
+      setPdfUrl(res.url)
+    } catch (err: any) {
+      console.error('[PDF Debug] Schedule PDF Generation Error:', err)
+      setPdfError(err.message || 'PDF 建立失敗，請重試。')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   // Export PDF via Service
   const handleConfirmDownloadPDF = async () => {
@@ -139,7 +167,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       showSnackbar('排班表 PDF 已成功匯出下載！', 'success')
       setPdfPreviewOpen(false)
     } catch (err) {
-      console.error(err)
+      console.error('[PDF Debug] Download Error:', err)
       showSnackbar('PDF 匯出失敗，請再試一次', 'error')
     } finally {
       setExporting(false)
@@ -197,7 +225,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
               variant="contained"
               size="small"
               disabled={exporting}
-              onClick={() => setPdfPreviewOpen(true)}
+              onClick={handleOpenPdfPreview}
               sx={{ borderRadius: 2, fontWeight: 700 }}
             >
               {exporting ? <CircularProgress size={16} sx={{ mr: 1, color: '#fff' }} /> : <PdfSvg />}
@@ -255,7 +283,9 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       <PDFPreviewModal
         open={pdfPreviewOpen}
         title={`【${schedule.storeId}】${schedule.storeName} 週排班表`}
-        loading={exporting}
+        pdfUrl={pdfUrl}
+        pdfError={pdfError}
+        loading={pdfLoading || exporting}
         onClose={() => setPdfPreviewOpen(false)}
         onConfirmDownload={handleConfirmDownloadPDF}
       />

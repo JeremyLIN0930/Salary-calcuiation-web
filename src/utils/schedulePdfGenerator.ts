@@ -124,32 +124,55 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   return div
 }
 
-export async function generateSchedulePDF(schedule: Schedule): Promise<void> {
+export async function createSchedulePDFDoc(schedule: Schedule): Promise<{ doc: jsPDF; blob: Blob; url: string; fileName: string }> {
+  console.log('[PDF Debug] Starting createSchedulePDFDoc for store:', schedule.storeName)
   const { default: html2canvas } = await import('html2canvas')
 
   const container = document.createElement('div')
   container.style.cssText = 'position:fixed; left:-9999px; top:0; width:1123px; background:white; z-index:-1;'
   document.body.appendChild(container)
 
-  const pageElement = buildPaperScheduleHTML(schedule)
-  container.appendChild(pageElement)
+  try {
+    const pageElement = buildPaperScheduleHTML(schedule)
+    container.appendChild(pageElement)
 
-  await new Promise<void>(resolve => setTimeout(resolve, 200))
+    await new Promise<void>(resolve => setTimeout(resolve, 200))
 
-  const canvas = await html2canvas(container, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    width: 1123,
-    windowWidth: 1123,
-  })
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: 1123,
+      windowWidth: 1123,
+    })
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.95)
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-  doc.addImage(imgData, 'JPEG', 0, 0, 297, 210)
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    doc.addImage(imgData, 'JPEG', 0, 0, 297, 210)
 
-  document.body.removeChild(container)
+    const blob = doc.output('blob')
+    console.log('[PDF Debug] Schedule PDF Blob Size:', blob.size)
 
-  const fileName = `排班表_${schedule.storeName}_${schedule.weekStart}.pdf`
+    if (blob.size === 0) {
+      throw new Error('PDF 建立失敗，Blob Size 為 0')
+    }
+
+    const url = URL.createObjectURL(blob)
+    console.log('[PDF Debug] Schedule PDF URL:', url)
+
+    const fileName = `排班表_${schedule.storeName}_${schedule.weekStart}.pdf`
+    return { doc, blob, url, fileName }
+  } catch (err) {
+    console.error('[PDF Debug] createSchedulePDFDoc Error:', err)
+    throw err
+  } finally {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container)
+    }
+  }
+}
+
+export async function generateSchedulePDF(schedule: Schedule): Promise<void> {
+  const { doc, fileName } = await createSchedulePDFDoc(schedule)
   doc.save(fileName)
 }

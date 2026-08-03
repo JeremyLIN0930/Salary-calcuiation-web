@@ -1,7 +1,8 @@
 import { Employee } from '../types/employee'
 import { Schedule } from '../types/schedule'
 import { generatePayrollPDF } from '../utils/pdfGenerator'
-import { generateSchedulePDF } from '../utils/schedulePdfGenerator'
+import { generateSchedulePDF, createSchedulePDFDoc } from '../utils/schedulePdfGenerator'
+import { jsPDF } from 'jspdf'
 
 export class PDFService {
   /**
@@ -13,10 +14,17 @@ export class PDFService {
   }
 
   /**
-   * Export weekly schedule PDF
+   * Export weekly schedule PDF directly
    */
   static async exportSchedule(schedule: Schedule): Promise<void> {
     if (!schedule) return
     await generateSchedulePDF(schedule)
+  }
+
+  /**
+   * Create Schedule PDF Blob and Object URL for live previewing inside iframe
+   */
+  static async createSchedulePDFBlob(schedule: Schedule): Promise<{ doc: jsPDF; blob: Blob; url: string; fileName: string }> {
+    return await createSchedulePDFDoc(schedule)
   }
 }
