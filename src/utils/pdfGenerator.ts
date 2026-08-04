@@ -11,6 +11,8 @@ function fmtD(n: number | undefined | null): string {
   return v === 0 ? '—' : String(v) + ' 日'
 }
 
+import { stripSystemTags } from './textUtils'
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -24,9 +26,8 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     ? emp.month.replace('-', ' 年 ') + ' 月'
     : ''
 
-  const remarkText = emp.remark && emp.remark.trim()
-    ? escapeHtml(emp.remark.trim())
-    : '無'
+  const cleanRemark = stripSystemTags(emp.remark)
+  const remarkText = cleanRemark ? escapeHtml(cleanRemark) : '無'
 
   const div = document.createElement('div')
   div.style.cssText = [

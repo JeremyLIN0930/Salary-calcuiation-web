@@ -8,6 +8,8 @@
 import { Schedule } from '../types/schedule'
 import { ScheduleWeekRow } from '../types/database'
 
+import { stripSystemTags } from '../utils/textUtils'
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function isValidUuid(val?: string | null): boolean {
@@ -51,7 +53,7 @@ export class ScheduleMapper {
       weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
       weekNo: computedWeekNo,
       employees: [],
-      remark: remarkVal,
+      remark: stripSystemTags(remarkVal),
       createdAt: row.created_at || parsed.createdAt || new Date().toISOString(),
       updatedAt: row.updated_at || parsed.updatedAt || new Date().toISOString(),
     }

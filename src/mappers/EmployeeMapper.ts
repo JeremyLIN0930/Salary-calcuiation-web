@@ -23,6 +23,8 @@ const STORE_NAME_MAP: Record<string, string> = {
   [NAN_YI_STORE_ID]:  '南醫門市',
 }
 
+import { stripSystemTags } from '../utils/textUtils'
+
 export class EmployeeMapper {
   static toModel(row: MasterEmployeeRow): MasterEmployee {
     let resolvedStoreName = row.stores?.store_name || ''
@@ -46,7 +48,7 @@ export class EmployeeMapper {
       storeName: resolvedStoreName,
       isShared: isSharedVal,
       hireDate: row.hire_date || '',
-      remark: row.notes || '',
+      remark: stripSystemTags(row.notes),
       createdAt: row.created_at || new Date().toISOString(),
       updatedAt: row.updated_at || new Date().toISOString(),
     }

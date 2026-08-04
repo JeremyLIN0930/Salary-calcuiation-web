@@ -12,6 +12,7 @@ import { MasterEmployee } from '../../types/masterEmployee'
 import { DEFAULT_STORES } from '../../types/store'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
+import { stripSystemTags } from '../../utils/textUtils'
 
 const AddSvg = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -284,7 +285,7 @@ export default function EmployeeManagementPage() {
                     </TableCell>
 
                     <TableCell sx={{ fontSize: 14, color: '#64748B', py: 2, maxWidth: 200 }}>
-                      {emp.remark || '—'}
+                      {stripSystemTags(emp.remark) || '—'}
                     </TableCell>
 
                     <TableCell align="right" sx={{ py: 2, px: 2.5 }}>

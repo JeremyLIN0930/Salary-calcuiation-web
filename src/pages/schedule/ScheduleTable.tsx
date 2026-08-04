@@ -141,7 +141,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
           name,
           isShared: true,
           hireDate: new Date().toISOString().slice(0, 10),
-          remark: '[shared]'
+          remark: ''
         })
 
         const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
@@ -158,7 +158,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
       }
     } else {
       // Temporary employee
-      const tempId = 'temp_' + Math.random().toString(36).slice(2)
+      const tempId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
       const newEmp: ScheduleEmployee = {
         id: tempId,
         name,
