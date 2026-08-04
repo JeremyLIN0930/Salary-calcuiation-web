@@ -32,6 +32,7 @@ export interface ThemeTokens {
   tableRow: string
   tableText: string
   tableHover: string
+  dialogBg: string
   shadow: string
   radius: string
 }
@@ -70,15 +71,16 @@ export const lightTokens: ThemeTokens = {
   tableRow: '#FFFFFF',
   tableText: '#1E293B',
   tableHover: '#F1F5F9',
+  dialogBg: '#FFFFFF',
   shadow: '0 8px 24px rgba(0,0,0,0.04)',
   radius: '16px',
 }
 
 export const darkTokens: ThemeTokens = {
   background: '#111827',
-  surface: '#1A2333',
-  surfaceSecondary: '#1A2333',
-  card: '#F7F5F1',
+  surface: '#F5F3EF',
+  surfaceSecondary: '#F1EEE8',
+  card: '#F5F3EF',
   cardTextPrimary: '#1F2937',
   cardTextSecondary: '#475569',
   cardTextMuted: '#64748B',
@@ -88,26 +90,27 @@ export const darkTokens: ThemeTokens = {
   sidebarText: '#CBD5E1',
   sidebarTitle: '#F8FAFC',
   header: '#111827',
-  border: '#E5E7EB',
+  border: '#E2DDD4',
   divider: 'rgba(255,255,255,0.08)',
   primary: '#2F80ED',
   primaryHover: '#1D6FD8',
-  secondaryBtnBg: '#F7F5F1',
+  secondaryBtnBg: '#F3F1EC',
   secondaryBtnText: '#1F2937',
   danger: '#EF4444',
   success: '#34A853',
   warning: '#F57C00',
   textPrimary: '#F8FAFC',
   textSecondary: '#CBD5E1',
-  textMuted: '#94A3B8',
-  placeholder: '#94A3B8',
-  inputBackground: '#F5F4EF',
+  textMuted: '#9C9488',
+  placeholder: '#9C9488',
+  inputBackground: '#F3F1EC',
   inputText: '#1F2937',
   tableHeader: '#273449',
   tableHeaderText: '#F8FAFC',
-  tableRow: '#111827',
-  tableText: '#CBD5E1',
-  tableHover: '#1F2937',
-  shadow: '0 8px 24px rgba(0,0,0,0.15)',
+  tableRow: '#F5F3EF',
+  tableText: '#1F2937',
+  tableHover: '#ECE8E2',
+  dialogBg: '#F6F4F0',
+  shadow: '0 8px 24px rgba(0,0,0,0.08)',
   radius: '16px',
 }

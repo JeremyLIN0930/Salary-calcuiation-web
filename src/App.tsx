@@ -113,7 +113,7 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
         MuiDialog: {
           styleOverrides: {
             paper: {
-              backgroundColor: tokens.card,
+              backgroundColor: tokens.dialogBg,
               color: tokens.cardTextPrimary,
               borderRadius: 24,
               boxShadow: tokens.shadow,
@@ -159,6 +159,9 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
               backgroundColor: tokens.inputBackground,
               color: tokens.inputText,
               transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
+              '&.Mui-focused': {
+                backgroundColor: isDark ? '#E8EEF8' : tokens.inputBackground,
+              },
             },
             notchedOutline: {
               borderColor: tokens.border,
