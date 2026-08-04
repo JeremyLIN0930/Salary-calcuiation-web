@@ -14,12 +14,10 @@ export interface Employee {
   payDate: string
   // 薪資資料
   baseSalary: number
-  mealAllowance: number
   positionAllowance: number
   otherAllowance: number
   nightAllowance: number
   bonusItems: number
-  profitSharing: number
   otherAdditions: number
   specialLeaveAllowance: number
   weekdayOT: number
@@ -61,12 +59,10 @@ export function createEmptyEmployee(): Employee {
     hireDate: '',
     payDate: '',
     baseSalary: 0,
-    mealAllowance: 0,
     positionAllowance: 0,
     otherAllowance: 0,
     nightAllowance: 0,
     bonusItems: 0,
-    profitSharing: 0,
     otherAdditions: 0,
     specialLeaveAllowance: 0,
     weekdayOT: 0,
@@ -95,8 +91,8 @@ export function createEmptyEmployee(): Employee {
 }
 
 export function calcGross(e: Employee): number {
-  return e.baseSalary + e.mealAllowance + e.positionAllowance + e.otherAllowance
-    + e.nightAllowance + e.bonusItems + e.profitSharing + e.otherAdditions
+  return e.baseSalary + e.positionAllowance + e.otherAllowance
+    + e.nightAllowance + e.bonusItems + e.otherAdditions
     + e.specialLeaveAllowance + e.weekdayOT + e.restDayOT + e.holidayOT
     - e.sickLeaveDeduction
 }

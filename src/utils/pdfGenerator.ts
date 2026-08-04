@@ -294,8 +294,8 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
       <td class="name-cell">勞保費</td><td class="amt-cell-last">${fmt(emp.laborInsurance)}</td>
     </tr>
     <tr>
-      <td class="name-cell">伙食津貼</td><td class="amt-cell">${fmt(emp.mealAllowance)}</td>
-      <td class="name-cell">健保費</td><td class="amt-cell-last">${fmt(emp.healthInsurance)}</td>
+      <td class="name-cell">健保費</td><td class="amt-cell">${fmt(emp.healthInsurance)}</td>
+      <td class="name-cell">勞退個人自提</td><td class="amt-cell-last">${fmt(emp.laborPension)}</td>
     </tr>
     <tr>
       <td class="name-cell">職務津貼</td><td class="amt-cell">${fmt(emp.positionAllowance)}</td>
@@ -311,10 +311,6 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     </tr>
     <tr>
       <td class="name-cell">津貼／獎金項目</td><td class="amt-cell">${fmt(emp.bonusItems)}</td>
-      <td class="name-cell"></td><td class="amt-cell-last"></td>
-    </tr>
-    <tr>
-      <td class="name-cell">盈餘分紅</td><td class="amt-cell">${fmt(emp.profitSharing)}</td>
       <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr>

@@ -132,8 +132,8 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
     if (emp.isGrossManual) return
     const auto = calcGross(emp)
     setEmp(p => ({ ...p, grossSalary: auto }))
-  }, [emp.baseSalary, emp.mealAllowance, emp.positionAllowance, emp.otherAllowance,
-      emp.nightAllowance, emp.bonusItems, emp.profitSharing, emp.otherAdditions,
+  }, [emp.baseSalary, emp.positionAllowance, emp.otherAllowance,
+      emp.nightAllowance, emp.bonusItems, emp.otherAdditions,
       emp.specialLeaveAllowance, emp.weekdayOT, emp.restDayOT, emp.holidayOT,
       emp.sickLeaveDeduction, emp.isGrossManual])
 
@@ -298,10 +298,9 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         <SectionCard title="薪資資料" icon="💰">
           <Grid container spacing={2.5}>
             {([
-              ['本薪', 'baseSalary'], ['伙食津貼', 'mealAllowance'],
-              ['職務津貼', 'positionAllowance'], ['其他津貼', 'otherAllowance'],
-              ['夜勤津貼', 'nightAllowance'], ['津貼/獎金項目', 'bonusItems'],
-              ['盈餘分紅', 'profitSharing'], ['其他加款', 'otherAdditions'],
+              ['本薪', 'baseSalary'], ['職務津貼', 'positionAllowance'],
+              ['其他津貼', 'otherAllowance'], ['夜勤津貼', 'nightAllowance'],
+              ['津貼/獎金項目', 'bonusItems'], ['其他加款', 'otherAdditions'],
               ['特別假津貼', 'specialLeaveAllowance'], ['平日加班費', 'weekdayOT'],
               ['休息日加班費', 'restDayOT'], ['國定假日加班費', 'holidayOT'],
               ['事病假扣款', 'sickLeaveDeduction'],

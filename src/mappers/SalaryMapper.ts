@@ -47,6 +47,7 @@ export class SalaryMapper {
     // Convert empty strings "" to null or omit undefined
     const cleanPayload: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(model)) {
+      if (key === 'mealAllowance' || key === 'profitSharing') continue
       if (val === undefined || val === null) continue
       if (typeof val === 'string' && val.trim() === '') {
         cleanPayload[key] = null

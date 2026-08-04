@@ -180,9 +180,12 @@ export class SupabaseSalaryRepository {
           try {
             const parsed = JSON.parse(row.notes)
             const base = createEmptyEmployee()
+            const sanitized = { ...parsed }
+            delete sanitized.mealAllowance
+            delete sanitized.profitSharing
             models.push({
               ...base,
-              ...parsed,
+              ...sanitized,
               id: row.id || parsed.id || base.id,
               employeeId: row.employee_id || parsed.employeeId,
               month: monthKey || parsed.month || `${row.year}-${String(row.month).padStart(2, '0')}`
@@ -286,6 +289,7 @@ export class SupabaseSalaryRepository {
       // 3. Prepare payload JSON string
       const cleanPayload: Record<string, unknown> = {}
       for (const [key, val] of Object.entries(salaryData)) {
+        if (key === 'mealAllowance' || key === 'profitSharing') continue
         if (val === undefined || val === null) continue
         if (typeof val === 'string' && val.trim() === '') {
           cleanPayload[key] = null

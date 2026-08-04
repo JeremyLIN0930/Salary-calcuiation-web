@@ -152,12 +152,10 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             month: targetMonthToCreate,
             // Keep all financial numbers 0 or blank
             baseSalary: 0,
-            mealAllowance: 0,
             positionAllowance: 0,
             otherAllowance: 0,
             nightAllowance: 0,
             bonusItems: 0,
-            profitSharing: 0,
             otherAdditions: 0,
             specialLeaveAllowance: 0,
             weekdayOT: 0,
