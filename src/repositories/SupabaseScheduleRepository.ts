@@ -20,18 +20,16 @@ export class SupabaseScheduleRepository {
 
   /**
    * Helper to fetch and reconstruct the employees and shifts array for a list of schedules.
-   * Strictly uses real schedule_shifts columns only (id, schedule_week_id, employee_id, work_date, shift_type, start_time, end_time, is_day_off, remarks, created_at, updated_at).
-   * NO employee_name column!
+   * Uses schedule_shifts columns including employee_name for temporary staff.
    */
   private async populateSchedulesWithShifts(schedules: Schedule[]): Promise<void> {
     if (schedules.length === 0) return
 
     const weekIds = schedules.map(s => s.id).filter(Boolean)
 
-    // 1. Fetch all shifts for these week ids using real schema columns ONLY
     const { data: shiftsData, error: shiftsError } = await supabase
       .from('schedule_shifts')
-      .select('id, schedule_week_id, employee_id, work_date, shift_type, start_time, end_time, is_day_off, remarks, created_at, updated_at')
+      .select('id, schedule_week_id, employee_id, employee_name, work_date, shift_type, start_time, end_time, is_day_off, remarks, created_at, updated_at')
       .in('schedule_week_id', weekIds)
 
     if (shiftsError) {
@@ -41,7 +39,6 @@ export class SupabaseScheduleRepository {
 
     const shifts = shiftsData || []
 
-    // 2. Fetch master employees map (id -> name)
     const { data: empsData, error: empsError } = await supabase
       .from('master_employees')
       .select('id, name')
@@ -53,7 +50,6 @@ export class SupabaseScheduleRepository {
       empsData.forEach(e => empMap.set(e.id, (e.name || '').trim()))
     }
 
-    // 3. Group shifts by schedule_week_id
     const shiftsByWeek = new Map<string, typeof shifts>()
     shifts.forEach(s => {
       const wId = (s.schedule_week_id || '').toLowerCase()
@@ -63,12 +59,10 @@ export class SupabaseScheduleRepository {
       shiftsByWeek.get(wId)!.push(s)
     })
 
-    // 4. Populate each schedule
     for (const sch of schedules) {
       const schIdKey = (sch.id || '').toLowerCase()
       const schShifts = shiftsByWeek.get(schIdKey) || []
 
-      // Calculate 7 dates of the week (Mon ~ Sun)
       const weekDates: string[] = []
       if (sch.weekStart) {
         const start = new Date(sch.weekStart)
@@ -79,39 +73,39 @@ export class SupabaseScheduleRepository {
         }
       }
 
-      // Group DB shifts by employee key (formal vs temporary)
       const empShiftsMap = new Map<string, { name: string; isTemp: boolean; dateMap: Map<string, any> }>()
 
       schShifts.forEach((s: any) => {
+        const remarksStr = (s.remarks || '').trim()
+        const isTempRemark = remarksStr.startsWith('[temp:')
+        const employeeName = (s.employee_name || '').trim()
+        const employeeId = s.employee_id || null
+
         let empKey = ''
         let isTemp = false
         let empName = ''
 
-        const remarksStr = (s.remarks || '').trim()
-        const isTempRemark = remarksStr.startsWith('[temp:')
-
-        if (s.employee_id && isValidUuid(s.employee_id) && !isTempRemark) {
-          // Formal employee with master_employees entry
-          empKey = s.employee_id
-          empName = empMap.get(s.employee_id) || '未命名員工'
+        if (employeeId && isValidUuid(employeeId) && !isTempRemark) {
+          empKey = employeeId
+          empName = empMap.get(employeeId) || employeeName || '未命名員工'
           isTemp = false
         } else {
-          // Temporary employee
           isTemp = true
-          if (isTempRemark) {
+          if (employeeName) {
+            empName = employeeName
+          } else if (isTempRemark) {
             const idx = remarksStr.indexOf(']')
             empName = idx > 6 ? remarksStr.substring(6, idx).trim() : '臨時工'
           } else {
             empName = '臨時工'
           }
-          empKey = `temp_${empName}`
+          empKey = employeeId ?? `temp:${empName}`
         }
 
         if (!empShiftsMap.has(empKey)) {
           empShiftsMap.set(empKey, { name: empName, isTemp, dateMap: new Map<string, any>() })
         }
 
-        // Clean shift remark (strip [temp: Name] prefix)
         let cleanRemark = remarksStr
         if (isTempRemark) {
           const idx = remarksStr.indexOf(']')
@@ -124,7 +118,6 @@ export class SupabaseScheduleRepository {
         })
       })
 
-      // Construct ScheduleEmployee[]
       const schEmployees: ScheduleEmployee[] = []
       empShiftsMap.forEach(({ name: empName, isTemp, dateMap }, empKey) => {
         const paddedShifts: Shift[] = weekDates.map(dateStr => {
@@ -479,7 +472,7 @@ export class SupabaseScheduleRepository {
         weekRowId = insertedWeek.id
       }
 
-      // 4. Resolve Master Employees
+      // 4. Resolve employees for persistence without creating master employees
       const { data: allMasterEmps } = await supabase
         .from('master_employees')
         .select('id, name')
@@ -495,6 +488,7 @@ export class SupabaseScheduleRepository {
       for (const emp of employeesToSave) {
         const trimmedName = (emp.name || '').trim()
         const isExplicitTemp = emp.isTemp === true || emp.id.startsWith('temp_')
+        const matchedMasterEmpId = masterEmpMap.get(trimmedName)
 
         if (isExplicitTemp) {
           resolvedEmployees.push({
@@ -510,9 +504,9 @@ export class SupabaseScheduleRepository {
             isTemp: false,
             shifts: emp.shifts || []
           })
-        } else if (masterEmpMap.has(trimmedName)) {
+        } else if (matchedMasterEmpId) {
           resolvedEmployees.push({
-            id: masterEmpMap.get(trimmedName)!,
+            id: matchedMasterEmpId,
             name: trimmedName,
             isTemp: false,
             shifts: emp.shifts || []
@@ -527,22 +521,18 @@ export class SupabaseScheduleRepository {
         }
       }
 
-      // 5. Prepare schedule_shifts rows using real DB columns ONLY (NO employee_name column!)
+      // 5. Prepare schedule_shifts rows with employee_id / employee_name split
       const shiftRows: any[] = []
       for (const emp of resolvedEmployees) {
         for (const shift of emp.shifts) {
           if (shift.type && typeof shift.type === 'string' && shift.type.trim() !== '') {
-            let shiftRemark: string | null = null
-            if (emp.isTemp) {
-              const userRemark = shift.remark ? shift.remark.trim() : ''
-              shiftRemark = userRemark ? `[temp: ${emp.name}] ${userRemark}` : `[temp: ${emp.name}]`
-            } else {
-              shiftRemark = shift.remark ? shift.remark.trim() : null
-            }
+            const userRemark = shift.remark ? shift.remark.trim() : ''
+            const shiftRemark = userRemark || null
 
             shiftRows.push({
               schedule_week_id: weekRowId,
-              employee_id: emp.id, // null for temporary employees
+              employee_id: emp.isTemp ? null : emp.id,
+              employee_name: emp.isTemp ? emp.name : null,
               work_date: shift.date,
               shift_type: shift.type,
               start_time: shift.startTime || null,
@@ -559,7 +549,7 @@ export class SupabaseScheduleRepository {
       // 6. Query existing shifts in DB for this week
       const { data: dbShifts, error: queryShiftsErr } = await supabase
         .from('schedule_shifts')
-        .select('id, employee_id, work_date, remarks')
+        .select('id, employee_id, employee_name, work_date, remarks')
         .eq('schedule_week_id', weekRowId)
 
       if (queryShiftsErr) {
@@ -572,12 +562,10 @@ export class SupabaseScheduleRepository {
           if (s.employee_id) {
             dbShiftMap.set(`formal_${s.employee_id}_${s.work_date}`, s.id)
           } else {
-            const remarksStr = s.remarks || ''
-            if (remarksStr.startsWith('[temp:')) {
-              const idx = remarksStr.indexOf(']')
-              const name = idx > 6 ? remarksStr.substring(6, idx).trim() : '臨時工'
-              dbShiftMap.set(`temp_${name}_${s.work_date}`, s.id)
-            }
+            const name = (s.employee_name || '').trim() || '臨時工'
+            const legacyName = name.replace(/\s+/g, '_')
+            dbShiftMap.set(`temp:${name}_${s.work_date}`, s.id)
+            dbShiftMap.set(`temp_${legacyName}_${s.work_date}`, s.id)
           }
         })
       }
@@ -590,10 +578,48 @@ export class SupabaseScheduleRepository {
         if (shiftRow.employee_id) {
           key = `formal_${shiftRow.employee_id}_${shiftRow.work_date}`
         } else {
-          const remarksStr = shiftRow.remarks || ''
-          const idx = remarksStr.indexOf(']')
-          const name = idx > 6 ? remarksStr.substring(6, idx).trim() : '臨時工'
-          key = `temp_${name}_${shiftRow.work_date}`
+          const name = (shiftRow.employee_name || '').trim() || '臨時工'
+          const legacyName = name.replace(/\s+/g, '_')
+          key = `temp:${name}_${shiftRow.work_date}`
+          const legacyKey = `temp_${legacyName}_${shiftRow.work_date}`
+          const existingShiftId = dbShiftMap.get(key) || dbShiftMap.get(legacyKey)
+          if (existingShiftId) {
+            keptShiftIds.add(existingShiftId)
+            const updatePayload: any = {
+              shift_type: shiftRow.shift_type,
+              start_time: shiftRow.start_time,
+              end_time: shiftRow.end_time,
+              is_day_off: shiftRow.is_day_off,
+              employee_id: shiftRow.employee_id,
+              employee_name: shiftRow.employee_name,
+              remarks: shiftRow.remarks,
+              updated_at: new Date().toISOString()
+            }
+
+            const { error: updErr } = await supabase
+              .from('schedule_shifts')
+              .update(updatePayload)
+              .eq('id', existingShiftId)
+
+            if (updErr) {
+              console.error('❌ Failed to update schedule_shift:', updErr.message)
+              return errorResult(updErr, 'schedule_shifts', 'saveSchedule')
+            }
+            continue
+          }
+
+          const { data: newShift, error: insErr } = await supabase
+            .from('schedule_shifts')
+            .insert([shiftRow])
+            .select('id')
+            .single()
+
+          if (insErr || !newShift) {
+            console.error('❌ Failed to insert schedule_shift:', insErr?.message)
+            return errorResult(insErr || '新增班別失敗', 'schedule_shifts', 'saveSchedule')
+          }
+          keptShiftIds.add(newShift.id)
+          continue
         }
 
         const existingShiftId = dbShiftMap.get(key)

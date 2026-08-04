@@ -125,6 +125,7 @@ export interface ScheduleShiftRow {
   id?: string
   schedule_week_id?: string | null
   employee_id?: string | null
+  employee_name?: string | null
   work_date?: string | null
   shift_type?: string | null
   start_time?: string | null
