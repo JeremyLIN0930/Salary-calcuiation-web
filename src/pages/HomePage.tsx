@@ -17,13 +17,13 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import { groupSalariesByMonth, MonthGroup } from '../utils/salaryMigration'
 
 const AddSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
   </svg>
 )
 const PdfSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
-    <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+    <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5z"/>
   </svg>
 )
 const EditSvg = () => (
@@ -41,11 +41,6 @@ const SearchSvg = () => (
     <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
   </svg>
 )
-const ArrowBackSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-  </svg>
-)
 
 interface Props {
   onAddEmployee: () => void
@@ -60,6 +55,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const [activeMonthKey, setActiveMonthKey] = useState<string | null>(null)
 
   // Local Search & Selection State
+  const [monthSearch, setMonthSearch]       = useState('')
   const [search, setSearch]                 = useState('')
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget]     = useState<Employee | null>(null)
@@ -80,6 +76,16 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const monthGroups = useMemo(() => {
     return groupSalariesByMonth(state.employees)
   }, [state.employees])
+
+  // Filtered month groups for Month List View
+  const filteredMonthGroups = useMemo(() => {
+    if (!monthSearch.trim()) return monthGroups
+    const q = monthSearch.trim().toLowerCase()
+    return monthGroups.filter(g =>
+      g.displayTitle.toLowerCase().includes(q) ||
+      g.monthKey.toLowerCase().includes(q)
+    )
+  }, [monthGroups, monthSearch])
 
   // Active month group when in detail view
   const activeMonthGroup = useMemo(() => {
@@ -109,14 +115,12 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const handleProcessCreateMonth = () => {
     const formattedMonth = `${inputYear}-${String(inputMonth).padStart(2, '0')}`
 
-    // Check if month already exists
     const exists = monthGroups.some(g => g.monthKey === formattedMonth)
     if (exists) {
       showSnackbar(`「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月已存在。」`, 'warning')
       return
     }
 
-    // Find closest previous month
     const previousMonths = monthGroups.filter(g => g.monthKey < formattedMonth)
     const closestPrevMonth = previousMonths.length > 0 ? previousMonths[0] : null
 
@@ -127,20 +131,17 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       setPrevMonthToCopyFrom(closestPrevMonth.monthKey)
       setCopyPrevConfirmOpen(true)
     } else {
-      // Create empty month directly & navigate
       setActiveMonthKey(formattedMonth)
       showSnackbar(`已成功建立「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月」！`, 'success')
     }
   }
 
-  // Answer for Copy Prev Month Dialog
   const handleConfirmCopyPrevMonth = (shouldCopy: boolean) => {
     if (!targetMonthToCreate) return
 
     if (shouldCopy && prevMonthToCopyFrom) {
       const prevGroup = monthGroups.find(g => g.monthKey === prevMonthToCopyFrom)
       if (prevGroup && prevGroup.employees.length > 0) {
-        // Copy employees list with zeroed salary amounts
         prevGroup.employees.forEach(prevEmp => {
           const emptyEmp: Employee = {
             ...createEmptyEmployee(),
@@ -150,7 +151,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             hireDate: prevEmp.hireDate || '',
             payDate: prevEmp.payDate || '',
             month: targetMonthToCreate,
-            // Keep all financial numbers 0 or blank
             baseSalary: 0,
             positionAllowance: 0,
             otherAllowance: 0,
@@ -178,7 +178,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
           }
           dispatch({ type: 'ADD', payload: emptyEmp })
         })
-        showSnackbar(`已成功建立 ${targetMonthToCreate} 並複製上個月 ${prevGroup.employees.length} 位員工資料（薪資保持空白）！`, 'success')
+        showSnackbar(`已成功建立 ${targetMonthToCreate} 並複製上個月 ${prevGroup.employees.length} 位員工資料！`, 'success')
       }
     } else {
       showSnackbar(`已建立 ${targetMonthToCreate} 空白月份！`, 'success')
@@ -192,7 +192,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
 
   // ── Handlers: PDF Export ────────────────────────────────────────────────────
 
-  // ① Single employee PDF
   const handleExportSingleEmpPDF = async (emp: Employee) => {
     setExporting(true)
     try {
@@ -206,14 +205,13 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
   }
 
-  // ② Multi-selected employees PDF
   const handleExportSelectedPDF = async () => {
     if (selectedEmpIds.length === 0) return
     const selectedEmps = state.employees.filter(e => selectedEmpIds.includes(e.id))
     setExporting(true)
     try {
       await PDFService.exportPayroll(selectedEmps, 'multi', activeMonthKey || undefined)
-      showSnackbar(`已成功匯出勾選的 ${selectedEmps.length} 位員工薪資單 PDF！`, 'success')
+      showSnackbar(`已成功匯出勾選的 ${selectedEmps.length} 筆薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)
       showSnackbar('PDF 產生失敗，請重試。', 'error')
@@ -222,16 +220,15 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
   }
 
-  // ③ Entire Month PDF (Each emp 1 page)
-  const handleExportMonthPDF = async (monthGroup: MonthGroup) => {
-    if (monthGroup.employees.length === 0) {
-      showSnackbar('該月份尚無員工資料，無法匯出 PDF。', 'warning')
+  const handleExportMonthPDF = async (group: MonthGroup) => {
+    if (group.employees.length === 0) {
+      showSnackbar('該月份尚無員工薪資資料，無法匯出 PDF。', 'warning')
       return
     }
     setExporting(true)
     try {
-      await PDFService.exportPayroll(monthGroup.employees, 'month', monthGroup.monthKey)
-      showSnackbar(`已成功匯出「${monthGroup.displayTitle}」全體 ${monthGroup.employees.length} 位員工薪資單 PDF！`, 'success')
+      await PDFService.exportPayroll(group.employees, 'month', group.monthKey)
+      showSnackbar(`已成功匯出「${group.displayTitle}」整月薪資單 PDF！`, 'success')
     } catch (err) {
       console.error(err)
       showSnackbar('PDF 產生失敗，請重試。', 'error')
@@ -240,15 +237,9 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
   }
 
-  // ④ All Months PDF (Sorted)
   const handleExportAllMonthsPDF = async () => {
-    if (state.employees.length === 0) {
-      showSnackbar('系統尚無薪資資料可供匯出。', 'warning')
-      return
-    }
     setExporting(true)
     try {
-      // Sort employees by month descending
       const sorted = [...state.employees].sort((a, b) => b.month.localeCompare(a.month))
       await PDFService.exportPayroll(sorted, 'all')
       showSnackbar(`已成功匯出所有月份（共 ${sorted.length} 筆）薪資單 PDF！`, 'success')
@@ -270,7 +261,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       if (ok) {
         showSnackbar(`已刪除「${group.displayTitle}」及其所有員工薪資資料。`, 'info')
       } else {
-        showSnackbar(`刪除「${group.displayTitle}」失敗，請確認網路與 Console 錯誤。`, 'error')
+        showSnackbar(`刪除「${group.displayTitle}」失敗，請確認網路錯誤。`, 'error')
       }
     }
     setDeleteMonthKey(null)
@@ -290,7 +281,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     setDeleteTarget(null)
   }
 
-  // Multi-select Checkbox helpers
   const handleToggleSelectEmp = (id: string) => {
     setSelectedEmpIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -309,7 +299,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     }
   }
 
-  // Add new employee specifically for active month
   const handleAddNewEmployeeInActiveMonth = () => {
     const newEmp = createEmptyEmployee()
     if (activeMonthKey) {
@@ -319,21 +308,21 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     onEditEmployee(newEmp)
   }
 
-  // ── RENDER: Month List View ─────────────────────────────────────────────────
+  // ── RENDER: Month List View (薪資首頁：月份列表) ───────────────────────────
 
   if (!activeMonthKey) {
     return (
-      <PageContainer maxWidth={1200}>
+      <PageContainer maxWidth={1120}>
         <PageHeader
           title="💰 薪資管理"
-          subtitle="依月份分類管理全公司薪資表、建立月份與匯出整月 PDF"
+          subtitle="依月份分類管理全公司薪資表、輕鬆建立月份與匯出整月 PDF"
           action={
-            <Stack direction="row" spacing={1.5}>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap">
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
                 disabled={exporting || state.employees.length === 0}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 52 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED' }}
               >
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
@@ -342,7 +331,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
               <Button
                 variant="contained"
                 onClick={handleOpenCreateModal}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 52, px: 3 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
               >
                 <AddSvg />
                 ＋ 建立月份
@@ -351,101 +340,159 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
           }
         />
 
-        {monthGroups.length === 0 ? (
+        {/* Month Search Bar */}
+        <Card
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: '24px',
+            bgcolor: '#FFFFFF',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+            border: '1px solid #F1F5F9',
+          }}
+        >
+          <TextField
+            placeholder="🔍 搜尋薪資月份 (如 2026-08)..."
+            value={monthSearch}
+            size="small"
+            onChange={e => setMonthSearch(e.target.value)}
+            sx={{
+              width: { xs: '100%', sm: 360 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '16px',
+                height: 48,
+                bgcolor: '#F8FAFC',
+                px: 1.5,
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchSvg />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Card>
+
+        {filteredMonthGroups.length === 0 ? (
           <EmptyState
             title="尚無薪資月份資料"
-            subtitle="點擊右上角「＋ 建立月份」開始進行月份薪資管理。"
+            subtitle={monthSearch ? `找不到符合「${monthSearch}」的月份` : '點擊右上角「＋ 建立月份」開始進行月份薪資管理。'}
             actionLabel="＋ 建立第一個月份"
             onAction={handleOpenCreateModal}
           />
         ) : (
           <Grid container spacing={2.5}>
-            {monthGroups.map(group => (
+            {filteredMonthGroups.map(group => (
               <Grid item xs={12} key={group.monthKey}>
                 <Card
-                  variant="outlined"
+                  elevation={0}
                   sx={{
-                    borderRadius: 4,
-                    transition: 'all 0.2s ease',
-                    '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.06)', borderColor: 'primary.main' },
+                    borderRadius: '24px',
+                    borderColor: '#ECECEC',
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    bgcolor: '#FFFFFF',
+                    transition: 'all 200ms ease',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                    p: { xs: 2.5, sm: 3 },
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
+                    },
                   }}
                 >
-                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-                      {/* Left Month Info */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box
-                          sx={{
-                            width: 64, height: 64, borderRadius: 3,
-                            bgcolor: 'primary.light', color: 'primary.main',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 32, flexShrink: 0,
-                          }}
-                        >
-                          📂
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight={800} color="text.primary">
-                            {group.displayTitle}
-                          </Typography>
-                          <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
-                            <Chip label={`${group.employeeCount} 位員工`} size="small" color="primary" sx={{ fontWeight: 700 }} />
-                            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                              建立：{group.createdDate}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                              最後修改：{group.lastUpdatedDate}
-                            </Typography>
-                          </Stack>
-                        </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+                    {/* Left Month Info */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        sx={{
+                          width: 52, height: 52, borderRadius: '16px',
+                          bgcolor: '#EBF3FE', color: '#2F80ED',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 26, flexShrink: 0,
+                        }}
+                      >
+                        📁
                       </Box>
-
-                      {/* Right Total & Action Buttons */}
-                      <Stack direction={{ xs: 'row', sm: 'row' }} spacing={1} alignItems="center" justifyContent="flex-end" flexWrap="wrap">
-                        <Box sx={{ mr: 2, textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
-                          <Typography variant="caption" color="text.secondary">
-                            應付薪資總計
+                      <Box>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1E293B', fontSize: '22px' }}>
+                          {group.displayTitle}
+                        </Typography>
+                        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                          <Chip
+                            label={`${group.employeeCount} 位員工`}
+                            size="small"
+                            sx={{ bgcolor: '#EBF3FE', color: '#2F80ED', fontWeight: 700, borderRadius: '10px' }}
+                          />
+                          <Typography variant="caption" sx={{ color: '#64748B', fontSize: '13px' }}>
+                            建立：{group.createdDate}
                           </Typography>
-                          <Typography variant="subtitle1" fontWeight={900} color="primary.main">
-                            ${group.totalNetSalary.toLocaleString()}
-                          </Typography>
-                        </Box>
-
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleExportMonthPDF(group)}
-                          disabled={exporting}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700 }}
-                        >
-                          <PdfSvg />
-                          匯出整月 PDF
-                        </Button>
-
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => {
-                            setActiveMonthKey(group.monthKey)
-                            setSearch('')
-                            setSelectedEmpIds([])
-                          }}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700, px: 2.5 }}
-                        >
-                          進入月份 →
-                        </Button>
-
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => setDeleteMonthKey(group.monthKey)}
-                          sx={{ ml: 0.5 }}
-                        >
-                          <DelSvg />
-                        </IconButton>
-                      </Stack>
+                        </Stack>
+                      </Box>
                     </Box>
-                  </CardContent>
+
+                    {/* Middle Net Total Card */}
+                    <Box
+                      sx={{
+                        bgcolor: '#FAFBFD',
+                        px: 2.5,
+                        py: 1.2,
+                        borderRadius: '16px',
+                        border: '1px solid #F1F5F9',
+                        minWidth: 180,
+                        textAlign: { xs: 'left', sm: 'right' },
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, fontSize: '12px' }}>
+                        💰 本月薪資總額
+                      </Typography>
+                      <Typography variant="h6" fontWeight={700} sx={{ color: '#16A34A', fontSize: '20px', lineHeight: 1.2 }}>
+                        ${(group.totalNetSalary || 0).toLocaleString('zh-TW')}
+                      </Typography>
+                    </Box>
+
+                    {/* Right Action Buttons */}
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: 'stretch', sm: 'flex-end' }} flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        onClick={() => handleExportMonthPDF(group)}
+                        disabled={exporting}
+                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, borderColor: '#2F80ED', color: '#2F80ED' }}
+                      >
+                        <PdfSvg />
+                        匯出整月 PDF
+                      </Button>
+
+                      <Button
+                        variant="contained"
+                        onClick={() => {
+                          setActiveMonthKey(group.monthKey)
+                          setSearch('')
+                          setSelectedEmpIds([])
+                        }}
+                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, px: 2.5, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+                      >
+                        進入月份 →
+                      </Button>
+
+                      <IconButton
+                        onClick={() => setDeleteMonthKey(group.monthKey)}
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          bgcolor: '#FFF1F2',
+                          color: '#E11D48',
+                          '&:hover': { bgcolor: '#FFE4E6' },
+                        }}
+                      >
+                        <DelSvg />
+                      </IconButton>
+                    </Stack>
+                  </Box>
                 </Card>
               </Grid>
             ))}
@@ -453,8 +500,8 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
         )}
 
         {/* ── Modal: 建立月份 ── */}
-        <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} PaperProps={{ sx: { borderRadius: 4, minWidth: 320 } }}>
-          <DialogTitle fontWeight={800}>＋ 建立新薪資月份</DialogTitle>
+        <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
+          <DialogTitle fontWeight={700}>＋ 建立新薪資月份</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               請選擇欲建立的年份與月份：
@@ -480,75 +527,69 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-            <Button variant="outlined" onClick={() => setCreateModalOpen(false)} sx={{ borderRadius: 2 }}>
+            <Button variant="outlined" onClick={() => setCreateModalOpen(false)} sx={{ borderRadius: '12px' }}>
               取消
             </Button>
-            <Button variant="contained" onClick={handleProcessCreateMonth} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            <Button variant="contained" onClick={handleProcessCreateMonth} sx={{ borderRadius: '12px', fontWeight: 700, bgcolor: '#2F80ED' }}>
               確定建立
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* ── Dialog: 複製上個月員工確認 ── */}
-        <Dialog open={copyPrevConfirmOpen} onClose={() => handleConfirmCopyPrevMonth(false)} PaperProps={{ sx: { borderRadius: 4, minWidth: 340 } }}>
-          <DialogTitle fontWeight={800}>是否複製上個月員工？</DialogTitle>
+        <Dialog open={copyPrevConfirmOpen} onClose={() => handleConfirmCopyPrevMonth(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
+          <DialogTitle fontWeight={700}>是否複製上個月員工？</DialogTitle>
           <DialogContent>
-            <Alert severity="info" sx={{ borderRadius: 3, mb: 2 }}>
+            <Alert severity="info" sx={{ borderRadius: '12px', mb: 2 }}>
               偵測到前一月份（{prevMonthToCopyFrom}）共有員工資料。
             </Alert>
             <Typography variant="body2" color="text.secondary">
               是否自動將「{prevMonthToCopyFrom}」的所有員工姓名與門市複製建立至「{targetMonthToCreate}」？
-              <br /><br />
-              <strong>說明：</strong>所有金額與薪資數字皆會保持空白/0，您可再進入月份內快速填寫。
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-            <Button variant="outlined" onClick={() => handleConfirmCopyPrevMonth(false)} sx={{ borderRadius: 2 }}>
+            <Button variant="outlined" onClick={() => handleConfirmCopyPrevMonth(false)} sx={{ borderRadius: '12px' }}>
               否 (建立空白月份)
             </Button>
-            <Button variant="contained" color="primary" onClick={() => handleConfirmCopyPrevMonth(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            <Button variant="contained" onClick={() => handleConfirmCopyPrevMonth(true)} sx={{ borderRadius: '12px', fontWeight: 700, bgcolor: '#2F80ED' }}>
               是 (複製員工名單)
             </Button>
           </DialogActions>
         </Dialog>
-
-        {/* ── Dialog: 刪除整個月份確認 ── */}
-        <ConfirmDialog
-          open={!!deleteMonthKey}
-          title="確定刪除此薪資月份？"
-          content={`刪除後將連同此月份所有員工的薪資記錄一併刪除，此操作無法復原。確定要繼續嗎？`}
-          confirmText="確定刪除月份"
-          confirmColor="error"
-          onClose={() => setDeleteMonthKey(null)}
-          onConfirm={handleConfirmDeleteMonth}
-        />
       </PageContainer>
     )
   }
 
-  // ── RENDER: Month Detail View (員工薪資明細) ───────────────────────────────
+  // ── RENDER: Month Detail View (特定月份內員工薪資列表) ────────────────────
 
   const isAllInMonthSelected = filteredEmployeesInMonth.length > 0 &&
     filteredEmployeesInMonth.every(e => selectedEmpIds.includes(e.id))
 
   return (
-    <PageContainer maxWidth={1200}>
-      {/* Top Breadcrumb & Header */}
+    <PageContainer maxWidth={1120}>
       <Box sx={{ mb: 2 }}>
         <Button
-          variant="outlined"
-          size="small"
           onClick={() => setActiveMonthKey(null)}
-          sx={{ borderRadius: 2, mb: 1.5, fontWeight: 700 }}
+          size="small"
+          sx={{
+            color: '#64748B',
+            fontWeight: 700,
+            fontSize: '14px',
+            px: 1.5,
+            py: 0.8,
+            borderRadius: '12px',
+            bgcolor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            '&:hover': { bgcolor: '#F8FAFC', color: '#1E293B' },
+          }}
         >
-          <ArrowBackSvg />
-          回月份列表
+          ← 返回月份列表
         </Button>
       </Box>
 
       <PageHeader
         title={`📂 ${activeMonthGroup ? activeMonthGroup.displayTitle : activeMonthKey} — 薪資明細`}
-        subtitle={`共 ${filteredEmployeesInMonth.length} 位員工 · 應付金額合計: $${(activeMonthGroup?.totalNetSalary || 0).toLocaleString()}`}
+        subtitle={`共 ${filteredEmployeesInMonth.length} 位員工 · 實發金額合計: $${(activeMonthGroup?.totalNetSalary || 0).toLocaleString()}`}
         action={
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
             {selectedEmpIds.length > 0 && (
@@ -557,7 +598,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                 color="secondary"
                 onClick={handleExportSelectedPDF}
                 disabled={exporting}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 48 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48 }}
               >
                 <PdfSvg />
                 匯出已選 ({selectedEmpIds.length}) PDF
@@ -568,7 +609,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
               variant="outlined"
               onClick={() => activeMonthGroup && handleExportMonthPDF(activeMonthGroup)}
               disabled={exporting || filteredEmployeesInMonth.length === 0}
-              sx={{ borderRadius: 2.5, fontWeight: 700, height: 48 }}
+              sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED' }}
             >
               <PdfSvg />
               匯出整月 PDF
@@ -577,7 +618,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             <Button
               variant="contained"
               onClick={handleAddNewEmployeeInActiveMonth}
-              sx={{ borderRadius: 2.5, fontWeight: 700, height: 48, px: 2.5 }}
+              sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
             >
               <AddSvg />
               新增員工薪資
@@ -587,14 +628,32 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       />
 
       {/* Instant Search Bar & Selection Toolbar */}
-      <Card variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3, bgcolor: '#FAFBFD' }}>
+      <Card
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" justifyContent="space-between">
           <TextField
             placeholder="🔍 搜尋員工姓名或門市..."
             value={search}
             size="small"
             onChange={e => setSearch(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 320 }, bgcolor: '#fff', borderRadius: 2 }}
+            sx={{
+              width: { xs: '100%', sm: 360 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '16px',
+                height: 48,
+                bgcolor: '#F8FAFC',
+                px: 1.5,
+              },
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -696,7 +755,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                       </Box>
                     </Stack>
 
-                    {/* Top Right Tool Buttons: 40x40px Circular Buttons */}
+                    {/* Top Right Tool Buttons */}
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Tooltip title="匯出此員工 PDF">
                         <IconButton

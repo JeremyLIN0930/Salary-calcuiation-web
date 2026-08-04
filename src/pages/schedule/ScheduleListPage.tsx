@@ -44,11 +44,6 @@ const PdfSvg = () => (
     <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5z"/>
   </svg>
 )
-const ArrowBackSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-  </svg>
-)
 
 interface Props {
   onSelectSchedule: (schedule: Schedule) => void
@@ -130,14 +125,12 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   const handleProcessCreateMonth = () => {
     const formattedMonth = `${inputYear}-${String(inputMonth).padStart(2, '0')}`
 
-    // Check if month already exists
     const exists = monthGroups.some(g => g.monthKey === formattedMonth)
     if (exists) {
       showSnackbar(`「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月已存在。」`, 'warning')
       return
     }
 
-    // Find closest previous month
     const previousMonths = monthGroups.filter(g => g.monthKey < formattedMonth)
     const closestPrevMonth = previousMonths.length > 0 ? previousMonths[0] : null
 
@@ -148,20 +141,17 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
       setPrevMonthToCopyFrom(closestPrevMonth.monthKey)
       setCopyPrevConfirmOpen(true)
     } else {
-      // Create empty month directly & navigate
       setActiveMonthKey(formattedMonth)
       showSnackbar(`已成功建立「${inputYear} 年 ${String(inputMonth).padStart(2, '0')} 月」！`, 'success')
     }
   }
 
-  // Answer for Copy Prev Month Employees Dialog
   const handleConfirmCopyPrevMonth = (shouldCopy: boolean) => {
     if (!targetMonthToCreate) return
 
     if (shouldCopy && prevMonthToCopyFrom) {
       const prevGroup = monthGroups.find(g => g.monthKey === prevMonthToCopyFrom)
       if (prevGroup && prevGroup.schedules.length > 0) {
-        // Collect all distinct employee names from previous month schedules or master database
         const employeeNameSet = new Set<string>()
         prevGroup.schedules.forEach(sched => {
           sched.employees.forEach(emp => {
@@ -172,10 +162,9 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         const copiedEmpList: ScheduleEmployee[] = Array.from(employeeNameSet).map(name => ({
           id: Math.random().toString(36).slice(2),
           name,
-          shifts: [], // Keep shift empty
+          shifts: [],
         }))
 
-        // Create Week 1 for target month with copied employees
         const weekStart = `${targetMonthToCreate}-01`
         const weekEnd = `${targetMonthToCreate}-07`
         const newSched: Schedule = {
@@ -191,7 +180,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         }
 
         dispatch({ type: 'ADD_SCHEDULE', payload: newSched })
-        showSnackbar(`已建立 ${targetMonthToCreate} 第 1 週排班，並帶入 ${copiedEmpList.length} 位員工（班別保持空白）！`, 'success')
+        showSnackbar(`已建立 ${targetMonthToCreate} 第 1 週排班，並帶入 ${copiedEmpList.length} 位員工！`, 'success')
       }
     } else {
       showSnackbar(`已建立 ${targetMonthToCreate} 空白月份！`, 'success')
@@ -203,9 +192,8 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     setPrevMonthToCopyFrom(null)
   }
 
-  // ── Handlers: PDF Export 4 Modes ──────────────────────────────────────────
+  // ── Handlers: PDF Export ──────────────────────────────────────────────────
 
-  // ① Single week PDF: 排班表_YYYY年MM月_第X週_門市.pdf
   const handleExportSingleWeekPDF = async (schedule: Schedule, weekIndex: number, e: React.MouseEvent) => {
     e.stopPropagation()
     setExporting(true)
@@ -220,7 +208,6 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ② Multi-selected weeks PDF: 排班表_YYYY年MM月_多週.pdf
   const handleExportSelectedWeeksPDF = async () => {
     if (selectedWeekIds.length === 0) return
     const selectedScheds = state.schedules.filter(s => selectedWeekIds.includes(s.id))
@@ -238,7 +225,6 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ③ Entire Month PDF: 排班表_YYYY年MM月_門市.pdf
   const handleExportMonthPDF = async (monthGroup: ScheduleMonthGroup, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     if (monthGroup.schedules.length === 0) {
@@ -250,7 +236,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
       for (const sched of monthGroup.schedules) {
         await PDFService.exportSchedule(sched, 'month')
       }
-      showSnackbar(`已成功匯出「${monthGroup.displayTitle}」全體 ${monthGroup.schedules.length} 週排班表 PDF！`, 'success')
+      showSnackbar(`已成功匯出「${monthGroup.displayTitle}」整月排班 PDF！`, 'success')
     } catch (err) {
       console.error(err)
       showSnackbar('PDF 匯出失敗，請再試一次', 'error')
@@ -259,19 +245,14 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ④ All Months PDF: 排班表_全部月份.pdf
   const handleExportAllMonthsPDF = async () => {
-    if (state.schedules.length === 0) {
-      showSnackbar('系統尚無排班資料可供匯出。', 'warning')
-      return
-    }
     setExporting(true)
     try {
       const sorted = [...state.schedules].sort((a, b) => b.weekStart.localeCompare(a.weekStart))
       for (const sched of sorted) {
         await PDFService.exportSchedule(sched, 'all')
       }
-      showSnackbar(`已成功匯出所有月份（共 ${sorted.length} 週）排班表 PDF！`, 'success')
+      showSnackbar(`已成功匯出全部 ${sorted.length} 週排班表 PDF！`, 'success')
     } catch (err) {
       console.error(err)
       showSnackbar('PDF 匯出失敗，請再試一次', 'error')
@@ -280,16 +261,17 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  // ── Handlers: Delete Month & Week ─────────────────────────────────────────
+  // ── Handlers: Delete Month & Single Week Schedule ─────────────────────────
 
-  const handleConfirmDeleteMonth = () => {
+  const handleConfirmDeleteMonth = async () => {
     if (!deleteMonthKey) return
     const group = monthGroups.find(g => g.monthKey === deleteMonthKey)
     if (group) {
-      group.schedules.forEach(sched => {
+      for (const sched of group.schedules) {
+        await supabaseScheduleRepository.deleteSchedule(sched.id)
         dispatch({ type: 'DELETE_SCHEDULE', payload: sched.id })
-      })
-      showSnackbar(`已刪除「${group.displayTitle}」及其所有週排班。`, 'info')
+      }
+      showSnackbar(`已刪除「${group.displayTitle}」及其所有每週班表。`, 'info')
     }
     setDeleteMonthKey(null)
     if (activeMonthKey === deleteMonthKey) {
@@ -297,90 +279,16 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     }
   }
 
-  const handleConfirmDeleteSingleSchedule = () => {
+  const handleConfirmDeleteSingleSchedule = async () => {
     if (!deleteTargetSchedule) return
-    dispatch({ type: 'DELETE_SCHEDULE', payload: deleteTargetSchedule.id })
-    showSnackbar('該週排班表已成功刪除', 'info')
+    const ok = await supabaseScheduleRepository.deleteSchedule(deleteTargetSchedule.id)
+    if (ok) {
+      dispatch({ type: 'DELETE_SCHEDULE', payload: deleteTargetSchedule.id })
+      showSnackbar(`已刪除「${deleteTargetSchedule.storeName} (${deleteTargetSchedule.weekStart})」排班資料`, 'info')
+    } else {
+      showSnackbar('刪除失敗，請確認網路或 Supabase 連線', 'error')
+    }
     setDeleteTargetSchedule(null)
-  }
-
-  // Handle new weekly schedule created via Dialog
-  const handleCreateNewWeekSchedule = async (newSchedule: Schedule) => {
-    const startDateStr = newSchedule.weekStart || ''
-    const newYear = parseInt(startDateStr.slice(0, 4), 10) || new Date().getFullYear()
-    const newMonth = parseInt(startDateStr.slice(5, 7), 10) || (new Date().getMonth() + 1)
-    const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
-    const targetWeekNo = newSchedule.weekNo || Math.min(Math.ceil(dayOfMonth / 7), 5) || 1
-
-    // Helper: Resolve store to canonical Store ID
-    const resolveStoreId = (s: Partial<Schedule>): string => {
-      const match = storeList.find(st => 
-        st.id === s.storeId || 
-        (st.storeNo && (st.storeNo === s.storeNo || st.storeNo === s.storeId)) ||
-        (st.code && (st.code === s.storeCode || st.code === s.storeId)) || 
-        st.name === s.storeName
-      )
-      if (match) return match.id
-      return s.storeId || s.storeName || ''
-    }
-
-    const targetStoreId = resolveStoreId(newSchedule)
-
-    // 1. In-memory check against state.schedules (company_id AND store_id AND year AND month AND week_no)
-    const matchedInMemory = state.schedules.find(s => {
-      const sStart = s.weekStart || ''
-      const sYear = parseInt(sStart.slice(0, 4), 10) || 0
-      const sMonth = parseInt(sStart.slice(5, 7), 10) || 0
-      const sDay = parseInt(sStart.slice(8, 10), 10) || 1
-      const sWeekNo = s.weekNo || Math.min(Math.ceil(sDay / 7), 5) || 1
-      const sStoreId = resolveStoreId(s)
-
-      const storeMatch = sStoreId === targetStoreId
-      const yearMatch  = sYear === newYear
-      const monthMatch = sMonth === newMonth
-      const weekMatch  = sWeekNo === targetWeekNo
-
-      return storeMatch && yearMatch && monthMatch && weekMatch
-    })
-
-    if (matchedInMemory) {
-      const matchedStoreTitle = formatStoreTitle(matchedInMemory)
-      const matchedWeekStart = (matchedInMemory.weekStart || '').replace(/-/g, '/')
-      const matchedWeekEnd = (matchedInMemory.weekEnd || '').replace(/-/g, '/')
-      const matchedWeekNo = matchedInMemory.weekNo || targetWeekNo
-      const matchedWeekTitle = `第${matchedWeekNo}週（${matchedWeekStart}～${matchedWeekEnd}）`
-
-      setDuplicateInfo({ storeTitle: matchedStoreTitle, weekTitle: matchedWeekTitle })
-      setDuplicateDialogOpen(true)
-      setCreateWeekDialogOpen(false)
-      return
-    }
-
-    // 2. Database check against Supabase
-    const dbCheck = await supabaseScheduleRepository.checkScheduleWeekExists(
-      targetStoreId || newSchedule.storeId || newSchedule.storeName,
-      newSchedule.weekStart
-    )
-
-    if (dbCheck.exists) {
-      const existing = dbCheck.existingSchedule
-      const matchedStoreTitle = existing ? formatStoreTitle(existing) : formatStoreTitle(newSchedule)
-      const matchedWeekStart = (existing?.weekStart || newSchedule.weekStart).replace(/-/g, '/')
-      const matchedWeekEnd = (existing?.weekEnd || newSchedule.weekEnd).replace(/-/g, '/')
-      const matchedWeekNo = existing?.weekNo || targetWeekNo
-      const matchedWeekTitle = `第${matchedWeekNo}週（${matchedWeekStart}～${matchedWeekEnd}）`
-
-      setDuplicateInfo({ storeTitle: matchedStoreTitle, weekTitle: matchedWeekTitle })
-      setDuplicateDialogOpen(true)
-      setCreateWeekDialogOpen(false)
-      return
-    }
-
-    // 3. Creation succeeds: Save to Supabase and navigate
-    dispatch({ type: 'ADD_SCHEDULE', payload: newSchedule })
-    showSnackbar('班表建立成功', 'success')
-    setCreateWeekDialogOpen(false)
-    onSelectSchedule(newSchedule)
   }
 
   // Multi-select Checkbox helpers
@@ -406,17 +314,17 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
 
   if (!activeMonthKey) {
     return (
-      <PageContainer maxWidth={1200}>
+      <PageContainer maxWidth={1120}>
         <PageHeader
           title="📅 排班管理"
-          subtitle="依月份分類管理週班表、預覽編輯與 PDF 匯出"
+          subtitle="依月份分類管理每週班表、輕鬆建立、編輯與 PDF 匯出"
           action={
-            <Stack direction="row" spacing={1.5}>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap">
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
                 disabled={exporting || state.schedules.length === 0}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 52 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED' }}
               >
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
@@ -425,7 +333,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               <Button
                 variant="contained"
                 onClick={handleOpenCreateMonthModal}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 52, px: 3 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
               >
                 <AddSvg />
                 ＋ 建立月份
@@ -435,13 +343,31 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         />
 
         {/* Month Search Bar */}
-        <Card variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3, bgcolor: '#FAFBFD' }}>
+        <Card
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: '24px',
+            bgcolor: '#FFFFFF',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+            border: '1px solid #F1F5F9',
+          }}
+        >
           <TextField
             placeholder="🔍 搜尋排班月份 (如 2026-08)..."
             value={monthSearch}
             size="small"
             onChange={e => setMonthSearch(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 360 }, bgcolor: '#fff', borderRadius: 2 }}
+            sx={{
+              width: { xs: '100%', sm: 360 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '16px',
+                height: 48,
+                bgcolor: '#F8FAFC',
+                px: 1.5,
+              },
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -464,77 +390,91 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             {filteredMonthGroups.map(group => (
               <Grid item xs={12} key={group.monthKey}>
                 <Card
-                  variant="outlined"
+                  elevation={0}
                   sx={{
-                    borderRadius: 4,
-                    transition: 'all 0.2s ease',
-                    '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.06)', borderColor: 'primary.main' },
+                    borderRadius: '24px',
+                    borderColor: '#ECECEC',
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    bgcolor: '#FFFFFF',
+                    transition: 'all 200ms ease',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                    p: { xs: 2.5, sm: 3 },
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
+                    },
                   }}
                 >
-                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-                      {/* Left Month Info */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box
-                          sx={{
-                            width: 64, height: 64, borderRadius: 3,
-                            bgcolor: 'primary.light', color: 'primary.main',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 32, flexShrink: 0,
-                          }}
-                        >
-                          📂
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight={800} color="text.primary">
-                            {group.displayTitle}
-                          </Typography>
-                          <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
-                            <Chip label={`共 ${group.weekCount} 週班表`} size="small" color="primary" sx={{ fontWeight: 700 }} />
-                            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                              最後修改：{group.lastUpdatedDate}
-                            </Typography>
-                          </Stack>
-                        </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+                    {/* Left Month Info */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        sx={{
+                          width: 52, height: 52, borderRadius: '16px',
+                          bgcolor: '#EBF3FE', color: '#2F80ED',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 26, flexShrink: 0,
+                        }}
+                      >
+                        📁
                       </Box>
-
-                      {/* Right Action Buttons */}
-                      <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end" flexWrap="wrap">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={(e) => handleExportMonthPDF(group, e)}
-                          disabled={exporting}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700 }}
-                        >
-                          <PdfSvg />
-                          匯出整月 PDF
-                        </Button>
-
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => {
-                            setActiveMonthKey(group.monthKey)
-                            setWeekSearch('')
-                            setSelectedWeekIds([])
-                          }}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700, px: 2.5 }}
-                        >
-                          進入月份 →
-                        </Button>
-
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => setDeleteMonthKey(group.monthKey)}
-                          sx={{ ml: 0.5 }}
-                        >
-                          <DelSvg />
-                        </IconButton>
-                      </Stack>
+                      <Box>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1E293B', fontSize: '22px' }}>
+                          {group.displayTitle}
+                        </Typography>
+                        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                          <Chip
+                            label={`${group.weekCount} 張班表`}
+                            size="small"
+                            sx={{ bgcolor: '#EBF3FE', color: '#2F80ED', fontWeight: 700, borderRadius: '10px' }}
+                          />
+                          <Typography variant="caption" sx={{ color: '#64748B', fontSize: '13px' }}>
+                            最後修改：{group.lastUpdatedDate}
+                          </Typography>
+                        </Stack>
+                      </Box>
                     </Box>
-                  </CardContent>
+
+                    {/* Right Action Buttons */}
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: 'stretch', sm: 'flex-end' }} flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        onClick={(e) => handleExportMonthPDF(group, e)}
+                        disabled={exporting}
+                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, borderColor: '#2F80ED', color: '#2F80ED' }}
+                      >
+                        <PdfSvg />
+                        匯出整月 PDF
+                      </Button>
+
+                      <Button
+                        variant="contained"
+                        onClick={() => {
+                          setActiveMonthKey(group.monthKey)
+                          setWeekSearch('')
+                          setSelectedWeekIds([])
+                        }}
+                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, px: 2.5, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+                      >
+                        進入月份 →
+                      </Button>
+
+                      <IconButton
+                        onClick={() => setDeleteMonthKey(group.monthKey)}
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          bgcolor: '#FFF1F2',
+                          color: '#E11D48',
+                          '&:hover': { bgcolor: '#FFE4E6' },
+                        }}
+                      >
+                        <DelSvg />
+                      </IconButton>
+                    </Stack>
+                  </Box>
                 </Card>
               </Grid>
             ))}
@@ -542,8 +482,8 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         )}
 
         {/* ── Modal: 建立月份 ── */}
-        <Dialog open={createMonthModalOpen} onClose={() => setCreateMonthModalOpen(false)} PaperProps={{ sx: { borderRadius: 4, minWidth: 320 } }}>
-          <DialogTitle fontWeight={800}>＋ 建立排班月份</DialogTitle>
+        <Dialog open={createMonthModalOpen} onClose={() => setCreateMonthModalOpen(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
+          <DialogTitle fontWeight={700}>＋ 建立排班月份</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               請選擇欲建立的年份與月份：
@@ -569,75 +509,48 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-            <Button variant="outlined" onClick={() => setCreateMonthModalOpen(false)} sx={{ borderRadius: 2 }}>
+            <Button variant="outlined" onClick={() => setCreateMonthModalOpen(false)} sx={{ borderRadius: '12px' }}>
               取消
             </Button>
-            <Button variant="contained" onClick={handleProcessCreateMonth} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            <Button variant="contained" onClick={handleProcessCreateMonth} sx={{ borderRadius: '12px', fontWeight: 700, bgcolor: '#2F80ED' }}>
               確定建立
             </Button>
           </DialogActions>
         </Dialog>
-
-        {/* ── Dialog: 複製上個月員工確認 ── */}
-        <Dialog open={copyPrevConfirmOpen} onClose={() => handleConfirmCopyPrevMonth(false)} PaperProps={{ sx: { borderRadius: 4, minWidth: 340 } }}>
-          <DialogTitle fontWeight={800}>是否複製上個月員工名單？</DialogTitle>
-          <DialogContent>
-            <Alert severity="info" sx={{ borderRadius: 3, mb: 2 }}>
-              偵測到前一月份（{prevMonthToCopyFrom}）有排班員工記錄。
-            </Alert>
-            <Typography variant="body2" color="text.secondary">
-              是否自動將「{prevMonthToCopyFrom}」的所有排班員工姓名帶入「{targetMonthToCreate}」第 1 週？
-              <br /><br />
-              <strong>說明：</strong>每日班別將保持空白，以便您快速進行新月度排班。
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-            <Button variant="outlined" onClick={() => handleConfirmCopyPrevMonth(false)} sx={{ borderRadius: 2 }}>
-              否 (建立空白月份)
-            </Button>
-            <Button variant="contained" color="primary" onClick={() => handleConfirmCopyPrevMonth(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
-              是 (複製員工名單)
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* ── Dialog: 刪除整個月份確認 ── */}
-        <ConfirmDialog
-          open={!!deleteMonthKey}
-          title="確定刪除此排班月份？"
-          content={`刪除後將連同此月份所有週排班記錄一併刪除，此操作無法復原。確定要繼續嗎？`}
-          confirmText="確定刪除月份"
-          confirmColor="error"
-          onClose={() => setDeleteMonthKey(null)}
-          onConfirm={handleConfirmDeleteMonth}
-        />
       </PageContainer>
     )
   }
 
-  // ── RENDER: Week List View (月份內：週班表列表) ────────────────────────────
+  // ── RENDER: Week List View (特定月份內每週排班列表) ────────────────────────
 
   const isAllInMonthSelected = filteredSchedulesInMonth.length > 0 &&
     filteredSchedulesInMonth.every(s => selectedWeekIds.includes(s.id))
 
   return (
-    <PageContainer maxWidth={1200}>
-      {/* Top Breadcrumb */}
+    <PageContainer maxWidth={1120}>
       <Box sx={{ mb: 2 }}>
         <Button
-          variant="outlined"
-          size="small"
           onClick={() => setActiveMonthKey(null)}
-          sx={{ borderRadius: 2, mb: 1.5, fontWeight: 700 }}
+          size="small"
+          sx={{
+            color: '#64748B',
+            fontWeight: 700,
+            fontSize: '14px',
+            px: 1.5,
+            py: 0.8,
+            borderRadius: '12px',
+            bgcolor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            '&:hover': { bgcolor: '#F8FAFC', color: '#1E293B' },
+          }}
         >
-          <ArrowBackSvg />
-          回月份列表
+          ← 返回月份列表
         </Button>
       </Box>
 
       <PageHeader
-        title={`📂 ${activeMonthGroup ? activeMonthGroup.displayTitle : activeMonthKey} — 週班表列表`}
-        subtitle={`共 ${filteredSchedulesInMonth.length} 週排班表`}
+        title={`📂 ${activeMonthGroup ? activeMonthGroup.displayTitle : activeMonthKey} — 每週排班表`}
+        subtitle={`此月份共有 ${filteredSchedulesInMonth.length} 張週班表`}
         action={
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
             {selectedWeekIds.length > 0 && (
@@ -646,10 +559,10 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                 color="secondary"
                 onClick={handleExportSelectedWeeksPDF}
                 disabled={exporting}
-                sx={{ borderRadius: 2.5, fontWeight: 700, height: 48 }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48 }}
               >
                 <PdfSvg />
-                匯出已選 ({selectedWeekIds.length}) 週 PDF
+                匯出已選 ({selectedWeekIds.length}) PDF
               </Button>
             )}
 
@@ -657,7 +570,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               variant="outlined"
               onClick={() => activeMonthGroup && handleExportMonthPDF(activeMonthGroup)}
               disabled={exporting || filteredSchedulesInMonth.length === 0}
-              sx={{ borderRadius: 2.5, fontWeight: 700, height: 48 }}
+              sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED' }}
             >
               <PdfSvg />
               匯出整月 PDF
@@ -666,24 +579,42 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             <Button
               variant="contained"
               onClick={() => setCreateWeekDialogOpen(true)}
-              sx={{ borderRadius: 2.5, fontWeight: 700, height: 48, px: 2.5 }}
+              sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
             >
               <AddSvg />
-              ＋ 建立本週排班
+              ＋ 建立每週排班
             </Button>
           </Stack>
         }
       />
 
-      {/* Week Search & Selection Toolbar */}
-      <Card variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3, bgcolor: '#FAFBFD' }}>
+      {/* Week Search Bar & Selection Toolbar */}
+      <Card
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" justifyContent="space-between">
           <TextField
-            placeholder="🔍 搜尋週次、日期 (如 8/3)..."
+            placeholder="🔍 搜尋門市名稱或週次日期..."
             value={weekSearch}
             size="small"
             onChange={e => setWeekSearch(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 320 }, bgcolor: '#fff', borderRadius: 2 }}
+            sx={{
+              width: { xs: '100%', sm: 360 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '16px',
+                height: 48,
+                bgcolor: '#F8FAFC',
+                px: 1.5,
+              },
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -700,7 +631,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               onChange={handleToggleSelectAllInMonth}
             />
             <Typography variant="body2" fontWeight={600} color="text.secondary">
-              全選本頁週次 ({selectedWeekIds.length}/{filteredSchedulesInMonth.length})
+              全選本頁班表 ({selectedWeekIds.length}/{filteredSchedulesInMonth.length})
             </Typography>
           </Stack>
         </Stack>
@@ -709,80 +640,103 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
       {/* Weekly Schedule Cards Grid */}
       {filteredSchedulesInMonth.length === 0 ? (
         <EmptyState
-          title="尚無此月份之週排班表"
-          subtitle={weekSearch ? `找不到符合「${weekSearch}」的週排班` : '請點擊上方「＋ 建立本週排班」建立本月排班表'}
-          actionLabel="＋ 建立本週排班"
+          title="尚無此月份之每週排班"
+          subtitle={weekSearch ? `找不到符合「${weekSearch}」的班表` : '請點擊上方「＋ 建立每週排班」開始排班。'}
+          actionLabel="＋ 建立每週排班"
           onAction={() => setCreateWeekDialogOpen(true)}
         />
       ) : (
-        <Grid container spacing={2.5}>
-          {filteredSchedulesInMonth.map((sched) => {
+        <Grid container spacing={3}>
+          {filteredSchedulesInMonth.map((sched, index) => {
             const isSelected = selectedWeekIds.includes(sched.id)
-            const weekNo = sched.weekNo || Math.min(Math.ceil(parseInt((sched.weekStart || '').slice(8, 10), 10) / 7), 5) || 1
+            const weekNo = sched.weekNo || (index + 1)
+
             return (
-              <Grid item xs={12} key={sched.id}>
+              <Grid item xs={12} sm={6} key={sched.id}>
                 <Card
-                  variant="outlined"
+                  elevation={0}
+                  onClick={() => onSelectSchedule(sched)}
                   sx={{
-                    borderRadius: 4,
-                    borderColor: isSelected ? 'primary.main' : '#E5E7EB',
-                    bgcolor: isSelected ? '#F0F7FF' : '#ffffff',
-                    transition: 'all 0.15s ease',
-                    '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.06)' },
+                    borderRadius: '24px',
+                    borderColor: isSelected ? '#2F80ED' : '#ECECEC',
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    bgcolor: isSelected ? '#F0F7FF' : '#FFFFFF',
+                    transition: 'all 200ms ease',
+                    boxShadow: isSelected ? '0 8px 24px rgba(47, 128, 237, 0.12)' : '0 8px 24px rgba(0,0,0,0.04)',
+                    p: { xs: 2.5, sm: 3 },
+                    cursor: 'pointer',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
+                    },
                   }}
                 >
-                  <CardContent sx={{ p: 2.5 }}>
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-                      {/* Left Info */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Checkbox
-                          checked={isSelected}
-                          onChange={() => handleToggleSelectWeek(sched.id)}
-                        />
-                        <Box>
-                          <Typography variant="h6" fontWeight={800} color="text.primary">
-                            第 {weekNo} 週 ({sched.weekStart} ～ {sched.weekEnd})
-                          </Typography>
-                          <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                            <Chip label={formatStoreTitle(sched)} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-                            <Chip label={`${sched.employees.length} 位員工`} size="small" color="primary" variant="filled" sx={{ fontWeight: 700 }} />
-                          </Stack>
-                        </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Checkbox
+                        checked={isSelected}
+                        onClick={e => e.stopPropagation()}
+                        onChange={() => handleToggleSelectWeek(sched.id)}
+                        sx={{ p: 0.5 }}
+                      />
+                      <Box>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1E293B', fontSize: '20px' }}>
+                          {formatStoreTitle(sched)}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748B', fontSize: '14px', mt: 0.2 }}>
+                          第 {weekNo} 週（{sched.weekStart.replace(/-/g, '/')} ～ {sched.weekEnd.replace(/-/g, '/')}）
+                        </Typography>
                       </Box>
+                    </Stack>
 
-                      {/* Right Actions */}
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Button
-                          variant="outlined"
-                          size="small"
+                    <Stack direction="row" spacing={1} alignItems="center" onClick={e => e.stopPropagation()}>
+                      <Tooltip title="匯出此週 PDF">
+                        <IconButton
                           onClick={(e) => handleExportSingleWeekPDF(sched, weekNo, e)}
-                          disabled={exporting}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700 }}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: '#EBF3FE',
+                            color: '#2F80ED',
+                            '&:hover': { bgcolor: '#DBEAFE' },
+                          }}
                         >
                           <PdfSvg />
-                          預覽 / PDF
-                        </Button>
-
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => onSelectSchedule(sched)}
-                          sx={{ borderRadius: 2, height: 44, fontWeight: 700, px: 2.5 }}
-                        >
-                          <EditSvg />
-                          編輯班表
-                        </Button>
-
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="刪除班表">
                         <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => setDeleteTargetSchedule(sched)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleteTargetSchedule(sched)
+                          }}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: '#FFF1F2',
+                            color: '#E11D48',
+                            '&:hover': { bgcolor: '#FFE4E6' },
+                          }}
                         >
                           <DelSvg />
                         </IconButton>
-                      </Stack>
-                    </Box>
-                  </CardContent>
+                      </Tooltip>
+                    </Stack>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #F1F5F9' }}>
+                    <Chip
+                      label={`👥 ${sched.employees.length} 位員工`}
+                      size="small"
+                      sx={{ bgcolor: '#F8FAFC', color: '#475569', fontWeight: 600, borderRadius: '8px' }}
+                    />
+                    <Typography variant="body2" fontWeight={700} sx={{ color: '#2F80ED', fontSize: '14px' }}>
+                      編輯班表 →
+                    </Typography>
+                  </Box>
                 </Card>
               </Grid>
             )
@@ -790,55 +744,28 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         </Grid>
       )}
 
-      {/* Dialog: Create Weekly Schedule */}
+      {/* Create Week Schedule Dialog Modal */}
       <CreateScheduleDialog
         open={createWeekDialogOpen}
         onClose={() => setCreateWeekDialogOpen(false)}
-        onCreate={handleCreateNewWeekSchedule}
+        onCreate={sched => {
+          dispatch({ type: 'ADD_SCHEDULE', payload: sched })
+          showSnackbar('週班表建立成功！', 'success')
+          setCreateWeekDialogOpen(false)
+          onSelectSchedule(sched)
+        }}
       />
 
-      {/* Dialog: Confirm Delete Single Weekly Schedule */}
+      {/* Confirm Delete Single Schedule Dialog */}
       <ConfirmDialog
         open={!!deleteTargetSchedule}
-        title="確定刪除此週排班表？"
-        content={`您即將刪除「${deleteTargetSchedule?.weekStart} ～ ${deleteTargetSchedule?.weekEnd}」的排班表。此操作無法復原，確定繼續？`}
+        title="確定刪除此週班表？"
+        content={`您即將刪除「${deleteTargetSchedule ? formatStoreTitle(deleteTargetSchedule) : ''} (${deleteTargetSchedule?.weekStart})」的排班資料。確定繼續？`}
         confirmText="確定刪除"
         confirmColor="error"
         onClose={() => setDeleteTargetSchedule(null)}
         onConfirm={handleConfirmDeleteSingleSchedule}
       />
-
-      {/* Dialog: Schedule Already Exists Notice */}
-      <Dialog open={duplicateDialogOpen} onClose={() => setDuplicateDialogOpen(false)} PaperProps={{ sx: { borderRadius: 4, p: 1, minWidth: 320, maxWidth: 420 } }}>
-        <DialogTitle fontWeight={800} color="error.main">
-          ⚠️ 班表已存在
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ bgcolor: '#FFF5F5', p: 2, borderRadius: 3, border: '1px solid #FECDD3', mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={800} color="text.primary">
-              {duplicateInfo?.storeTitle}
-            </Typography>
-            <Typography variant="body2" fontWeight={700} color="text.secondary" sx={{ mt: 0.5 }}>
-              {duplicateInfo?.weekTitle}
-            </Typography>
-          </Box>
-          <Typography variant="body1" fontWeight={600} color="text.primary" sx={{ lineHeight: 1.6 }}>
-            班表已建立，
-            <br />
-            請至排班列表點擊「編輯班表」。
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setDuplicateDialogOpen(false)}
-            sx={{ borderRadius: 2, fontWeight: 700, px: 3 }}
-          >
-            我知道了
-          </Button>
-        </DialogActions>
-      </Dialog>
     </PageContainer>
   )
 }

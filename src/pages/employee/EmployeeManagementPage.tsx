@@ -1,14 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
-  Box, Typography, Button, Card, CardContent, Table, TableBody, TableCell,
+  Box, Typography, Button, Card, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Stack, Tooltip, Chip,
+  InputAdornment,
 } from '@mui/material'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
 import { useSnackbar } from '../../context/SnackbarContext'
 import { MasterEmployee } from '../../types/masterEmployee'
 import { DEFAULT_STORES } from '../../types/store'
+import PageHeader from '../../components/common/PageHeader'
+import PageContainer from '../../components/common/PageContainer'
 
 const AddSvg = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -25,12 +28,18 @@ const DelSvg = () => (
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
   </svg>
 )
+const SearchSvg = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+  </svg>
+)
 
 export default function EmployeeManagementPage() {
   const { state, addEmployee, updateEmployee, deleteEmployee } = useMasterEmployees()
   const { stores: storeList } = useStoreContext()
   const { showSnackbar }    = useSnackbar()
 
+  const [search, setSearch]             = useState('')
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [editingItem, setEditingItem]   = useState<MasterEmployee | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<MasterEmployee | null>(null)
@@ -41,6 +50,17 @@ export default function EmployeeManagementPage() {
   const [hireDate, setHireDate] = useState('')
   const [remark, setRemark]     = useState('')
   const [errors, setErrors]     = useState<Record<string, string>>({})
+
+  // Filtered employees list
+  const filteredEmployees = useMemo(() => {
+    if (!search.trim()) return state.employees
+    const q = search.trim().toLowerCase()
+    return state.employees.filter(e =>
+      e.name.toLowerCase().includes(q) ||
+      (e.store && e.store.toLowerCase().includes(q)) ||
+      (e.storeName && e.storeName.toLowerCase().includes(q))
+    )
+  }, [state.employees, search])
 
   const openAdd = () => {
     setEditingItem(null)
@@ -88,7 +108,7 @@ export default function EmployeeManagementPage() {
       }
       const ok = await updateEmployee(updated)
       if (ok) {
-        showSnackbar('員工資料已成功更新！')
+        showSnackbar('員工資料已成功更新！', 'success')
       } else {
         showSnackbar('更新失敗，請確認網路連線或重試。', 'error')
       }
@@ -106,7 +126,7 @@ export default function EmployeeManagementPage() {
       }
       const res = await addEmployee(newEmp)
       if (res) {
-        showSnackbar('全新員工資料已成功建立！')
+        showSnackbar('全新員工資料已成功建立！', 'success')
       } else {
         showSnackbar('新增失敗，請確認網路連線或重試。', 'error')
       }
@@ -119,7 +139,7 @@ export default function EmployeeManagementPage() {
     if (deleteTarget) {
       const ok = await deleteEmployee(deleteTarget.id)
       if (ok) {
-        showSnackbar('員工資料已刪除！')
+        showSnackbar('員工資料已刪除！', 'info')
       } else {
         showSnackbar('刪除失敗，請確認網路連線或重試。', 'error')
       }
@@ -128,78 +148,179 @@ export default function EmployeeManagementPage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={900} color="primary.main">
-            員工管理
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            共用員工主資料庫。在此建立員工後，薪資管理與排班管理可直接選擇取用。
-          </Typography>
-        </Box>
+    <PageContainer maxWidth={1120}>
+      {/* ── Page Header (Japanese Minimalism Style) ── */}
+      <PageHeader
+        title="👥 員工管理"
+        subtitle="建立與管理共用員工主資料庫，排班與薪資單自動同步取用"
+        action={
+          <Button
+            variant="contained"
+            onClick={openAdd}
+            sx={{
+              borderRadius: '16px',
+              minHeight: 48,
+              px: 3,
+              fontWeight: 700,
+              fontSize: '15px',
+              bgcolor: '#2F80ED',
+              boxShadow: '0 4px 12px rgba(47,128,237,0.2)',
+              '&:hover': { bgcolor: '#1D6FD8' },
+            }}
+          >
+            <AddSvg />
+            新增員工
+          </Button>
+        }
+      />
 
-        <Button variant="contained" onClick={openAdd} sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700 }}>
-          <AddSvg />
-          新增員工
-        </Button>
-      </Box>
+      {/* ── Search Bar (Unified Design System) ── */}
+      <Card
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
+        <TextField
+          placeholder="🔍 搜尋員工姓名或門市..."
+          value={search}
+          size="small"
+          onChange={e => setSearch(e.target.value)}
+          sx={{
+            width: { xs: '100%', sm: 360 },
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '16px',
+              height: 48,
+              bgcolor: '#F8FAFC',
+              px: 1.5,
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchSvg />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Card>
 
-      <Card variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
-        <TableContainer>
-          <Table size="small">
+      {/* ── Apple Table Container ── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
+        <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 640 }}>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#F8F9FA' }}>
-                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>姓名</TableCell>
-                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>類型</TableCell>
-                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>所屬門市</TableCell>
-                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>到職日</TableCell>
-                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>備註</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, py: 1.5 }}>操作</TableCell>
+              <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2, px: 2.5 }}>姓名</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2 }}>類型</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2 }}>所屬門市</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2 }}>到職日</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2 }}>備註</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, fontSize: 13, color: '#475569', py: 2, px: 2.5 }}>操作</TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
               {state.loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#64748B' }}>
                     資料載入中...
                   </TableCell>
                 </TableRow>
-              ) : state.employees.length === 0 ? (
+              ) : filteredEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                    目前尚無員工資料，請點擊上方按鈕建立第一個員工。
+                  <TableCell colSpan={6} align="center" sx={{ py: 5, color: '#64748B' }}>
+                    {search ? `找不到符合「${search}」的員工` : '目前尚無員工資料，請點擊上方「新增員工」按鈕。'}
                   </TableCell>
                 </TableRow>
               ) : (
-                state.employees.map(emp => (
-                  <TableRow key={emp.id} hover>
-                    <TableCell sx={{ fontWeight: 700 }}>{emp.name}</TableCell>
-                    <TableCell>
+                filteredEmployees.map(emp => (
+                  <TableRow
+                    key={emp.id}
+                    hover
+                    sx={{
+                      transition: 'background-color 150ms ease',
+                      '&:hover': { bgcolor: '#F8FAFC' },
+                    }}
+                  >
+                    <TableCell sx={{ fontWeight: 700, fontSize: 15, color: '#1E293B', py: 2, px: 2.5 }}>
+                      {emp.name}
+                    </TableCell>
+
+                    <TableCell sx={{ py: 2 }}>
                       <Chip
                         label={emp.isShared !== false ? '共用員工' : '本店員工'}
-                        color={emp.isShared !== false ? 'primary' : 'default'}
-                        variant={emp.isShared !== false ? 'filled' : 'outlined'}
                         size="small"
-                        sx={{ fontWeight: 700, fontSize: 11 }}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: 12,
+                          borderRadius: '10px',
+                          bgcolor: emp.isShared !== false ? '#EBF3FE' : '#F1F5F9',
+                          color: emp.isShared !== false ? '#2F80ED' : '#64748B',
+                        }}
                       />
                     </TableCell>
-                    <TableCell>{emp.storeName || emp.store}</TableCell>
-                    <TableCell>{emp.hireDate || '—'}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', maxWidth: 200 }}>
+
+                    <TableCell sx={{ fontSize: 14, color: '#475569', py: 2 }}>
+                      {emp.storeName || emp.store}
+                    </TableCell>
+
+                    <TableCell sx={{ fontSize: 14, color: '#64748B', py: 2 }}>
+                      {emp.hireDate || '—'}
+                    </TableCell>
+
+                    <TableCell sx={{ fontSize: 14, color: '#64748B', py: 2, maxWidth: 200 }}>
                       {emp.remark || '—'}
                     </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="編輯">
-                        <IconButton size="small" onClick={() => openEdit(emp)} color="primary">
-                          <EditSvg />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="刪除">
-                        <IconButton size="small" onClick={() => setDeleteTarget(emp)} color="error">
-                          <DelSvg />
-                        </IconButton>
-                      </Tooltip>
+
+                    <TableCell align="right" sx={{ py: 2, px: 2.5 }}>
+                      <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
+                        <Tooltip title="編輯員工">
+                          <IconButton
+                            onClick={() => openEdit(emp)}
+                            sx={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: '50%',
+                              bgcolor: '#F8FAFC',
+                              color: '#475569',
+                              '&:hover': { bgcolor: '#F1F5F9', color: '#1F2937' },
+                            }}
+                          >
+                            <EditSvg />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="刪除員工">
+                          <IconButton
+                            onClick={() => setDeleteTarget(emp)}
+                            sx={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: '50%',
+                              bgcolor: '#FFF1F2',
+                              color: '#E11D48',
+                              '&:hover': { bgcolor: '#FFE4E6' },
+                            }}
+                          >
+                            <DelSvg />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))
@@ -209,9 +330,17 @@ export default function EmployeeManagementPage() {
         </TableContainer>
       </Card>
 
-      {/* Add/Edit Master Employee Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>{editingItem ? '編輯員工資料' : '新增員工'}</DialogTitle>
+      {/* ── Dialog: Add/Edit Master Employee ── */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>
+          {editingItem ? '編輯員工資料' : '新增員工'}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <TextField
@@ -267,30 +396,40 @@ export default function EmployeeManagementPage() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ borderRadius: 2 }}>
+          <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ borderRadius: '12px' }}>
             取消
           </Button>
-          <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2, fontWeight: 700 }}>
-            儲存
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            sx={{ borderRadius: '12px', px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+          >
+            確定儲存
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirm Dialog */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>確認刪除員工？</DialogTitle>
+      {/* ── Dialog: Confirm Delete Employee ── */}
+      <Dialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>確定刪除此員工？</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            您確定要刪除員工「{deleteTarget?.name}」嗎？此操作將同時在主資料庫中抹除該員工，操作無法復原。
+            您即將刪除「<strong>{deleteTarget?.name}</strong>」。此操作無法復原，確定繼續？
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setDeleteTarget(null)}>取消</Button>
-          <Button variant="contained" color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>
-            確認刪除
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setDeleteTarget(null)} sx={{ borderRadius: '12px' }}>
+            取消
+          </Button>
+          <Button variant="contained" color="error" onClick={handleDelete} sx={{ borderRadius: '12px', px: 2.5 }}>
+            確定刪除
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageContainer>
   )
 }
