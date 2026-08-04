@@ -307,34 +307,35 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   // Handle new weekly schedule created via Dialog
   const handleCreateNewWeekSchedule = async (newSchedule: Schedule) => {
     const startDateStr = newSchedule.weekStart || ''
+    const newYear = parseInt(startDateStr.slice(0, 4), 10) || new Date().getFullYear()
+    const newMonth = parseInt(startDateStr.slice(5, 7), 10) || (new Date().getMonth() + 1)
     const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
     const targetWeekNo = newSchedule.weekNo || Math.min(Math.ceil(dayOfMonth / 7), 5) || 1
-    const targetMonthKey = startDateStr.slice(0, 7) // 'YYYY-MM'
 
-    // Helper: Check if two schedules belong to the exact same store
-    const isSameStoreSchedule = (s1: Partial<Schedule>, s2: Partial<Schedule>): boolean => {
-      if (s1.storeId && s2.storeId && s1.storeId === s2.storeId) return true
-      if (s1.storeCode && s2.storeCode && s1.storeCode === s2.storeCode) return true
-      if (s1.storeName && s2.storeName && s1.storeName === s2.storeName) return true
-
-      const s1Match = storeList.find(st => st.id === s1.storeId || st.name === s1.storeName || st.code === s1.storeCode)
-      const s2Match = storeList.find(st => st.id === s2.storeId || st.name === s2.storeName || st.code === s2.storeCode)
-      if (s1Match && s2Match && s1Match.id === s2Match.id) return true
-
-      return false
+    // Helper: Resolve store to canonical Store ID
+    const resolveStoreId = (s: Partial<Schedule>): string => {
+      const match = storeList.find(st => st.id === s.storeId || st.name === s.storeName || st.code === s.storeCode || st.code === s.storeId)
+      if (match) return match.id
+      return s.storeId || s.storeName || ''
     }
 
-    // 1. In-memory check against state.schedules
+    const targetStoreId = resolveStoreId(newSchedule)
+
+    // 1. In-memory check against state.schedules (company_id AND store_id AND year AND month AND week_no)
     const matchedInMemory = state.schedules.find(s => {
-      const sMonthKey = (s.weekStart || '').slice(0, 7)
-      const sDay = parseInt((s.weekStart || '').slice(8, 10), 10) || 1
+      const sStart = s.weekStart || ''
+      const sYear = parseInt(sStart.slice(0, 4), 10) || 0
+      const sMonth = parseInt(sStart.slice(5, 7), 10) || 0
+      const sDay = parseInt(sStart.slice(8, 10), 10) || 1
       const sWeekNo = s.weekNo || Math.min(Math.ceil(sDay / 7), 5) || 1
+      const sStoreId = resolveStoreId(s)
 
-      const monthMatch = sMonthKey === targetMonthKey
-      const weekMatch = sWeekNo === targetWeekNo || s.weekStart === newSchedule.weekStart
-      const storeMatch = isSameStoreSchedule(s, newSchedule)
+      const storeMatch = sStoreId === targetStoreId
+      const yearMatch  = sYear === newYear
+      const monthMatch = sMonth === newMonth
+      const weekMatch  = sWeekNo === targetWeekNo
 
-      return monthMatch && weekMatch && storeMatch
+      return storeMatch && yearMatch && monthMatch && weekMatch
     })
 
     if (matchedInMemory) {
@@ -352,7 +353,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
 
     // 2. Database check against Supabase
     const dbCheck = await supabaseScheduleRepository.checkScheduleWeekExists(
-      newSchedule.storeId || newSchedule.storeName,
+      targetStoreId || newSchedule.storeId || newSchedule.storeName,
       newSchedule.weekStart
     )
 
@@ -370,7 +371,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
       return
     }
 
-    // 3. Creation succeeds
+    // 3. Creation succeeds: Save to Supabase and navigate
     dispatch({ type: 'ADD_SCHEDULE', payload: newSchedule })
     showSnackbar('班表建立成功', 'success')
     setCreateWeekDialogOpen(false)

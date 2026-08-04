@@ -50,9 +50,14 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
 
   console.log("Edit page received", initialSchedule)
 
-  // Sanitize initial remark to prevent JSON object string from leaking into TextArea
-  const sanitizedInitialSchedule = useMemo(() => {
-    let cleanRemark = initialSchedule.remark || ''
+  // Context schedule source of truth
+  const contextSchedule = useMemo(() => {
+    return state.schedules.find(s => s.id === initialSchedule.id) || initialSchedule
+  }, [state.schedules, initialSchedule])
+
+  // Sanitize remark to prevent JSON object string from leaking into TextArea
+  const sanitizeSchedule = (sch: Schedule): Schedule => {
+    let cleanRemark = sch.remark || ''
     const trimmed = cleanRemark.trim()
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
@@ -63,24 +68,24 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
       }
     }
     return {
-      ...initialSchedule,
+      ...sch,
       remark: cleanRemark,
     }
-  }, [initialSchedule])
+  }
 
-  const [schedule, setSchedule]   = useState<Schedule>(sanitizedInitialSchedule)
+  const [schedule, setSchedule]   = useState<Schedule>(() => sanitizeSchedule(initialSchedule))
   const [isDirty, setIsDirty]     = useState(false)
   const [isSaving, setIsSaving]   = useState(false)
   const [exporting, setExporting] = useState(false)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
 
-  // Keep local state in sync when initialSchedule is updated/reloaded
+  // Keep local state in sync when contextSchedule is updated/reloaded (e.g. after refresh())
   React.useEffect(() => {
-    if (!isDirty) {
-      setSchedule(sanitizedInitialSchedule)
+    if (!isDirty && contextSchedule) {
+      setSchedule(sanitizeSchedule(contextSchedule))
     }
-  }, [sanitizedInitialSchedule, isDirty])
+  }, [contextSchedule, isDirty])
 
   // Compute 7 dates (Mon-Sun)
   const weekDates = useMemo(() => {
@@ -119,8 +124,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
     setIsSaving(true)
     try {
       const res = await saveSchedule(schedule)
-      if (res.success && res.data) {
-        setSchedule(res.data)
+      if (res.success) {
         setIsDirty(false)
         showSnackbar('✅ 排班已儲存', 'success')
         if (exitAfterSave) {

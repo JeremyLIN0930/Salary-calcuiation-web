@@ -152,17 +152,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   // ── Intercept dispatch to sync Supabase ───────────────────────────────────
   //
-  // We wrap dispatch so that:
-  //  1. ADD_SCHEDULE  → optimistic local update + Supabase upsert
-  //  2. UPDATE_SCHEDULE → optimistic local update + Supabase upsert
-  //  3. DELETE_SCHEDULE → optimistic local removal + Supabase delete
-  //  All other action types pass through unchanged.
+  // Workflow aligns with SalaryContext:
+  //  1. Save / Add / Update → repository.saveSchedule() → if success → await refresh() → SET_SCHEDULES
+  //  2. Delete → repository.deleteSchedule() → if success → await refresh() → SET_SCHEDULES
+  //  Never use repository return object to directly mutate React State.
 
   const syncedDispatch = useCallback(async (action: ScheduleAction) => {
-    // Always apply optimistic local state update first (zero-lag UI)
-    dispatch(action)
-
     if (!USE_SUPABASE) {
+      dispatch(action)
       // Dexie sync (original behavior)
       if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
         ScheduleRepository.save(action.payload)
@@ -177,20 +174,23 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
         dispatch({ type: 'SET_SAVING', payload: true })
         const result = await supabaseScheduleRepository.saveSchedule(action.payload)
-        if (result.success && result.data) {
-          dispatch({ type: 'UPDATE_SCHEDULE', payload: result.data })
-        } else if (!result.success) {
-          console.error('[ScheduleContext] Save failed, rolling back:', result.error)
-          // On failure: refresh from Supabase to restore truth
+        if (result.success) {
+          await refresh()
+        } else {
+          console.error('[ScheduleContext] Save failed, refreshing:', result.error)
           await refresh()
         }
       } else if (action.type === 'DELETE_SCHEDULE') {
         dispatch({ type: 'SET_DELETING', payload: true })
         const result = await supabaseScheduleRepository.deleteSchedule(action.payload)
-        if (!result.success) {
-          console.error('[ScheduleContext] Delete failed, rolling back:', result.error)
+        if (result.success) {
+          await refresh()
+        } else {
+          console.error('[ScheduleContext] Delete failed, refreshing:', result.error)
           await refresh()
         }
+      } else {
+        dispatch(action)
       }
     } catch (err) {
       console.error('[ScheduleContext] syncedDispatch error:', err)
@@ -205,9 +205,9 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_SAVING', payload: true })
     try {
       const result = await supabaseScheduleRepository.saveSchedule(sched)
-      if (result.success && result.data) {
-        dispatch({ type: 'UPDATE_SCHEDULE', payload: result.data })
-        return { success: true, data: result.data }
+      if (result.success) {
+        await refresh()
+        return { success: true, data: result.data || undefined }
       } else {
         console.error('[ScheduleContext] saveSchedule failed:', result.error)
         return { success: false }
@@ -218,7 +218,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_SAVING', payload: false })
     }
-  }, [])
+  }, [refresh])
 
   return (
     <Ctx.Provider value={{ state, dispatch: syncedDispatch, refresh, saveSchedule }}>

@@ -1,18 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, Select, FormControl, InputLabel,
   Stack, Typography, Box,
 } from '@mui/material'
 import { Schedule } from '../../types/schedule'
+import { useStoreContext } from '../../context/StoreContext'
 
 interface Props {
   open: boolean
   onClose: () => void
   onCreate: (schedule: Schedule) => void
 }
-
-const STORES = ['慶東門市', '南醫門市']
 
 function getMonday(d: Date): Date {
   const date = new Date(d)
@@ -26,12 +25,35 @@ function formatDate(d: Date): string {
 }
 
 export default function CreateScheduleDialog({ open, onClose, onCreate }: Props) {
+  const { stores: storeList } = useStoreContext()
   const todayMonday = getMonday(new Date())
 
-  const [storeId, setStoreId]     = useState('101')
-  const [storeName, setStoreName] = useState('慶東門市')
-  const [startDate, setStartDate] = useState(formatDate(todayMonday))
-  const [errors, setErrors]       = useState<Record<string, string>>({})
+  const [selectedStoreId, setSelectedStoreId] = useState('')
+  const [storeId, setStoreId]                 = useState('001')
+  const [storeName, setStoreName]             = useState('慶東門市')
+  const [storeCode, setStoreCode]             = useState('001')
+  const [startDate, setStartDate]             = useState(formatDate(todayMonday))
+  const [errors, setErrors]                   = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (storeList && storeList.length > 0) {
+      const defaultSt = storeList[0]
+      setSelectedStoreId(defaultSt.id)
+      setStoreId(defaultSt.id)
+      setStoreName(defaultSt.name)
+      setStoreCode(defaultSt.code || '001')
+    }
+  }, [storeList])
+
+  const handleSelectStore = (selectedId: string) => {
+    setSelectedStoreId(selectedId)
+    const st = storeList.find(s => s.id === selectedId || s.name === selectedId || s.code === selectedId)
+    if (st) {
+      setStoreId(st.id)
+      setStoreName(st.name)
+      setStoreCode(st.code || st.id)
+    }
+  }
 
   // Compute Sunday from start date
   const computeWeekEnd = (start: string) => {
@@ -59,6 +81,7 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       id: Math.random().toString(36).slice(2),
       storeId: storeId.trim(),
       storeName,
+      storeCode,
       weekStart: startDate,
       weekEnd,
       employees: [],
@@ -76,28 +99,16 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       <DialogTitle fontWeight={700}>建立每週排班表</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
-          {/* Store ID */}
-          <TextField
-            label="店號 *"
-            value={storeId}
-            size="small"
-            fullWidth
-            placeholder="例如：101"
-            error={!!errors.storeId}
-            helperText={errors.storeId}
-            onChange={e => setStoreId(e.target.value)}
-          />
-
-          {/* Store Name */}
+          {/* Store Name Dropdown */}
           <FormControl fullWidth size="small" error={!!errors.storeName}>
-            <InputLabel>店名 *</InputLabel>
+            <InputLabel>門市 *</InputLabel>
             <Select
-              value={storeName}
-              label="店名 *"
-              onChange={e => setStoreName(e.target.value)}
+              value={selectedStoreId || (storeList[0]?.id || '')}
+              label="門市 *"
+              onChange={e => handleSelectStore(e.target.value)}
             >
-              {STORES.map(s => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
+              {storeList.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.name}（{s.code || s.id}）</MenuItem>
               ))}
             </Select>
           </FormControl>
