@@ -16,73 +16,112 @@ export default function MobileHeader({ title, subtitle, action, onBack }: Mobile
   return (
     <Box
       sx={{
-        display: { xs: 'flex', sm: 'none' },
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        display: { xs: 'block', sm: 'none' },
         px: 2,
-        py: 1.5,
-        maxHeight: 88,
-        minHeight: 64,
-        bgcolor: tokens.header,
-        borderBottom: `1px solid ${tokens.border}`,
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        backdropFilter: 'blur(12px)',
+        pt: 2,
+        pb: 1.5,
+        mb: 2,
+        bgcolor: tokens.card,
+        borderRadius: '24px',
+        border: `1px solid ${tokens.border}`,
+        boxShadow: tokens.shadow,
         transition: 'background-color 250ms ease, border-color 250ms ease',
       }}
     >
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
-        {onBack && (
-          <IconButton
-            onClick={onBack}
-            size="small"
-            sx={{
-              color: tokens.textPrimary,
-              bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              borderRadius: '12px',
-              p: 1,
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </IconButton>
-        )}
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="h6"
-            fontWeight={800}
-            noWrap
-            sx={{
-              color: tokens.textPrimary,
-              fontSize: '18px',
-              letterSpacing: '-0.3px',
-              lineHeight: 1.2,
-            }}
-          >
-            {title}
-          </Typography>
-          {subtitle && (
-            <Typography
-              variant="caption"
-              noWrap
+      {/* ── Top Row: Left Title & Subtitle + Right Primary Button ── */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 1.5,
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0, flex: 1 }}>
+          {onBack && (
+            <IconButton
+              onClick={onBack}
+              size="small"
               sx={{
-                color: tokens.textSecondary,
-                fontSize: '12px',
-                fontWeight: 500,
-                display: 'block',
-                mt: 0.2,
+                color: tokens.textPrimary,
+                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                borderRadius: '12px',
+                p: 0.8,
+                mt: 0.5,
+                flexShrink: 0,
               }}
             >
-              {subtitle}
-            </Typography>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </IconButton>
           )}
-        </Box>
-      </Stack>
 
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              variant="h4"
+              fontWeight={800}
+              sx={{
+                color: tokens.textPrimary,
+                fontSize: '32px',
+                letterSpacing: '-0.5px',
+                lineHeight: 1.2,
+                wordBreak: 'break-word',
+              }}
+            >
+              {title}
+            </Typography>
+            {subtitle && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: tokens.textSecondary,
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  mt: 0.5,
+                  lineHeight: 1.35,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </Box>
+
+      {/* ── Bottom Row: Full Width Actions Container with 12px Spacing ── */}
       {action && (
-        <Box sx={{ flexShrink: 0, ml: 1 }}>
+        <Box
+          sx={{
+            mt: 1.5,
+            width: '100%',
+            '& > div': {
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            },
+            '& .MuiButton-contained': {
+              height: 52,
+              px: '20px',
+              borderRadius: '16px',
+              fontSize: '18px',
+              fontWeight: 700,
+              width: '100%',
+            },
+            '& .MuiButton-outlined': {
+              height: 48,
+              borderRadius: '16px',
+              fontSize: '17px',
+              px: '18px',
+              width: '100%',
+            },
+          }}
+        >
           {action}
         </Box>
       )}

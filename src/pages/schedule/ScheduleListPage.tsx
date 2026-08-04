@@ -337,7 +337,16 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
           title="📅 排班管理"
           subtitle="依月份分類管理每週班表、輕鬆建立、編輯與 PDF 匯出"
           action={
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Stack direction={{ xs: 'column', sm: 'row-reverse' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              <Button
+                variant="contained"
+                onClick={handleOpenCreateMonthModal}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 52, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+              >
+                <AddSvg />
+                建立月份
+              </Button>
+
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
@@ -346,15 +355,6 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               >
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
-              </Button>
-
-              <Button
-                variant="contained"
-                onClick={handleOpenCreateMonthModal}
-                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
-              >
-                <AddSvg />
-                建立月份
               </Button>
             </Stack>
           }
