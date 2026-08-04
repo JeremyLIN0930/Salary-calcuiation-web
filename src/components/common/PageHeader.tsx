@@ -12,7 +12,7 @@ interface Props {
 
 export default function PageHeader({ title, subtitle, action, onBack }: Props) {
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useMediaQuery('(max-width:767px)')
   const { tokens } = useAppearance()
 
   if (isMobile) {
