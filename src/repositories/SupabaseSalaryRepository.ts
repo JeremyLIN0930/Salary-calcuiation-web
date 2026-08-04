@@ -13,6 +13,92 @@ export interface SalaryItemType {
 export class SupabaseSalaryRepository {
   private tableName = 'salary_months'
 
+  private normalizeStringValue(value: unknown): string | null {
+    if (value === undefined || value === null) return null
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      return trimmed || null
+    }
+    return String(value)
+  }
+
+  private normalizeNumericValue(value: unknown): number | null {
+    if (value === undefined || value === null || value === '') return null
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }
+
+  private normalizeDateValue(value: unknown): string | null {
+    if (value === undefined || value === null || value === '') return null
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return null
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+      const parsed = new Date(trimmed)
+      return Number.isNaN(parsed.getTime()) ? trimmed : parsed.toISOString().slice(0, 10)
+    }
+    if (value instanceof Date) return value.toISOString().slice(0, 10)
+    return String(value)
+  }
+
+  private async resolveEmployeeName(salaryData: Partial<Employee>, employeeId: string | null): Promise<{ employeeId: string | null; employeeName: string }> {
+    const candidateName = this.normalizeStringValue((salaryData as any).employee_name)
+      || this.normalizeStringValue((salaryData as any).employeeName)
+      || this.normalizeStringValue(salaryData.name)
+      || this.normalizeStringValue((salaryData as any).fullName)
+      || this.normalizeStringValue((salaryData as any).displayName)
+
+    let resolvedEmployeeId = employeeId && isValidUuid(employeeId) ? employeeId : null
+    let resolvedEmployeeName = candidateName
+
+    if (!resolvedEmployeeName && resolvedEmployeeId) {
+      const { data: matchedEmp, error } = await supabase
+        .from('master_employees')
+        .select('id, name')
+        .eq('id', resolvedEmployeeId)
+        .maybeSingle()
+
+      if (error) {
+        console.error('========== master_employees lookup error ==========' )
+        console.error(error)
+        console.error(JSON.stringify(error, null, 2))
+        throw error
+      }
+
+      resolvedEmployeeName = this.normalizeStringValue(matchedEmp?.name)
+    }
+
+    if (!resolvedEmployeeName) {
+      throw new Error('找不到員工姓名，請確認資料。')
+    }
+
+    return {
+      employeeId: resolvedEmployeeId,
+      employeeName: resolvedEmployeeName,
+    }
+  }
+
+  private buildSalaryItemPayload(salaryMonthId: string | null, employeeId: string | null, employeeName: string | null, salaryData: Partial<Employee>): Record<string, any> {
+    return {
+      salary_month_id: salaryMonthId ?? null,
+      employee_id: employeeId || null,
+      employee_name: employeeName || null,
+      base_salary: this.normalizeNumericValue(salaryData.baseSalary),
+      attendance_days: this.normalizeNumericValue((salaryData as any).attendanceDays ?? (salaryData as any).attendance_days),
+      overtime_hours: this.normalizeNumericValue((salaryData as any).overtimeHours ?? (salaryData as any).overtime_hours),
+      labor_insurance: this.normalizeNumericValue(salaryData.laborInsurance),
+      health_insurance: this.normalizeNumericValue(salaryData.healthInsurance),
+      tax: this.normalizeNumericValue(salaryData.incomeTax),
+      bonus: this.normalizeNumericValue(salaryData.bonusItems),
+      allowance: this.normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
+      deduction: this.normalizeNumericValue(salaryData.otherDeductions),
+      net_salary: this.normalizeNumericValue(salaryData.netSalary),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  }
+
   async getMonths(): Promise<RepositoryResult<string[]>> {
     try {
       const result = await supabase
@@ -202,18 +288,11 @@ export class SupabaseSalaryRepository {
       const monthStr = salaryData.month || new Date().toISOString().slice(0, 7)
       const yearVal = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
       const monthNum = parseInt(monthStr.slice(5, 7), 10) || 8
+      const normalizedPayrollDate = this.normalizeDateValue(salaryData.payDate)
 
-      let employeeId: string | null = salaryData.employeeId || null
-      if (!employeeId || !isValidUuid(employeeId)) {
-        const trimmedName = (salaryData.name || '').trim()
-        const { data: matchedEmp } = await supabase
-          .from('master_employees')
-          .select('id')
-          .eq('name', trimmedName)
-          .maybeSingle()
-
-        employeeId = matchedEmp?.id || null
-      }
+      let employeeId: string | null = salaryData.employeeId && isValidUuid(salaryData.employeeId) ? salaryData.employeeId : null
+      const { employeeId: resolvedEmployeeId, employeeName } = await this.resolveEmployeeName(salaryData, employeeId)
+      employeeId = resolvedEmployeeId
 
       const { data: existingMonth, error: findMonthErr } = await supabase
         .from(this.tableName)
@@ -236,7 +315,7 @@ export class SupabaseSalaryRepository {
           company_id: DEFAULT_COMPANY_ID,
           year: yearVal,
           month: monthNum,
-          payroll_date: salaryData.payDate || null,
+          payroll_date: normalizedPayrollDate,
           status: 'draft',
           notes: monthStr,
           created_at: new Date().toISOString(),
@@ -262,7 +341,7 @@ export class SupabaseSalaryRepository {
           company_id: DEFAULT_COMPANY_ID,
           year: yearVal,
           month: monthNum,
-          payroll_date: salaryData.payDate || null,
+          payroll_date: normalizedPayrollDate,
           status: 'draft',
           notes: monthStr,
           updated_at: new Date().toISOString(),
@@ -281,131 +360,108 @@ export class SupabaseSalaryRepository {
         }
       }
 
-      const normalizeStringValue = (value: unknown): string | null => {
-        if (value === undefined || value === null) return null
-        if (typeof value === 'string') {
-          const trimmed = value.trim()
-          return trimmed || null
+      const employeeInputs: Partial<Employee>[] = Array.isArray((salaryData as any).employees)
+        ? ((salaryData as any).employees as Partial<Employee>[])
+        : [salaryData]
+
+      const payloadDebugRows: Array<Record<string, any>> = []
+      const insertPayloads: Array<Record<string, any>> = []
+      const updateTargets: Array<{ id: string; payload: Record<string, any> }> = []
+      const insertedRows: any[] = []
+
+      for (const employeeInput of employeeInputs) {
+        const { employeeId: resolvedEmployeeIdForRow, employeeName: resolvedEmployeeNameForRow } = await this.resolveEmployeeName(employeeInput, employeeId)
+        const payload = this.buildSalaryItemPayload(salaryMonthId, resolvedEmployeeIdForRow, resolvedEmployeeNameForRow, employeeInput)
+
+        payloadDebugRows.push({
+          salary_month_id: payload.salary_month_id,
+          employee_id: payload.employee_id,
+          employee_name: payload.employee_name,
+          base_salary: payload.base_salary,
+          hourly_wage: this.normalizeNumericValue((employeeInput as any).hourlyWage ?? (employeeInput as any).hourly_wage),
+          attendance_days: payload.attendance_days,
+          attendance_hours: this.normalizeNumericValue((employeeInput as any).attendanceHours ?? (employeeInput as any).attendance_hours),
+          overtime_hours: payload.overtime_hours,
+          gross_salary: this.normalizeNumericValue((employeeInput as any).grossSalary ?? (employeeInput as any).gross_salary),
+          labor_insurance: payload.labor_insurance,
+          health_insurance: payload.health_insurance,
+          labor_pension: this.normalizeNumericValue((employeeInput as any).laborPension ?? (employeeInput as any).labor_pension),
+          tax: payload.tax,
+          bonus: payload.bonus,
+          allowance: payload.allowance,
+          deduction: payload.deduction,
+          net_salary: payload.net_salary,
+        })
+
+        const { data: existingDetail, error: findDetailErr } = await supabase
+          .from('salary_items')
+          .select('id')
+          .eq('salary_month_id', salaryMonthId)
+          .eq(resolvedEmployeeIdForRow ? 'employee_id' : 'employee_name', resolvedEmployeeIdForRow || resolvedEmployeeNameForRow)
+          .maybeSingle()
+
+        if (findDetailErr) {
+          console.error('========== salary_items lookup error ==========' )
+          console.error(findDetailErr)
+          console.error(JSON.stringify(findDetailErr, null, 2))
+          throw findDetailErr
         }
-        return String(value)
-      }
 
-      const normalizeNumericValue = (value: unknown): number | null => {
-        if (value === undefined || value === null || value === '') return null
-        if (typeof value === 'number') return Number.isFinite(value) ? value : null
-        const num = Number(value)
-        return Number.isFinite(num) ? num : null
-      }
-
-      const normalizeDateValue = (value: unknown): string | null => {
-        if (value === undefined || value === null || value === '') return null
-        if (typeof value === 'string') {
-          const trimmed = value.trim()
-          if (!trimmed) return null
-          if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
-          const date = new Date(trimmed)
-          return Number.isNaN(date.getTime()) ? trimmed : date.toISOString().slice(0, 10)
+        if (existingDetail?.id) {
+          updateTargets.push({ id: existingDetail.id, payload })
+        } else {
+          insertPayloads.push(payload)
         }
-        if (value instanceof Date) return value.toISOString().slice(0, 10)
-        return String(value)
       }
 
-      const detailPayload: Record<string, any> = {
-        salary_month_id: salaryMonthId ?? null,
-        employee_id: employeeId || null,
-        employee_name: employeeId ? null : normalizeStringValue(salaryData.name),
-        base_salary: normalizeNumericValue(salaryData.baseSalary),
-        attendance_days: normalizeNumericValue((salaryData as any).attendanceDays ?? (salaryData as any).attendance_days),
-        overtime_hours: normalizeNumericValue((salaryData as any).overtimeHours ?? (salaryData as any).overtime_hours),
-        labor_insurance: normalizeNumericValue(salaryData.laborInsurance),
-        health_insurance: normalizeNumericValue(salaryData.healthInsurance),
-        tax: normalizeNumericValue(salaryData.incomeTax),
-        bonus: normalizeNumericValue(salaryData.bonusItems),
-        allowance: normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
-        deduction: normalizeNumericValue(salaryData.otherDeductions),
-        net_salary: normalizeNumericValue(salaryData.netSalary),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      const payload = [detailPayload]
       console.log('========== salary_items payload ==========' )
-      console.log(JSON.stringify(payload, null, 2))
+      console.table(payloadDebugRows)
 
-      const debugFields = [
-        'salary_month_id',
-        'employee_id',
-        'employee_name',
-        'base_salary',
-        'hourly_wage',
-        'attendance_days',
-        'attendance_hours',
-        'overtime_hours',
-        'gross_salary',
-        'labor_insurance',
-        'health_insurance',
-        'labor_pension',
-        'tax',
-        'bonus',
-        'allowance',
-        'deduction',
-        'net_salary',
-      ]
-      for (const field of debugFields) {
-        console.log(`${field}:`, payload[0]?.[field] ?? null)
-      }
-
-      const { data: existingDetail, error: findDetailErr } = await supabase
-        .from('salary_items')
-        .select('id')
-        .eq('salary_month_id', salaryMonthId)
-        .eq(employeeId ? 'employee_id' : 'employee_name', employeeId || (salaryData.name || '').trim() || null)
-        .maybeSingle()
-
-      if (findDetailErr) {
-        console.error('========== salary_items lookup error ==========' )
-        console.error(findDetailErr)
-        console.error(JSON.stringify(findDetailErr, null, 2))
-        throw findDetailErr
-      }
-
-      let savedDetail: any = null
-      if (existingDetail?.id) {
-        const { data: updatedData, error: updateErr } = await supabase
+      if (insertPayloads.length > 0) {
+        console.log('========== bulk insert salary_items ==========' )
+        const insertResult = await supabase
           .from('salary_items')
-          .update(detailPayload)
-          .eq('id', existingDetail.id)
+          .insert(insertPayloads)
+          .select('*')
+
+        console.log('========== Supabase Response ==========' )
+        console.log(insertResult)
+        if (insertResult.error) {
+          console.error(insertResult.error)
+          console.error(JSON.stringify(insertResult.error, null, 2))
+          throw insertResult.error
+        }
+        insertedRows.push(...(insertResult.data || []))
+      }
+
+      for (const target of updateTargets) {
+        const updateResult = await supabase
+          .from('salary_items')
+          .update(target.payload)
+          .eq('id', target.id)
           .select('*')
           .single()
 
-        if (updateErr) {
-          console.error('========== Supabase Response ==========' )
-          console.error(updateErr)
-          console.error(JSON.stringify(updateErr, null, 2))
-          throw updateErr
+        console.log('========== Supabase Response ==========' )
+        console.log(updateResult)
+        if (updateResult.error) {
+          console.error(updateResult.error)
+          console.error(JSON.stringify(updateResult.error, null, 2))
+          throw updateResult.error
         }
-        savedDetail = updatedData
-      } else {
-        const { data: insertedData, error: insertErr } = await supabase
-          .from('salary_items')
-          .insert([detailPayload])
-          .select('*')
-          .single()
+        insertedRows.push(updateResult.data)
+      }
 
-        if (insertErr || !insertedData) {
-          console.error('========== Supabase Response ==========' )
-          console.error(insertErr)
-          console.error(JSON.stringify(insertErr, null, 2))
-          throw insertErr || new Error('建立薪資明細失敗')
-        }
-        savedDetail = insertedData
+      const savedDetail = insertedRows[0] || null
+      if (!savedDetail) {
+        throw new Error('沒有建立任何 salary_items 資料。')
       }
 
       const savedModel: Employee = {
         ...createEmptyEmployee(),
-        ...JSON.parse(savedDetail.notes || '{}'),
         id: savedDetail.id,
         employeeId: savedDetail.employee_id || undefined,
+        name: savedDetail.employee_name || '',
         month: monthStr,
       }
 
