@@ -43,8 +43,48 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
   const [pendingNewName, setPendingNewName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Master Employee Options for Autocomplete
-  const masterOptions = useMemo(() => masterState.employees.map(m => m.name), [masterState.employees])
+  // Master Employee Option Type for Autocomplete
+  interface MasterOptionItem {
+    id: string
+    name: string
+    store?: string
+    isShared?: boolean
+    isNewOption?: boolean
+  }
+
+  // Sorted Master Employee Options for Autocomplete
+  const masterOptions = useMemo<MasterOptionItem[]>(() => {
+    return [...masterState.employees]
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        store: m.store,
+        isShared: m.isShared,
+      }))
+  }, [masterState.employees])
+
+  // Custom filter options for Autocomplete
+  const filterOptions = (options: MasterOptionItem[], state: { inputValue: string }) => {
+    const q = state.inputValue.trim().toLowerCase()
+    const filtered = options.filter(opt => {
+      if (!q) return true
+      const nameMatch = opt.name.toLowerCase().includes(q)
+      const storeMatch = opt.store ? opt.store.toLowerCase().includes(q) : false
+      return nameMatch || storeMatch
+    })
+
+    // If query is non-empty and doesn't exactly match an existing name, add "➕ 建立新員工"
+    if (q && !options.some(opt => opt.name.trim().toLowerCase() === q)) {
+      filtered.push({
+        id: 'new_custom_emp',
+        name: state.inputValue.trim(),
+        isNewOption: true,
+      })
+    }
+
+    return filtered
+  }
 
   // Try adding a name to current schedule
   const tryAddEmployeeName = (rawName: string) => {
@@ -346,22 +386,85 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
           </Typography>
           <Autocomplete
             freeSolo
+            openOnFocus
             options={masterOptions}
+            filterOptions={filterOptions}
+            getOptionLabel={(option) => {
+              if (typeof option === 'string') return option
+              return option.name
+            }}
             inputValue={inputValue}
             onInputChange={(_, newValue) => setInputValue(newValue)}
             onChange={(_, value) => {
+              if (!value) return
               if (typeof value === 'string') {
                 tryAddEmployeeName(value)
+              } else {
+                tryAddEmployeeName(value.name)
               }
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '16px',
+                  mt: 1,
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                  border: '1px solid #F1F5F9',
+                },
+              },
+            }}
+            ListboxProps={{
+              sx: {
+                maxHeight: 280,
+                p: 1,
+                '& .MuiAutocomplete-option': {
+                  borderRadius: '12px',
+                  py: 1,
+                  px: 1.5,
+                  mb: 0.5,
+                },
+              },
+            }}
+            renderOption={(props, option) => {
+              if (option.isNewOption) {
+                return (
+                  <Box component="li" {...props} key={option.id} sx={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <Typography variant="subtitle2" fontWeight={700} color="#2F80ED">
+                      ➕ 建立新員工：「{option.name}」
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      點擊將「{option.name}」加入排班
+                    </Typography>
+                  </Box>
+                )
+              }
+
+              return (
+                <Box component="li" {...props} key={option.id} sx={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <Typography variant="body1" fontWeight={700} color="#1E293B">
+                    {option.name}
+                  </Typography>
+                  <Typography variant="caption" color="#64748B">
+                    {option.store ? `${option.store} · ` : ''}{option.isShared ? '共用主資料庫員工' : '本店員工'}
+                  </Typography>
+                </Box>
+              )
             }}
             renderInput={(params) => (
               <TextField
                 {...params}
                 inputRef={inputRef}
-                label="搜尋或輸入員工姓名"
+                placeholder="搜尋或輸入員工姓名"
                 size="small"
                 autoFocus
-                placeholder="例如：王小明"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    px: 1.5,
+                  },
+                }}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && inputValue.trim()) {
                     e.preventDefault()
