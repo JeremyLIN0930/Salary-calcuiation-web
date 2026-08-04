@@ -735,30 +735,6 @@ export class SupabaseScheduleRepository {
 
           if (insErr) {
             console.error('❌ Failed to insert schedule_shift:', insErr.message)
-            // Fallback if DB table schedule_shifts has NOT-NULL employee_id constraint before SQL migration execution
-            if (insErr.message?.includes('employee_id') || insErr.message?.includes('employee_name')) {
-              console.warn('⚠️ Fallback for NOT-NULL employee_id constraint...')
-              const tempRemark = `[temp:${shiftRow.employee_name}]`
-              const { data: tempMaster } = await supabase
-                .from('master_employees')
-                .insert([{
-                  name: shiftRow.employee_name,
-                  company_id: DEFAULT_COMPANY_ID,
-                  store_id: resolvedStoreId,
-                  hire_date: new Date().toISOString().slice(0, 10),
-                  is_active: true,
-                  notes: '[temp]'
-                }])
-                .select('id')
-                .single()
-
-              if (tempMaster?.id) {
-                const fallbackRow = { ...shiftRow, employee_id: tempMaster.id, remarks: tempRemark }
-                delete fallbackRow.employee_name
-                const { data: retryData } = await supabase.from('schedule_shifts').insert([fallbackRow]).select('id').single()
-                if (retryData) keptShiftIds.add(retryData.id)
-              }
-            }
           } else if (newShift) {
             keptShiftIds.add(newShift.id)
           }

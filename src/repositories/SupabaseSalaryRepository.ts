@@ -267,7 +267,7 @@ export class SupabaseSalaryRepository {
       }
 
       // 2. Resolve employeeId UUID
-      let employeeId = salaryData.employeeId
+      let employeeId: string | null = salaryData.employeeId || null
       if (!employeeId || !isValidUuid(employeeId)) {
         const trimmedName = (salaryData.name || '').trim()
         const { data: matchedEmp } = await supabase
@@ -279,24 +279,7 @@ export class SupabaseSalaryRepository {
         if (matchedEmp) {
           employeeId = matchedEmp.id
         } else {
-          console.log(`🚀 [SupabaseSalaryRepository] Auto-creating master employee: ${trimmedName}`)
-          const { data: newEmp, error: createEmpErr } = await supabase
-            .from('master_employees')
-            .insert([{
-              name: trimmedName,
-              company_id: DEFAULT_COMPANY_ID,
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }])
-            .select('id')
-            .single()
-
-          if (createEmpErr) {
-            console.error('Failed to create master employee:', createEmpErr)
-            return errorResult(createEmpErr, 'master_employees', 'saveSalary')
-          }
-          employeeId = newEmp.id
+          employeeId = null
         }
       }
 

@@ -82,25 +82,40 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
     const name = pendingNewName.trim()
 
     if (addToMaster) {
-      // 按「是」：加入 master_employees 作為正式/共用員工
-      const newMasterEmp = await masterAddEmployee({
-        name,
-        isShared: true,
-        hireDate: new Date().toISOString().slice(0, 10),
-        remark: '[shared]'
-      })
+      // 1. 先檢查 master_employees 資料庫/Context 是否已有同名員工
+      const existingMaster = masterState.employees.find(m => m.name.trim().toLowerCase() === name.toLowerCase())
+      
+      if (existingMaster) {
+        // 直接使用既有 UUID，不重複 INSERT
+        const newEmp: ScheduleEmployee = {
+          id: existingMaster.id,
+          name: existingMaster.name,
+          isTemp: false,
+          shifts: [],
+        }
+        onChangeEmployees([...employees, newEmp])
+        showSnackbar(`已對應至既有共用員工「${existingMaster.name}」並加入排班。`, 'success')
+      } else {
+        // 按「是」且不存在：加入 master_employees 作為正式/共用員工
+        const newMasterEmp = await masterAddEmployee({
+          name,
+          isShared: true,
+          hireDate: new Date().toISOString().slice(0, 10),
+          remark: '[shared]'
+        })
 
-      const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
+        const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
 
-      const newEmp: ScheduleEmployee = {
-        id: realUuid,
-        name,
-        isTemp: false,
-        shifts: [],
+        const newEmp: ScheduleEmployee = {
+          id: realUuid,
+          name,
+          isTemp: false,
+          shifts: [],
+        }
+
+        onChangeEmployees([...employees, newEmp])
+        showSnackbar(`已將「${name}」建立為正式員工並加入排班。`, 'success')
       }
-
-      onChangeEmployees([...employees, newEmp])
-      showSnackbar(`已將「${name}」建立為正式員工並加入排班。`, 'success')
     } else {
       // 按「否」：僅本週排班使用（臨時工 / 代班），不建立 master_employees
       const tempId = 'temp_' + Math.random().toString(36).slice(2)
