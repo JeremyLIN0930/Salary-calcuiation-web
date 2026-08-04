@@ -18,7 +18,6 @@ import React, {
 } from 'react'
 import { MasterEmployee } from '../types/masterEmployee'
 import { supabaseEmployeeRepository } from '../repositories/SupabaseEmployeeRepository'
-import { EmployeeRepository } from '../database/repositories/EmployeeRepository'
 
 const USE_SUPABASE = true
 
@@ -101,9 +100,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
           console.error('[MasterEmployee] Supabase load failed:', result.error)
           dispatch({ type: 'SET', payload: [] })
         }
-      } else {
-        const dexieData = EmployeeRepository.getAll()
-        dispatch({ type: 'SET', payload: dexieData })
       }
     } catch (err) {
       console.error('[MasterEmployee] refresh exception:', err)
@@ -121,23 +117,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
   // ── CRUD Helpers — each waits for Supabase and returns success ───────────
 
   const addEmployee = useCallback(async (emp: Partial<MasterEmployee>): Promise<MasterEmployee | null> => {
-    if (!USE_SUPABASE) {
-      const fullEmp: MasterEmployee = {
-        id: emp.id || Math.random().toString(36).slice(2),
-        name: emp.name || '',
-        store: emp.store || '',
-        storeId: emp.storeId,
-        isShared: emp.isShared !== undefined ? emp.isShared : true,
-        hireDate: emp.hireDate || '',
-        remark: emp.remark || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      EmployeeRepository.save(fullEmp)
-      dispatch({ type: 'ADD', payload: fullEmp })
-      return fullEmp
-    }
-
     try {
       console.log('② CONTEXT Payload:', emp)
       const result = await supabaseEmployeeRepository.create(emp)
@@ -157,11 +136,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
 
   const updateEmployee = useCallback(async (emp: MasterEmployee): Promise<boolean> => {
     dispatch({ type: 'UPDATE', payload: emp })
-
-    if (!USE_SUPABASE) {
-      EmployeeRepository.save(emp)
-      return true
-    }
 
     try {
       console.log('[MasterEmployee] Updating master_employees:', emp.id)
@@ -183,11 +157,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
 
   const deleteEmployee = useCallback(async (id: string): Promise<boolean> => {
     dispatch({ type: 'DELETE', payload: id })
-
-    if (!USE_SUPABASE) {
-      EmployeeRepository.delete(id)
-      return true
-    }
 
     try {
       console.log('[MasterEmployee] Deleting from master_employees:', id)

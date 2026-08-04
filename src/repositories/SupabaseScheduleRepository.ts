@@ -781,27 +781,6 @@ export class SupabaseScheduleRepository {
     }
   }
 
-  async saveWeek(weekData: Partial<Schedule>): Promise<RepositoryResult<Schedule>> {
-    return this.saveSchedule(weekData)
-  }
-
-  async bulkSaveSchedules(schedules: Partial<Schedule>[]): Promise<RepositoryResult<Schedule[]>> {
-    try {
-      const savedModels: Schedule[] = []
-      for (const s of schedules) {
-        const res = await this.saveSchedule(s)
-        if (res.success && res.data) {
-          savedModels.push(res.data)
-        } else {
-          return errorResult(res.error || 'Bulk save failed at individual week', this.tableName, 'bulkSaveSchedules')
-        }
-      }
-      return successResult(savedModels)
-    } catch (err: unknown) {
-      return errorResult(err, this.tableName, 'bulkSaveSchedules')
-    }
-  }
-
   async deleteSchedule(id: string): Promise<RepositoryResult<boolean>> {
     try {
       // 1. Delete associated shifts first
@@ -823,10 +802,6 @@ export class SupabaseScheduleRepository {
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'deleteSchedule')
     }
-  }
-
-  async getShiftTemplates(): Promise<RepositoryResult<ShiftTemplate[]>> {
-    return successResult(DEFAULT_SHIFT_TEMPLATES)
   }
 }
 

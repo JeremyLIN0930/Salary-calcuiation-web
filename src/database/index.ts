@@ -1,5 +1,0 @@
-export * from './repositories/EmployeeRepository'
-export * from './repositories/SalaryRepository'
-export * from './repositories/ScheduleRepository'
-export * from './repositories/StoreRepository'
-export * from './repositories/SettingRepository'

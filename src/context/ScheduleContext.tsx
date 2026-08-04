@@ -18,10 +18,7 @@ import React, {
 } from 'react'
 import { Schedule } from '../types/schedule'
 import { supabaseScheduleRepository } from '../repositories/SupabaseScheduleRepository'
-// Dexie fallback (preserved for rollback)
-import { ScheduleRepository } from '../database/repositories/ScheduleRepository'
 
-// ── Feature flag: set to false to rollback to Dexie ──────────────────────────
 const USE_SUPABASE = true
 
 // ── State & Actions ──────────────────────────────────────────────────────────
@@ -127,11 +124,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           dispatch({ type: 'SET_ERROR', payload: '無法載入排班資料，請稍後再試。' })
           dispatch({ type: 'SET_LOADING', payload: false })
         }
-      } else {
-        // Dexie fallback
-        const dexieSchedules = ScheduleRepository.getAll()
-        console.log("Context schedules", dexieSchedules)
-        dispatch({ type: 'SET_SCHEDULES', payload: dexieSchedules })
       }
     } catch (err) {
       console.error('[ScheduleContext] refresh error:', err)
@@ -151,24 +143,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }, [state.schedules])
 
   // ── Intercept dispatch to sync Supabase ───────────────────────────────────
-  //
-  // Workflow aligns with SalaryContext:
-  //  1. Save / Add / Update → repository.saveSchedule() → if success → await refresh() → SET_SCHEDULES
-  //  2. Delete → repository.deleteSchedule() → if success → await refresh() → SET_SCHEDULES
-  //  Never use repository return object to directly mutate React State.
 
   const syncedDispatch = useCallback(async (action: ScheduleAction) => {
-    if (!USE_SUPABASE) {
-      dispatch(action)
-      // Dexie sync (original behavior)
-      if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {
-        ScheduleRepository.save(action.payload)
-      } else if (action.type === 'DELETE_SCHEDULE') {
-        ScheduleRepository.delete(action.payload)
-      }
-      return
-    }
-
     // Supabase async persistence
     try {
       if (action.type === 'ADD_SCHEDULE' || action.type === 'UPDATE_SCHEDULE') {

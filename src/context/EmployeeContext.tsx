@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react'
 import { Employee } from '../types/employee'
 import { supabaseSalaryRepository } from '../repositories/SupabaseSalaryRepository'
-import { SalaryRepository } from '../database/repositories/SalaryRepository'
 
 type Action =
   | { type: 'SET'; payload: Employee[] }

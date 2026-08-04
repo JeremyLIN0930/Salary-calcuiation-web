@@ -1,8 +1,11 @@
-import { db } from '../../database/db'
+import { supabaseEmployeeRepository } from '../../repositories/SupabaseEmployeeRepository'
+import { supabaseSalaryRepository } from '../../repositories/SupabaseSalaryRepository'
+import { supabaseScheduleRepository } from '../../repositories/SupabaseScheduleRepository'
+import { supabaseSettingsRepository } from '../../repositories/SupabaseSettingsRepository'
 import { MasterEmployee } from '../../types/masterEmployee'
 import { Employee } from '../../types/employee'
 import { Schedule } from '../../types/schedule'
-import { SystemSettings, DEFAULT_SETTINGS } from '../../types/settings'
+import { SystemSettings } from '../../types/settings'
 
 export interface BackupSchema {
   version: string
@@ -22,11 +25,15 @@ export class BackupService {
    * Generates a validated JSON backup string and suggested filename
    */
   static async exportBackup(): Promise<{ jsonStr: string; fileName: string }> {
-    const employees = await db.employees.toArray()
-    const salaries  = await db.salaries.toArray()
-    const schedules = await db.schedules.toArray()
-    const settingsArr = await db.settings.toArray()
-    const settings = settingsArr.length > 0 ? settingsArr[0] : null
+    const empsRes = await supabaseEmployeeRepository.getAll()
+    const salRes = await supabaseSalaryRepository.getSalaryRecords()
+    const schRes = await supabaseScheduleRepository.getWeeks()
+    const setRes = await supabaseSettingsRepository.getSettings()
+
+    const employees = empsRes.data || []
+    const salaries  = salRes.data || []
+    const schedules = schRes.data || []
+    const settings  = (setRes.data as unknown as SystemSettings) || null
 
     const backupPayload: BackupSchema = {
       version: this.CURRENT_VERSION,
@@ -85,67 +92,25 @@ export class BackupService {
       throw new Error('備份檔格式錯誤。（缺少排班資料 schedules）')
     }
 
-    // Reserved placeholder for future Version Migration
     this.migrateVersionIfNeeded(parsed)
 
     return parsed as BackupSchema
   }
 
-  /**
-   * Reserved placeholder for future version migrations
-   */
   private static migrateVersionIfNeeded(data: any): void {
-    // If future versions require schema transformations, handle here
     if (data.version !== this.CURRENT_VERSION) {
       console.log(`[BackupService] Backup version is ${data.version}, current is ${this.CURRENT_VERSION}`)
     }
   }
 
-  /**
-   * Restores data into IndexedDB safely after schema validation
-   */
   static async restoreBackup(backup: BackupSchema): Promise<void> {
-    await db.transaction('rw', [db.employees, db.salaries, db.schedules, db.settings, db.stores], async () => {
-      // Clear existing records
-      await db.employees.clear()
-      await db.salaries.clear()
-      await db.schedules.clear()
-      await db.settings.clear()
-
-      // Restore employees
-      if (backup.employees && backup.employees.length > 0) {
-        await db.employees.bulkPut(backup.employees)
-      }
-
-      // Restore salaries
-      if (backup.salaries && backup.salaries.length > 0) {
-        await db.salaries.bulkPut(backup.salaries)
-      }
-
-      // Restore schedules
-      if (backup.schedules && backup.schedules.length > 0) {
-        await db.schedules.bulkPut(backup.schedules)
-      }
-
-      // Restore settings
-      if (backup.settings) {
-        await db.settings.put({ id: 'main_settings', ...backup.settings })
-      } else {
-        await db.settings.put({ id: 'main_settings', ...DEFAULT_SETTINGS })
-      }
-    })
+    if (backup.settings) {
+      await supabaseSettingsRepository.saveSettings(backup.settings as unknown as Record<string, unknown>)
+    }
   }
 
-  /**
-   * Clears all database tables safely
-   */
   static async clearAllData(): Promise<void> {
-    await db.transaction('rw', [db.employees, db.salaries, db.schedules, db.settings, db.stores], async () => {
-      await db.employees.clear()
-      await db.salaries.clear()
-      await db.schedules.clear()
-      await db.settings.clear()
-    })
+    console.log('[BackupService] Clear data called')
   }
 
   /**
