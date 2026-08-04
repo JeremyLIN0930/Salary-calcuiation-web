@@ -16,21 +16,17 @@ import EmptyState from '../../components/common/EmptyState'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { groupSchedulesByMonth, ScheduleMonthGroup, getMonthKeyFromSchedule } from '../../utils/scheduleMigration'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
+import { useStoreContext } from '../../context/StoreContext'
 import { PDFService } from '../../services/pdfService'
 
 const AddSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
   </svg>
 )
 const EditSvg = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-  </svg>
-)
-const PdfSvg = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
-    <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/>
   </svg>
 )
 const DelSvg = () => (
@@ -41,6 +37,11 @@ const DelSvg = () => (
 const SearchSvg = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+  </svg>
+)
+const PdfSvg = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
+    <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5z"/>
   </svg>
 )
 const ArrowBackSvg = () => (
@@ -56,6 +57,7 @@ interface Props {
 export default function ScheduleListPage({ onSelectSchedule }: Props) {
   const { state, dispatch } = useSchedule()
   const { state: masterState } = useMasterEmployees()
+  const { stores: storeList } = useStoreContext()
   const { showSnackbar } = useSnackbar()
 
   // Navigation View State: 'MONTH_LIST' | 'WEEK_LIST'
@@ -307,30 +309,42 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     const startDateStr = newSchedule.weekStart || ''
     const dayOfMonth = parseInt(startDateStr.slice(8, 10), 10) || 1
     const targetWeekNo = newSchedule.weekNo || Math.min(Math.ceil(dayOfMonth / 7), 5) || 1
+    const targetMonthKey = startDateStr.slice(0, 7) // 'YYYY-MM'
 
-    const storeTitle = formatStoreTitle(newSchedule)
-    const weekStartFormatted = newSchedule.weekStart.replace(/-/g, '/')
-    const weekEndFormatted = newSchedule.weekEnd.replace(/-/g, '/')
-    const weekTitle = `第${targetWeekNo}週（${weekStartFormatted}～${weekEndFormatted}）`
+    // Helper: Check if two schedules belong to the exact same store
+    const isSameStoreSchedule = (s1: Partial<Schedule>, s2: Partial<Schedule>): boolean => {
+      if (s1.storeId && s2.storeId && s1.storeId === s2.storeId) return true
+      if (s1.storeCode && s2.storeCode && s1.storeCode === s2.storeCode) return true
+      if (s1.storeName && s2.storeName && s1.storeName === s2.storeName) return true
+
+      const s1Match = storeList.find(st => st.id === s1.storeId || st.name === s1.storeName || st.code === s1.storeCode)
+      const s2Match = storeList.find(st => st.id === s2.storeId || st.name === s2.storeName || st.code === s2.storeCode)
+      if (s1Match && s2Match && s1Match.id === s2Match.id) return true
+
+      return false
+    }
 
     // 1. In-memory check against state.schedules
-    const existingInMemory = state.schedules.find(s => {
-      const sStoreTitle = formatStoreTitle(s)
+    const matchedInMemory = state.schedules.find(s => {
+      const sMonthKey = (s.weekStart || '').slice(0, 7)
       const sDay = parseInt((s.weekStart || '').slice(8, 10), 10) || 1
       const sWeekNo = s.weekNo || Math.min(Math.ceil(sDay / 7), 5) || 1
-      const sMonthKey = (s.weekStart || '').slice(0, 7)
-      const targetMonthKey = (newSchedule.weekStart || '').slice(0, 7)
 
-      return sMonthKey === targetMonthKey && sWeekNo === targetWeekNo && (
-        sStoreTitle === storeTitle ||
-        s.storeId === newSchedule.storeId ||
-        s.storeCode === newSchedule.storeCode ||
-        s.storeName === newSchedule.storeName
-      )
+      const monthMatch = sMonthKey === targetMonthKey
+      const weekMatch = sWeekNo === targetWeekNo || s.weekStart === newSchedule.weekStart
+      const storeMatch = isSameStoreSchedule(s, newSchedule)
+
+      return monthMatch && weekMatch && storeMatch
     })
 
-    if (existingInMemory) {
-      setDuplicateInfo({ storeTitle, weekTitle })
+    if (matchedInMemory) {
+      const matchedStoreTitle = formatStoreTitle(matchedInMemory)
+      const matchedWeekStart = (matchedInMemory.weekStart || '').replace(/-/g, '/')
+      const matchedWeekEnd = (matchedInMemory.weekEnd || '').replace(/-/g, '/')
+      const matchedWeekNo = matchedInMemory.weekNo || targetWeekNo
+      const matchedWeekTitle = `第${matchedWeekNo}週（${matchedWeekStart}～${matchedWeekEnd}）`
+
+      setDuplicateInfo({ storeTitle: matchedStoreTitle, weekTitle: matchedWeekTitle })
       setDuplicateDialogOpen(true)
       setCreateWeekDialogOpen(false)
       return
@@ -343,7 +357,14 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     )
 
     if (dbCheck.exists) {
-      setDuplicateInfo({ storeTitle, weekTitle })
+      const existing = dbCheck.existingSchedule
+      const matchedStoreTitle = existing ? formatStoreTitle(existing) : formatStoreTitle(newSchedule)
+      const matchedWeekStart = (existing?.weekStart || newSchedule.weekStart).replace(/-/g, '/')
+      const matchedWeekEnd = (existing?.weekEnd || newSchedule.weekEnd).replace(/-/g, '/')
+      const matchedWeekNo = existing?.weekNo || targetWeekNo
+      const matchedWeekTitle = `第${matchedWeekNo}週（${matchedWeekStart}～${matchedWeekEnd}）`
+
+      setDuplicateInfo({ storeTitle: matchedStoreTitle, weekTitle: matchedWeekTitle })
       setDuplicateDialogOpen(true)
       setCreateWeekDialogOpen(false)
       return

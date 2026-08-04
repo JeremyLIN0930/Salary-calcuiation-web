@@ -401,15 +401,14 @@ export class SupabaseScheduleRepository {
         if (!resolvedStoreId) {
           const match = dbStores.find(s => 
             s.store_code === storeIdentifier || 
-            s.store_name === storeIdentifier
+            s.store_name === storeIdentifier ||
+            s.id === storeIdentifier
           )
           if (match) resolvedStoreId = match.id
         }
-        if (!resolvedStoreId) {
-          resolvedStoreId = dbStores[0].id
-        }
       }
 
+      // DO NOT fallback to dbStores[0] if store does not match
       if (!resolvedStoreId) {
         return { exists: false }
       }
