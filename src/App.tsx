@@ -23,7 +23,7 @@ const SettingsPage           = React.lazy(() => import('./pages/settings/Setting
 
 // ─── Dynamic Theme Wrapper ───────────────────────────────────────────────────
 function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
-  const { effectiveTheme, uiDensity } = useAppearance()
+  const { effectiveTheme, uiDensity, tokens } = useAppearance()
 
   const densityScale = useMemo(() => {
     if (uiDensity === 'compact') return 0.92
@@ -34,24 +34,19 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useMemo(() => {
     const isDark = effectiveTheme === 'dark'
 
-    const bgDefault     = isDark ? '#111827' : '#F8FAFC'
-    const bgPaper       = isDark ? '#1F2937' : '#FFFFFF'
-    const textPrimary   = isDark ? '#F9FAFB' : '#1E293B'
-    const textSecondary = isDark ? '#D1D5DB' : '#64748B'
-    const dividerColor  = isDark ? '#374151' : '#F1F5F9'
-    const inputBg       = isDark ? '#374151' : '#F8FAFC'
-    const borderColor   = isDark ? '#4B5563' : '#E2E8F0'
-
     return createTheme({
       palette: {
         mode: isDark ? 'dark' : 'light',
-        primary:    { main: '#2F80ED' },
-        error:      { main: '#EF4444' },
-        success:    { main: '#34A853' },
-        warning:    { main: '#F57C00' },
-        background: { default: bgDefault, paper: bgPaper },
-        text:       { primary: textPrimary, secondary: textSecondary },
-        divider:    dividerColor,
+        primary:    { main: tokens.primary, dark: tokens.primaryHover },
+        error:      { main: tokens.danger },
+        success:    { main: tokens.success },
+        warning:    { main: tokens.warning },
+        background: { default: tokens.background, paper: tokens.card },
+        text:       { primary: tokens.textPrimary, secondary: tokens.textSecondary },
+        divider:    tokens.divider,
+        action: {
+          hover: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+        },
       },
       typography: {
         fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
@@ -64,6 +59,15 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
       },
       shape: { borderRadius: 16 },
       components: {
+        MuiCssBaseline: {
+          styleOverrides: {
+            body: {
+              backgroundColor: tokens.background,
+              color: tokens.textPrimary,
+              transition: 'background-color 250ms ease, color 250ms ease',
+            },
+          },
+        },
         MuiButton: {
           styleOverrides: {
             root: {
@@ -71,6 +75,15 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
               fontWeight: 700,
               borderRadius: 16,
               height: Math.round(48 * densityScale),
+              transition: 'background-color 250ms ease, color 250ms ease, border-color 250ms ease',
+            },
+            outlined: {
+              borderColor: tokens.border,
+              color: tokens.textPrimary,
+              '&:hover': {
+                borderColor: tokens.primary,
+                backgroundColor: tokens.surfaceSecondary,
+              },
             },
           },
         },
@@ -78,9 +91,62 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
           styleOverrides: {
             root: {
               borderRadius: 24,
-              boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.3)' : '0 8px 24px rgba(0,0,0,0.04)',
-              backgroundColor: bgPaper,
-              borderColor: borderColor,
+              boxShadow: tokens.shadow,
+              backgroundColor: tokens.card,
+              borderColor: tokens.border,
+              color: tokens.textPrimary,
+              transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
+            },
+          },
+        },
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              backgroundColor: tokens.card,
+              color: tokens.textPrimary,
+              borderColor: tokens.border,
+              transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
+            },
+          },
+        },
+        MuiDialog: {
+          styleOverrides: {
+            paper: {
+              backgroundColor: tokens.card,
+              color: tokens.textPrimary,
+              borderRadius: 24,
+              boxShadow: tokens.shadow,
+            },
+          },
+        },
+        MuiTable: {
+          styleOverrides: {
+            root: {
+              backgroundColor: tokens.card,
+            },
+          },
+        },
+        MuiTableCell: {
+          styleOverrides: {
+            root: {
+              borderColor: tokens.border,
+              color: tokens.textPrimary,
+              padding: Math.round(16 * densityScale),
+            },
+            head: {
+              backgroundColor: tokens.tableHeader,
+              color: tokens.textSecondary,
+              fontWeight: 700,
+            },
+          },
+        },
+        MuiTableRow: {
+          styleOverrides: {
+            root: {
+              backgroundColor: tokens.tableRow,
+              '&:hover': {
+                backgroundColor: tokens.tableHover,
+              },
             },
           },
         },
@@ -89,16 +155,50 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
             root: {
               borderRadius: 14,
               height: Math.round(48 * densityScale),
-              backgroundColor: inputBg,
+              backgroundColor: tokens.inputBackground,
+              color: tokens.textPrimary,
+              transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
             },
             notchedOutline: {
-              borderColor: borderColor,
+              borderColor: tokens.border,
+            },
+            input: {
+              '&::placeholder': {
+                color: tokens.placeholder,
+                opacity: 1,
+              },
+            },
+          },
+        },
+        MuiSelect: {
+          styleOverrides: {
+            icon: {
+              color: tokens.textSecondary,
+            },
+          },
+        },
+        MuiTooltip: {
+          styleOverrides: {
+            tooltip: {
+              backgroundColor: isDark ? '#334155' : '#1E293B',
+              color: '#FFFFFF',
+              borderRadius: 8,
+              fontSize: 13,
+            },
+          },
+        },
+        MuiSnackbarContent: {
+          styleOverrides: {
+            root: {
+              backgroundColor: isDark ? '#1E293B' : '#1E293B',
+              color: '#FFFFFF',
+              borderRadius: 12,
             },
           },
         },
       },
     })
-  }, [effectiveTheme, densityScale])
+  }, [effectiveTheme, densityScale, tokens])
 
   return (
     <ThemeProvider theme={theme}>

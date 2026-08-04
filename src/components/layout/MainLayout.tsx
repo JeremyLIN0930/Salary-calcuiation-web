@@ -2,8 +2,9 @@ import React from 'react'
 import {
   Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton,
   ListItemIcon, ListItemText, BottomNavigation, BottomNavigationAction,
-  useMediaQuery, useTheme, Divider,
+  useMediaQuery, useTheme,
 } from '@mui/material'
+import { useAppearance } from '../../context/AppearanceContext'
 
 // ─── Inline SVG Icons ────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ interface Props {
 
 export default function MainLayout({ current, onNavigate, children, hideNav }: Props) {
   const theme = useTheme()
+  const { tokens } = useAppearance()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))    // < 600px
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg')) // 600~1200px
 
@@ -73,11 +75,11 @@ export default function MainLayout({ current, onNavigate, children, hideNav }: P
   const useBottom = isMobile    // phones get bottom navigation
 
   if (hideNav) {
-    return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>{children}</Box>
+    return <Box sx={{ minHeight: '100vh', bgcolor: tokens.background }}>{children}</Box>
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.background }}>
       {/* ── Side Drawer (tablet / desktop) ─── */}
       {useDrawer && (
         <Drawer
@@ -88,44 +90,53 @@ export default function MainLayout({ current, onNavigate, children, hideNav }: P
             '& .MuiDrawer-paper': {
               width: DRAWER_WIDTH,
               boxSizing: 'border-box',
-              bgcolor: '#fff',
-              borderRight: '1px solid #E5E7EB',
+              bgcolor: tokens.sidebar,
+              borderRight: `1px solid ${tokens.border}`,
+              color: tokens.sidebarText,
+              transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
             },
           }}
         >
           {/* Logo / App Name */}
-          <Box sx={{ px: 2, py: 2.5, borderBottom: '1px solid #E5E7EB' }}>
-            <Typography variant="subtitle2" fontWeight={900} color="primary" sx={{ fontSize: 13, letterSpacing: 1 }}>
+          <Box sx={{ px: 2, py: 2.5, borderBottom: `1px solid ${tokens.border}` }}>
+            <Typography variant="subtitle2" fontWeight={900} sx={{ fontSize: 13, letterSpacing: 1, color: tokens.sidebarTitle }}>
               薪資暨排班
             </Typography>
-            <Typography variant="caption" color="text.secondary">管理系統</Typography>
+            <Typography variant="caption" sx={{ color: tokens.sidebarText }}>管理系統</Typography>
           </Box>
 
           <List sx={{ pt: 1 }}>
-            {NAV_ITEMS.map(item => (
-              <ListItemButton
-                key={item.key}
-                selected={current === item.key}
-                onClick={() => onNavigate(item.key)}
-                sx={{
-                  mx: 1, mb: 0.5, borderRadius: 2,
-                  '&.Mui-selected': {
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    '& .MuiListItemIcon-root': { color: 'white' },
-                    '&:hover': { bgcolor: 'primary.dark' },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36, color: current === item.key ? 'white' : 'text.secondary' }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{ fontSize: 14, fontWeight: current === item.key ? 700 : 400 }}
-                />
-              </ListItemButton>
-            ))}
+            {NAV_ITEMS.map(item => {
+              const isSelected = current === item.key
+              return (
+                <ListItemButton
+                  key={item.key}
+                  selected={isSelected}
+                  onClick={() => onNavigate(item.key)}
+                  sx={{
+                    mx: 1, mb: 0.5, borderRadius: 2,
+                    bgcolor: isSelected ? tokens.sidebarActive : 'transparent',
+                    color: isSelected ? '#FFFFFF' : tokens.sidebarText,
+                    '&:hover': {
+                      bgcolor: isSelected ? tokens.sidebarActive : tokens.sidebarHover,
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: tokens.sidebarActive,
+                      color: '#FFFFFF',
+                      '&:hover': { bgcolor: tokens.sidebarActive },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36, color: isSelected ? '#FFFFFF' : tokens.sidebarText }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontSize: 14, fontWeight: isSelected ? 700 : 400, color: isSelected ? '#FFFFFF' : tokens.sidebarText }}
+                  />
+                </ListItemButton>
+              )
+            })}
           </List>
         </Drawer>
       )}
@@ -135,7 +146,7 @@ export default function MainLayout({ current, onNavigate, children, hideNav }: P
         {/* Top AppBar (mobile only — tablet/desktop relies on drawer) */}
         {isMobile && (
           <AppBar position="sticky" elevation={0}
-            sx={{ bgcolor: 'white', borderBottom: '1px solid #E5E7EB', color: 'text.primary' }}>
+            sx={{ bgcolor: tokens.header, borderBottom: `1px solid ${tokens.border}`, color: tokens.textPrimary, transition: 'background-color 250ms ease, border-color 250ms ease' }}>
             <Toolbar sx={{ minHeight: 52 }}>
               <Typography variant="h6" fontWeight={800} color="primary" sx={{ fontSize: 16, letterSpacing: 1 }}>
                 薪資暨排班管理
@@ -147,10 +158,10 @@ export default function MainLayout({ current, onNavigate, children, hideNav }: P
         {/* Tablet / desktop header bar */}
         {!isMobile && (
           <Box sx={{
-            px: 3, py: 1.5, bgcolor: 'white', borderBottom: '1px solid #E5E7EB',
-            display: 'flex', alignItems: 'center',
+            px: 3, py: 1.5, bgcolor: tokens.header, borderBottom: `1px solid ${tokens.border}`,
+            display: 'flex', alignItems: 'center', transition: 'background-color 250ms ease, border-color 250ms ease',
           }}>
-            <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+            <Typography variant="subtitle1" fontWeight={700} sx={{ color: tokens.textPrimary }}>
               {NAV_ITEMS.find(n => n.key === current)?.label ?? ''}
             </Typography>
           </Box>
@@ -169,7 +180,12 @@ export default function MainLayout({ current, onNavigate, children, hideNav }: P
           onChange={(_, v) => onNavigate(v as AppModule)}
           sx={{
             position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100,
-            borderTop: '1px solid #E5E7EB', height: 56,
+            borderTop: `1px solid ${tokens.border}`, height: 56,
+            bgcolor: tokens.sidebar,
+            '& .MuiBottomNavigationAction-root': {
+              color: tokens.sidebarText,
+              '&.Mui-selected': { color: tokens.primary },
+            },
           }}
         >
           {NAV_ITEMS.map(item => (

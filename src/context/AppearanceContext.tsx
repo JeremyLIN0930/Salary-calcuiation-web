@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import { ThemeTokens, lightTokens, darkTokens } from '../theme/tokens'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type UiDensity = 'compact' | 'default' | 'comfort'
@@ -9,6 +10,7 @@ interface AppearanceContextType {
   uiDensity: UiDensity
   setUiDensity: (density: UiDensity) => void
   effectiveTheme: 'light' | 'dark'
+  tokens: ThemeTokens
 }
 
 const AppearanceContext = createContext<AppearanceContextType | undefined>(undefined)
@@ -52,7 +54,12 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return systemIsDark ? 'dark' : 'light'
   }, [themeMode, systemIsDark])
 
-  // Update localStorage and DOM attributes
+  // Get active Theme Tokens
+  const tokens = useMemo<ThemeTokens>(() => {
+    return effectiveTheme === 'dark' ? darkTokens : lightTokens
+  }, [effectiveTheme])
+
+  // Update localStorage and DOM attributes & CSS variables
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode)
     localStorage.setItem(STORAGE_THEME_KEY, mode)
@@ -67,16 +74,21 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const root = document.documentElement
     const body = document.body
 
-    // Apply Theme Class
+    // Apply Theme Class & Attributes
     body.classList.remove('theme-light', 'theme-dark')
     body.classList.add(`theme-${effectiveTheme}`)
     root.setAttribute('data-theme', effectiveTheme)
+
+    // Apply CSS Variables for Theme Tokens
+    Object.entries(tokens).forEach(([key, val]) => {
+      root.style.setProperty(`--token-${key}`, val)
+    })
 
     // Apply Density Class
     body.classList.remove('density-compact', 'density-default', 'density-comfort')
     body.classList.add(`density-${uiDensity}`)
     root.setAttribute('data-density', uiDensity)
-  }, [effectiveTheme, uiDensity])
+  }, [effectiveTheme, uiDensity, tokens])
 
   const value = useMemo(
     () => ({
@@ -85,8 +97,9 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       uiDensity,
       setUiDensity,
       effectiveTheme,
+      tokens,
     }),
-    [themeMode, uiDensity, effectiveTheme]
+    [themeMode, uiDensity, effectiveTheme, tokens]
   )
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>
