@@ -30,12 +30,15 @@ interface ActiveCell {
   shift?: Shift
 }
 
+const WEEKDAY_NAMES = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
+
 export default function ScheduleTable({ weekDates, employees, onChangeEmployees }: Props) {
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
   const { state: masterState, addEmployee: masterAddEmployee } = useMasterEmployees()
   const { showSnackbar } = useSnackbar()
 
-  // State for Autocomplete input
+  // State for Add Employee Dialog / Expanded Input
+  const [addEmpModalOpen, setAddEmpModalOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [pendingNewName, setPendingNewName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -68,8 +71,8 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
       }
       onChangeEmployees([...employees, newEmp])
       setInputValue('')
+      setAddEmpModalOpen(false)
       showSnackbar(`已將「${name}」加入排班。`, 'success')
-      setTimeout(() => inputRef.current?.focus(), 50)
     } else {
       // Ask user if they want to join shared employee list
       setPendingNewName(name)
@@ -82,11 +85,9 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
     const name = pendingNewName.trim()
 
     if (addToMaster) {
-      // 1. 先檢查 master_employees 資料庫/Context 是否已有同名員工
       const existingMaster = masterState.employees.find(m => m.name.trim().toLowerCase() === name.toLowerCase())
       
       if (existingMaster) {
-        // 直接使用既有 UUID，不重複 INSERT
         const newEmp: ScheduleEmployee = {
           id: existingMaster.id,
           name: existingMaster.name,
@@ -96,7 +97,6 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
         onChangeEmployees([...employees, newEmp])
         showSnackbar(`已對應至既有共用員工「${existingMaster.name}」並加入排班。`, 'success')
       } else {
-        // 按「是」且不存在：加入 master_employees 作為正式/共用員工
         const newMasterEmp = await masterAddEmployee({
           name,
           isShared: true,
@@ -117,7 +117,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
         showSnackbar(`已將「${name}」建立為正式員工並加入排班。`, 'success')
       }
     } else {
-      // 按「否」：僅本週排班使用（臨時工 / 代班），不建立 master_employees
+      // Temporary employee
       const tempId = 'temp_' + Math.random().toString(36).slice(2)
       const newEmp: ScheduleEmployee = {
         id: tempId,
@@ -132,7 +132,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
 
     setPendingNewName(null)
     setInputValue('')
-    setTimeout(() => inputRef.current?.focus(), 50)
+    setAddEmpModalOpen(false)
   }
 
   // Delete employee row
@@ -173,47 +173,97 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
   }
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', mb: 2 }}>
-      <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 700, tableLayout: 'fixed' }}>
+    <Paper
+      elevation={0}
+      sx={{
+        borderRadius: '24px',
+        bgcolor: '#FFFFFF',
+        overflow: 'hidden',
+        mb: 3,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+        border: '1px solid #F1F5F9',
+      }}
+    >
+      <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <Table size="small" sx={{ minWidth: { xs: 520, sm: 680, md: '100%' }, tableLayout: 'fixed' }}>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#F8F9FA' }}>
-              <TableCell sx={{ width: 140, fontWeight: 700, fontSize: 13, py: 1.5, borderRight: '1px solid #E5E7EB' }}>
+            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+              {/* Sticky Employee Name Column */}
+              <TableCell
+                sx={{
+                  width: { xs: 110, sm: 140 },
+                  fontWeight: 700,
+                  fontSize: 13,
+                  py: 1.5,
+                  px: 1.5,
+                  position: 'sticky',
+                  left: 0,
+                  zIndex: 10,
+                  bgcolor: '#F8FAFC',
+                  borderRight: '1px solid #E2E8F0',
+                  boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
+                }}
+              >
                 員工姓名
               </TableCell>
-              {weekDates.map(d => (
-                <TableCell
-                  key={d.date}
-                  align="center"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: 13,
-                    py: 1.5,
-                    borderRight: '1px solid #E5E7EB',
-                    bgcolor: d.isWeekend ? '#EFF6FF' : 'inherit',
-                    color: d.isWeekend ? 'primary.main' : 'text.primary',
-                  }}
-                >
-                  {d.label}
-                </TableCell>
-              ))}
-              <TableCell align="center" sx={{ width: 50, fontWeight: 700, fontSize: 12, py: 1.5 }}>
-                刪除
+
+              {/* 7 Date Columns Header */}
+              {weekDates.map((d, index) => {
+                const parts = d.date.split('-')
+                const dateNumStr = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`
+                const weekdayName = WEEKDAY_NAMES[index] || ''
+
+                return (
+                  <TableCell
+                    key={d.date}
+                    align="center"
+                    sx={{
+                      width: { xs: 95, sm: 105, md: 'auto' },
+                      py: 1.2,
+                      px: 0.5,
+                      borderRight: '1px solid #F1F5F9',
+                      bgcolor: d.isWeekend ? '#EBF3FE' : '#F8FAFC',
+                      color: d.isWeekend ? '#2F80ED' : '#1E293B',
+                    }}
+                  >
+                    <Typography variant="caption" display="block" sx={{ fontSize: '11px', color: d.isWeekend ? '#2F80ED' : '#64748B', fontWeight: 600 }}>
+                      {weekdayName}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={700} sx={{ fontSize: '14px', lineHeight: 1.2, mt: 0.2 }}>
+                      {dateNumStr}
+                    </Typography>
+                  </TableCell>
+                )
+              })}
+
+              {/* Action Column */}
+              <TableCell align="center" sx={{ width: { xs: 44, sm: 50 }, fontWeight: 700, fontSize: 12, py: 1.5, px: 0.5 }}>
+                操作
               </TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {employees.map(emp => (
-              <TableRow key={emp.id} hover>
-                {/* Employee Name cell */}
-                <TableCell sx={{ p: 1, borderRight: '1px solid #E5E7EB' }}>
+              <TableRow key={emp.id} hover sx={{ '&:hover': { bgcolor: '#FAFAFA' } }}>
+                {/* Sticky Employee Name cell */}
+                <TableCell
+                  sx={{
+                    p: 1,
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 9,
+                    bgcolor: '#FFFFFF',
+                    borderRight: '1px solid #E2E8F0',
+                    boxShadow: '2px 0 8px rgba(0,0,0,0.03)',
+                  }}
+                >
                   <TextField
                     placeholder="輸入姓名"
                     value={emp.name}
                     variant="standard"
                     fullWidth
-                    InputProps={{ disableUnderline: true, style: { fontWeight: 600, fontSize: 14 } }}
+                    InputProps={{ disableUnderline: true, style: { fontWeight: 700, fontSize: '14px', color: '#1E293B' } }}
                     onChange={e => handleUpdateName(emp.id, e.target.value)}
                   />
                 </TableCell>
@@ -245,6 +295,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
                       size="small"
                       color="error"
                       onClick={() => handleDeleteEmployee(emp.id)}
+                      sx={{ p: 0.8 }}
                     >
                       <DelSvg />
                     </IconButton>
@@ -252,73 +303,125 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
                 </TableCell>
               </TableRow>
             ))}
-
-            {/* ── 核心 Autocomplete 新增員工列 ── */}
-            <TableRow sx={{ bgcolor: '#FAFBFD' }}>
-              <TableCell sx={{ p: 1, borderRight: '1px solid #E5E7EB', minWidth: 200 }}>
-                <Autocomplete
-                  freeSolo
-                  options={masterOptions}
-                  value={null}
-                  inputValue={inputValue}
-                  onInputChange={(e, newInputValue) => setInputValue(newInputValue)}
-                  onChange={(e, value) => {
-                    if (value) {
-                      tryAddEmployeeName(value)
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      inputRef={inputRef}
-                      placeholder="輸入姓名或選擇已有員工"
-                      size="small"
-                      fullWidth
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          height: 48,
-                          borderRadius: 2,
-                          bgcolor: '#ffffff',
-                          fontWeight: 600,
-                          fontSize: 14,
-                        },
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          if (inputValue.trim()) {
-                            tryAddEmployeeName(inputValue)
-                          }
-                        }
-                      }}
-                    />
-                  )}
-                />
-              </TableCell>
-
-              {/* Empty placeholder cells for dates */}
-              {weekDates.map(d => (
-                <TableCell key={d.date} align="center" sx={{ borderRight: '1px solid #E5E7EB', color: '#D1D5DB' }}>
-                  —
-                </TableCell>
-              ))}
-
-              <TableCell align="center" sx={{ color: '#D1D5DB', fontSize: 12 }}>
-                新增
-              </TableCell>
-            </TableRow>
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Toolbar Status */}
-      <Box sx={{ p: 1.5, bgcolor: '#FAFBFD', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>
-          已排班員工共 {employees.length} 位 · 輸入姓名可快速連續新增下一位
-        </Typography>
+      {/* Bottom Button: ＋ 新增員工 */}
+      <Box sx={{ p: 2, bgcolor: '#FAFBFD', borderTop: '1px solid #F1F5F9' }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={() => setAddEmpModalOpen(true)}
+          sx={{
+            borderRadius: '18px',
+            height: 46,
+            borderColor: '#CBD5E1',
+            color: '#4F8FEF',
+            fontWeight: 700,
+            fontSize: '15px',
+            bgcolor: '#FFFFFF',
+            '&:hover': {
+              borderColor: '#4F8FEF',
+              bgcolor: '#EBF3FE',
+            },
+          }}
+        >
+          ＋ 新增員工到排班表
+        </Button>
       </Box>
 
-      {/* Cell Shift Editor Dialog */}
+      {/* Add Employee Dialog Modal */}
+      <Dialog
+        open={addEmpModalOpen}
+        onClose={() => setAddEmpModalOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>新增員工到排班</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            可自主資料庫搜尋既有員工，或輸入全新姓名建立排班列。
+          </Typography>
+          <Autocomplete
+            freeSolo
+            options={masterOptions}
+            inputValue={inputValue}
+            onInputChange={(_, newValue) => setInputValue(newValue)}
+            onChange={(_, value) => {
+              if (typeof value === 'string') {
+                tryAddEmployeeName(value)
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={inputRef}
+                label="搜尋或輸入員工姓名"
+                size="small"
+                autoFocus
+                placeholder="例如：王小明"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && inputValue.trim()) {
+                    e.preventDefault()
+                    tryAddEmployeeName(inputValue)
+                  }
+                }}
+              />
+            )}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setAddEmpModalOpen(false)} sx={{ borderRadius: '12px' }}>
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => tryAddEmployeeName(inputValue)}
+            disabled={!inputValue.trim()}
+            sx={{ borderRadius: '12px', px: 3 }}
+          >
+            確定新增
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Master Employee Sync Confirm Dialog */}
+      <Dialog
+        open={!!pendingNewName}
+        onClose={() => handleConfirmAddToMaster(false)}
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>加入共用員工主資料庫？</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            「<strong>{pendingNewName}</strong>」目前不在門市共用員工主資料庫中。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            • 選擇「<strong>是</strong>」：建立為正式共用員工（未來可在其他週次選用）<br />
+            • 選擇「<strong>否</strong>」：僅作為本週臨時/代班人員使用
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => handleConfirmAddToMaster(false)}
+            sx={{ borderRadius: '12px' }}
+          >
+            否 (僅本週臨時工)
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => handleConfirmAddToMaster(true)}
+            sx={{ borderRadius: '12px', px: 2.5 }}
+          >
+            是 (加入主資料庫)
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Shift Edit Cell Dialog */}
       {activeCell && (
         <ScheduleDialog
           open={!!activeCell}
@@ -331,63 +434,6 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
           onClear={handleClearShift}
         />
       )}
-
-      {/* ── Dialog: 新增員工 是否加入共用員工名單 ── */}
-      <Dialog
-        open={!!pendingNewName}
-        onClose={() => handleConfirmAddToMaster(false)}
-        PaperProps={{ sx: { borderRadius: 4, p: 1, minWidth: 340, maxWidth: 460 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: 20 }}>
-          新增員工
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="h6" fontWeight={700} color="text.primary" sx={{ mb: 1.5 }}>
-            是否加入共用員工名單？
-          </Typography>
-          <Box sx={{ bgcolor: '#F9FAFB', p: 1.5, borderRadius: 2, border: '1px solid #E5E7EB', mb: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} color="primary.main">
-              員工姓名：{pendingNewName}
-            </Typography>
-          </Box>
-          <Stack spacing={1.5}>
-            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF' }}>
-              <Typography variant="subtitle2" fontWeight={800} color="#1E40AF">
-                【是】
-              </Typography>
-              <Typography variant="body2" color="#1E3A8A">
-                可於所有門市快速選取。
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #E5E7EB', bgcolor: '#F9FAFB' }}>
-              <Typography variant="subtitle2" fontWeight={800} color="#374151">
-                【否】
-              </Typography>
-              <Typography variant="body2" color="#4B5563">
-                僅此班表使用（臨時工/代班）。不建立正式員工，不上架至員工管理。
-              </Typography>
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1.5, justifyContent: 'flex-end' }}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            onClick={() => handleConfirmAddToMaster(false)}
-            sx={{ borderRadius: 2.5, fontWeight: 700, px: 2.5 }}
-          >
-            否（僅此班表）
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => handleConfirmAddToMaster(true)}
-            sx={{ borderRadius: 2.5, fontWeight: 700, px: 2.5 }}
-          >
-            是（加入共用名單）
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Paper>
   )
 }

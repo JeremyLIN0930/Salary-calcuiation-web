@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import {
-  Box, Typography, Button, TextField, Stack, Paper,
-  Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Card, Chip,
+  Box, Typography, Button, TextField, Stack,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  CircularProgress, Card, Chip, Grid,
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
 import { useSnackbar } from '../../context/SnackbarContext'
@@ -10,9 +10,10 @@ import { PDFService } from '../../services/pdfService'
 import PDFPreviewModal from '../../components/common/PDFPreviewModal'
 import { Schedule, ScheduleEmployee, formatStoreTitle } from '../../types/schedule'
 import ScheduleTable from './ScheduleTable'
+import PageContainer from '../../components/common/PageContainer'
 
 const ArrowBackSvg = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
   </svg>
 )
@@ -48,8 +49,6 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const { state, saveSchedule } = useSchedule()
   const { showSnackbar } = useSnackbar()
 
-  // Step 7 Logs
-
   // Context schedule source of truth
   const contextSchedule = useMemo(() => {
     return state.schedules.find(s => s.id === initialSchedule.id) || initialSchedule
@@ -77,6 +76,7 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const [isDirty, setIsDirty]     = useState(false)
   const [isSaving, setIsSaving]   = useState(false)
   const [exporting, setExporting] = useState(false)
+
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
 
@@ -132,12 +132,12 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
         }
         return true
       } else {
-        showSnackbar('❌ 排班儲存失敗，請確認網路或 Console 錯誤', 'error')
+        showSnackbar('❌ 排班儲存失敗，請確認網路', 'error')
         return false
       }
     } catch (err) {
       console.error('[ScheduleEditPage] handleSaveSchedule error:', err)
-      showSnackbar('❌ 排班儲存失敗，請確認網路或 Console 錯誤', 'error')
+      showSnackbar('❌ 排班儲存失敗，請確認網路', 'error')
       return false
     } finally {
       setIsSaving(false)
@@ -179,225 +179,358 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
         const dayDiff = Math.round((pShiftDate.getTime() - prevStartDate.getTime()) / (1000 * 3600 * 24))
         const targetDate = new Date(currentStartDate)
         targetDate.setDate(currentStartDate.getDate() + dayDiff)
-
         return {
           ...pShift,
           date: targetDate.toISOString().slice(0, 10),
         }
       })
-
       return {
-        id: Math.random().toString(36).slice(2),
-        name: pEmp.name,
+        ...pEmp,
         shifts: newShifts,
       }
     })
 
     handleLocalChange(copiedEmployees, undefined)
-    showSnackbar(`已複製上一週（${prev.weekStart}）的員工與班表（請記得按下「💾 儲存排班」）`, 'info')
+    showSnackbar(`已複製「${prev.storeName || '門市'}（${prev.weekStart}）」班別`, 'success')
   }
 
-  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
-  const [pdfUrl, setPdfUrl]                 = useState<string | null>(null)
-  const [pdfLoading, setPdfLoading]         = useState(false)
-  const [pdfError, setPdfError]             = useState<string | null>(null)
-
-  // Open Preview Modal & generate Blob
-  const handleOpenPdfPreview = async () => {
-    setPdfPreviewOpen(true)
-    setPdfLoading(true)
-    setPdfError(null)
-    setPdfUrl(null)
-
-    try {
-      const res = await PDFService.createSchedulePDFBlob(schedule)
-      if (!res.blob || res.blob.size === 0) {
-        throw new Error('生成的 PDF 檔案大小為 0')
-      }
-      setPdfUrl(res.url)
-    } catch (err: any) {
-      console.error('[PDF Debug] Schedule PDF Generation Error:', err)
-      setPdfError(err.message || 'PDF 建立失敗，請重試。')
-    } finally {
-      setPdfLoading(false)
-    }
-  }
-
-  // Export PDF via Service
-  const handleConfirmDownloadPDF = async () => {
+  // PDF Export
+  const handleExportPDF = async () => {
     setExporting(true)
     try {
       await PDFService.exportSchedule(schedule)
-      showSnackbar('排班表 PDF 已成功匯出下載！', 'success')
-      setPdfPreviewOpen(false)
+      showSnackbar('✅ PDF 匯出成功！', 'success')
     } catch (err) {
-      console.error('[PDF Debug] Download Error:', err)
-      showSnackbar('PDF 匯出失敗，請再試一次', 'error')
+      console.error('PDF generation error:', err)
+      showSnackbar('❌ PDF 匯出失敗，請稍後再試', 'error')
     } finally {
       setExporting(false)
     }
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, pt: 2, pb: 10 }}>
-      {/* Top Header Bar */}
-      <Paper elevation={0} sx={{ p: 2, mb: 2.5, borderRadius: 3, border: '1px solid #E5E7EB' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleBackClick}
-              sx={{ borderRadius: 2, minWidth: 40, px: 1, color: 'text.primary', borderColor: '#D1D5DB' }}
-            >
-              <ArrowBackSvg />
-            </Button>
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h6" fontWeight={800} color="primary.main">
-                  {formatStoreTitle(schedule)} — 週排班表
-                </Typography>
-                {/* Save Status Badge */}
-                {isSaving ? (
-                  <Chip label="🔵 儲存中..." size="small" color="info" sx={{ fontWeight: 700 }} />
-                ) : isDirty ? (
-                  <Chip label="🟡 尚未儲存" size="small" color="warning" sx={{ fontWeight: 700 }} />
-                ) : (
-                  <Chip label="🟢 已儲存" size="small" color="success" sx={{ fontWeight: 700 }} />
-                )}
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                排班週次：{schedule.weekStart}（一） ～ {schedule.weekEnd}（日）
-              </Typography>
-            </Box>
-          </Box>
+    <PageContainer maxWidth={1120}>
+      {/* ── 1. Top Hero Card: Store Info & Status Badge (Muji Style) ── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          p: { xs: 2.5, sm: 3 },
+          mb: 3,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
+        {/* Top Header Bar: Back Button & Save Status Badge */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Button
+            onClick={handleBackClick}
+            size="small"
+            sx={{
+              color: '#64748B',
+              fontWeight: 700,
+              fontSize: '14px',
+              px: 1.5,
+              py: 0.8,
+              borderRadius: '12px',
+              bgcolor: '#F8FAFC',
+              '&:hover': { bgcolor: '#F1F5F9', color: '#1E293B' },
+            }}
+          >
+            <ArrowBackSvg />
+            返回列表
+          </Button>
 
-          {/* Action buttons */}
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              variant="outlined"
+          {/* Status Badge */}
+          {isSaving ? (
+            <Chip
+              label="⏳ 儲存中..."
               size="small"
-              onClick={handleCopyPrevWeek}
-              sx={{ borderRadius: 2, fontWeight: 700 }}
-            >
-              <CopySvg />
-              複製上一週
-            </Button>
-
-            <Button
-              variant="outlined"
-              color="error"
+              sx={{ bgcolor: '#FEF3C7', color: '#D97706', fontWeight: 700, borderRadius: '10px' }}
+            />
+          ) : isDirty ? (
+            <Chip
+              label="🟠 未儲存變更"
               size="small"
-              onClick={() => setConfirmClearOpen(true)}
-              sx={{ borderRadius: 2, fontWeight: 700 }}
-            >
-              <ClearSvg />
-              清空本週
-            </Button>
-
-            <Button
-              variant="contained"
-              color="success"
+              sx={{ bgcolor: '#FFEDD5', color: '#C2410C', fontWeight: 700, borderRadius: '10px' }}
+            />
+          ) : (
+            <Chip
+              label="🟢 已儲存"
               size="small"
-              disabled={isSaving}
-              onClick={() => handleSaveSchedule(false)}
-              sx={{ borderRadius: 2, fontWeight: 700 }}
-            >
-              {isSaving ? (
-                <CircularProgress size={16} sx={{ mr: 1, color: '#fff' }} />
-              ) : (
-                <SaveSvg />
-              )}
-              {isSaving ? '儲存中...' : '💾 儲存排班'}
-            </Button>
-
-            <Button
-              variant="contained"
-              size="small"
-              disabled={exporting}
-              onClick={handleOpenPdfPreview}
-              sx={{ borderRadius: 2, fontWeight: 700 }}
-            >
-              {exporting ? <CircularProgress size={16} sx={{ mr: 1, color: '#fff' }} /> : <PdfSvg />}
-              預覽 / 匯出 PDF
-            </Button>
-          </Stack>
+              sx={{ bgcolor: '#DCFCE7', color: '#15803D', fontWeight: 700, borderRadius: '10px' }}
+            />
+          )}
         </Box>
-      </Paper>
 
-      {/* Main Weekly Table */}
+        {/* Store Title & Week Subtitle */}
+        <Box sx={{ mb: 1 }}>
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            sx={{
+              color: '#1E293B',
+              fontSize: { xs: '22px', sm: '26px' },
+              letterSpacing: '-0.3px',
+              mb: 0.5,
+            }}
+          >
+            {formatStoreTitle(schedule)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: '14px' }}>
+            本週排班：{schedule.weekStart}（一） ～ {schedule.weekEnd}（日）
+          </Typography>
+        </Box>
+      </Card>
+
+      {/* ── 2. Action Buttons (2 Rows Layout for Mobile RWD) ── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          p: 2.5,
+          mb: 3,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
+        <Stack spacing={1.5}>
+          {/* Row 1: Copy Prev Week & Clear Week */}
+          <Grid container spacing={1.5}>
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleCopyPrevWeek}
+                sx={{
+                  borderRadius: '16px',
+                  minHeight: 48,
+                  borderColor: '#CBD5E1',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  bgcolor: '#F8FAFC',
+                  '&:hover': { bgcolor: '#F1F5F9', borderColor: '#94A3B8' },
+                }}
+              >
+                <CopySvg />
+                複製上一週
+              </Button>
+            </Grid>
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="error"
+                onClick={() => setConfirmClearOpen(true)}
+                sx={{
+                  borderRadius: '16px',
+                  minHeight: 48,
+                  borderColor: '#FECDD3',
+                  color: '#E11D48',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  bgcolor: '#FFF1F2',
+                  '&:hover': { bgcolor: '#FFE4E6', borderColor: '#FDA4AF' },
+                }}
+              >
+                <ClearSvg />
+                清空本週
+              </Button>
+            </Grid>
+          </Grid>
+
+          {/* Row 2: Save Schedule (Primary) & PDF Export (Secondary) */}
+          <Grid container spacing={1.5}>
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={isSaving}
+                onClick={() => handleSaveSchedule(false)}
+                sx={{
+                  borderRadius: '16px',
+                  minHeight: 48,
+                  bgcolor: '#2F80ED',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  boxShadow: '0 4px 12px rgba(47,128,237,0.2)',
+                  '&:hover': { bgcolor: '#1D6FD8', boxShadow: '0 6px 16px rgba(47,128,237,0.3)' },
+                }}
+              >
+                {isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveSvg />}
+                儲存排班
+              </Button>
+            </Grid>
+
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant="outlined"
+                disabled={exporting}
+                onClick={handleExportPDF}
+                sx={{
+                  borderRadius: '16px',
+                  minHeight: 48,
+                  borderColor: '#2F80ED',
+                  color: '#2F80ED',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  bgcolor: '#FFFFFF',
+                  '&:hover': { bgcolor: '#EBF3FE' },
+                }}
+              >
+                {exporting ? <CircularProgress size={20} color="inherit" /> : <PdfSvg />}
+                PDF 匯出
+              </Button>
+            </Grid>
+          </Grid>
+        </Stack>
+      </Card>
+
+      {/* ── 3. Schedule Employee Info Card (👥 已排班) ── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          p: 2.5,
+          mb: 3,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: '14px',
+              bgcolor: '#EBF3FE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+            }}
+          >
+            👥
+          </Box>
+          <Box>
+            <Typography variant="body1" fontWeight={700} sx={{ color: '#1E293B', fontSize: '16px' }}>
+              已排班 {schedule.employees.length} 位員工
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '13px' }}>
+              💡 點擊右側表格班次即可新增或編輯
+            </Typography>
+          </Box>
+        </Box>
+      </Card>
+
+      {/* ── 4. Main Interactive Schedule Table ── */}
       <ScheduleTable
         weekDates={weekDates}
         employees={schedule.employees}
-        onChangeEmployees={emps => handleLocalChange(emps, undefined)}
+        onChangeEmployees={newEmps => handleLocalChange(newEmps, undefined)}
       />
 
-      {/* Bottom Remark Section */}
-      <Card variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
-        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-          備註說明
+      {/* ── 5. Schedule Remarks / Notes Card ── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '24px',
+          bgcolor: '#FFFFFF',
+          p: 3,
+          mb: 3,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+          border: '1px solid #F1F5F9',
+        }}
+      >
+        <Typography variant="body1" fontWeight={700} sx={{ color: '#1E293B', mb: 1 }}>
+          週排班備註說明
         </Typography>
         <TextField
-          placeholder="例如：新人教育訓練、中秋連假人力支援說明..."
-          value={schedule.remark || ''}
           multiline
-          minRows={3}
-          maxRows={6}
+          rows={3}
+          value={schedule.remark || ''}
+          placeholder="填寫本週注意事項，例如：國定假日代班、特殊人力調派說明…"
           fullWidth
-          size="small"
+          variant="outlined"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '16px',
+              bgcolor: '#F8FAFC',
+            },
+          }}
           onChange={e => handleLocalChange(undefined, e.target.value)}
         />
       </Card>
 
-      {/* Clear Confirmation Dialog */}
-      <Dialog open={confirmClearOpen} onClose={() => setConfirmClearOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>確定清空本週班別？</DialogTitle>
+      {/* ── Confirm Clear Week Dialog ── */}
+      <Dialog
+        open={confirmClearOpen}
+        onClose={() => setConfirmClearOpen(false)}
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>確定清空本週排班？</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            這將會清除「{schedule.weekStart}」此週所有員工的所有排班時間與假別，但會保留員工姓名列表。確定繼續？
+            這將會清除本週所有員工的班別紀錄，員工名單仍會保留。清空後需按下「💾 儲存排班」才會寫入系統。
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setConfirmClearOpen(false)} sx={{ borderRadius: 2 }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setConfirmClearOpen(false)} sx={{ borderRadius: '12px' }}>
             取消
           </Button>
-          <Button variant="contained" color="error" onClick={handleClearWeek} sx={{ borderRadius: 2 }}>
+          <Button variant="contained" color="error" onClick={handleClearWeek} sx={{ borderRadius: '12px', px: 2.5 }}>
             確定清空
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Leave Dirty Confirmation Dialog */}
-      <Dialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>你有尚未儲存的排班</DialogTitle>
+      {/* ── Confirm Unsaved Leave Dialog ── */}
+      <Dialog
+        open={leaveConfirmOpen}
+        onClose={() => setLeaveConfirmOpen(false)}
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle fontWeight={700}>尚有未儲存的排班變更</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            本週排班已有變更但尚未儲存至 Supabase 資料庫，請問是否立即儲存？
+            您有未儲存的班別變更，若現在返回列表，尚未儲存的資訊將會遺失。
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button variant="outlined" onClick={() => setLeaveConfirmOpen(false)} sx={{ borderRadius: 2 }}>
-            取消
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => {
+              setLeaveConfirmOpen(false)
+              onBack()
+            }}
+            sx={{ borderRadius: '12px' }}
+          >
+            不儲存並返回
           </Button>
-          <Button variant="outlined" color="error" onClick={() => { setLeaveConfirmOpen(false); onBack(); }} sx={{ borderRadius: 2 }}>
-            不儲存
-          </Button>
-          <Button variant="contained" color="success" onClick={() => { setLeaveConfirmOpen(false); handleSaveSchedule(true); }} sx={{ borderRadius: 2 }}>
-            儲存
+          <Button
+            variant="contained"
+            onClick={async () => {
+              setLeaveConfirmOpen(false)
+              await handleSaveSchedule(true)
+            }}
+            sx={{ borderRadius: '12px', px: 2.5 }}
+          >
+            儲存後返回
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* PDF Preview Modal */}
-      <PDFPreviewModal
-        open={pdfPreviewOpen}
-        onClose={() => setPdfPreviewOpen(false)}
-        onConfirmDownload={handleConfirmDownloadPDF}
-        pdfUrl={pdfUrl}
-        loading={pdfLoading}
-        pdfError={pdfError}
-        title={`週排班表 PDF 預覽 — ${schedule.storeName} (${schedule.weekStart})`}
-      />
-    </Box>
+    </PageContainer>
   )
 }
