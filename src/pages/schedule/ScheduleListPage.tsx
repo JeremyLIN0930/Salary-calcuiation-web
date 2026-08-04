@@ -58,12 +58,10 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   // Navigation View State: 'MONTH_LIST' | 'WEEK_LIST'
   const [activeMonthKey, setActiveMonthKey] = useState<string | null>(null)
 
-  // Local Month Filter & Selection State
-  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string | null>(null)
-  const [monthPickerOpen, setMonthPickerOpen]         = useState(false)
-  const [weekSearch, setWeekSearch]                   = useState('')
-  const [selectedWeekIds, setSelectedWeekIds]         = useState<string[]>([])
-  const [exporting, setExporting]                     = useState(false)
+  // Local Search & Selection State
+  const [weekSearch, setWeekSearch]           = useState('')
+  const [selectedWeekIds, setSelectedWeekIds] = useState<string[]>([])
+  const [exporting, setExporting]             = useState(false)
 
   // Dialog States
   const [createWeekDialogOpen, setCreateWeekDialogOpen] = useState(false)
@@ -76,7 +74,6 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   const [createMonthModalOpen, setCreateMonthModalOpen] = useState(false)
   const currentYear = new Date().getFullYear()
   const currentMonthNum = new Date().getMonth() + 1
-  const [pickerYear, setPickerYear]                     = useState<number>(currentYear)
   const [inputYear, setInputYear]                       = useState<number>(currentYear)
   const [inputMonth, setInputMonth]                     = useState<number>(currentMonthNum)
   const [copyPrevConfirmOpen, setCopyPrevConfirmOpen]   = useState(false)
@@ -88,11 +85,33 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
     return groupSchedulesByMonth(state.schedules)
   }, [state.schedules])
 
+  // Extract available years dynamically from dataset
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<number>()
+    monthGroups.forEach(g => {
+      const y = parseInt(g.monthKey.split('-')[0], 10)
+      if (!isNaN(y)) yearsSet.add(y)
+    })
+    if (yearsSet.size === 0) {
+      yearsSet.add(currentYear)
+    }
+    return Array.from(yearsSet).sort((a, b) => b - a)
+  }, [monthGroups, currentYear])
+
+  // Local Dual Select State: Year & Month
+  const [selectedYear, setSelectedYear]   = useState<number>(() => availableYears[0] || currentYear)
+  const [selectedMonth, setSelectedMonth] = useState<string>('all') // 'all' | '01' ~ '12'
+
   // Filtered month groups for Month List View
   const filteredMonthGroups = useMemo(() => {
-    if (!selectedMonthFilter) return monthGroups
-    return monthGroups.filter(g => g.monthKey === selectedMonthFilter)
-  }, [monthGroups, selectedMonthFilter])
+    const yearStr = String(selectedYear)
+    return monthGroups.filter(g => {
+      const [gYear, gMonth] = g.monthKey.split('-')
+      const matchYear = gYear === yearStr
+      const matchMonth = selectedMonth === 'all' || gMonth === selectedMonth
+      return matchYear && matchMonth
+    })
+  }, [monthGroups, selectedYear, selectedMonth])
 
   // Active month group when in Week List View
   const activeMonthGroup = useMemo(() => {
@@ -340,11 +359,11 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
           }
         />
 
-        {/* Month Picker Filter Bar */}
+        {/* Year + Month Dual Dropdown Filter Bar */}
         <Card
           elevation={0}
           sx={{
-            p: 2,
+            p: 2.5,
             mb: 3,
             borderRadius: '24px',
             bgcolor: '#FFFFFF',
@@ -352,63 +371,61 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             border: '1px solid #F1F5F9',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', width: '100%' }}>
-            {/* Month Picker Trigger Button */}
-            <Button
-              variant="outlined"
-              onClick={() => setMonthPickerOpen(true)}
-              sx={{
-                height: 48,
-                borderRadius: '16px',
-                bgcolor: selectedMonthFilter ? '#EBF3FE' : '#F8FAFC',
-                borderColor: selectedMonthFilter ? '#2F80ED' : '#E2E8F0',
-                color: selectedMonthFilter ? '#2F80ED' : '#475569',
-                fontWeight: 700,
-                fontSize: '15px',
-                px: 2.5,
-                width: { xs: '100%', sm: 280 },
-                justifyContent: 'flex-start',
-                textTransform: 'none',
-                '&:hover': {
-                  bgcolor: selectedMonthFilter ? '#DBEAFE' : '#F1F5F9',
-                  borderColor: '#2F80ED',
-                },
-              }}
-            >
-              <Box component="span" sx={{ mr: 1, fontSize: '18px' }}>📅</Box>
-              {selectedMonthFilter ? (
-                `${selectedMonthFilter.split('-')[0]} 年 ${selectedMonthFilter.split('-')[1]} 月`
-              ) : (
-                '請選擇月份'
-              )}
-            </Button>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            justifyContent="space-between"
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              {/* Year Select Dropdown */}
+              <FormControl size="small" sx={{ width: { xs: '100%', sm: 160 } }}>
+                <InputLabel>年份</InputLabel>
+                <Select
+                  value={selectedYear}
+                  label="年份"
+                  onChange={e => setSelectedYear(Number(e.target.value))}
+                  sx={{
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    fontWeight: 700,
+                  }}
+                >
+                  {availableYears.map(y => (
+                    <MenuItem key={y} value={y}>{y} 年</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-            {/* Clear Filter Button */}
-            {selectedMonthFilter && (
-              <Button
-                variant="outlined"
-                onClick={() => setSelectedMonthFilter(null)}
-                sx={{
-                  height: 48,
-                  borderRadius: '16px',
-                  borderColor: '#CBD5E1',
-                  color: '#64748B',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  px: 2.5,
-                  '&:hover': { bgcolor: '#F1F5F9', color: '#1E293B', borderColor: '#94A3B8' },
-                }}
-              >
-                ✕ 清除篩選
-              </Button>
-            )}
-          </Box>
+              {/* Month Select Dropdown */}
+              <FormControl size="small" sx={{ width: { xs: '100%', sm: 160 } }}>
+                <InputLabel>月份</InputLabel>
+                <Select
+                  value={selectedMonth}
+                  label="月份"
+                  onChange={e => setSelectedMonth(e.target.value as string)}
+                  sx={{
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    fontWeight: 700,
+                  }}
+                >
+                  <MenuItem value="all">全部月份</MenuItem>
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                    <MenuItem key={m} value={m}>{m} 月</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+          </Stack>
         </Card>
 
         {filteredMonthGroups.length === 0 ? (
           <EmptyState
-            title="尚無排班月份資料"
-            subtitle={selectedMonthFilter ? `找不到「${selectedMonthFilter.split('-')[0]} 年 ${selectedMonthFilter.split('-')[1]} 月」的排班記錄` : '點擊右上角「＋ 建立月份」開始管理月度排班。'}
+            title="目前沒有符合的月份"
+            subtitle={`在 ${selectedYear} 年 ${selectedMonth === 'all' ? '' : selectedMonth + ' 月'} 查無排班紀錄。`}
             actionLabel="＋ 建立第一個月份"
             onAction={handleOpenCreateMonthModal}
           />
@@ -541,87 +558,6 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             </Button>
             <Button variant="contained" onClick={handleProcessCreateMonth} sx={{ borderRadius: '12px', fontWeight: 700, bgcolor: '#2F80ED' }}>
               確定建立
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* ── Modal: 月份選擇器 (Year/Month Picker) ── */}
-        <Dialog
-          open={monthPickerOpen}
-          onClose={() => setMonthPickerOpen(false)}
-          fullWidth
-          maxWidth="xs"
-          PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
-        >
-          <DialogTitle fontWeight={700} sx={{ pb: 1 }}>
-            📅 選擇排班月份
-          </DialogTitle>
-          <DialogContent>
-            {/* Year Selector */}
-            <Box sx={{ mb: 2.5, mt: 1 }}>
-              <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-                年份
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={pickerYear}
-                  onChange={e => setPickerYear(Number(e.target.value))}
-                  sx={{ borderRadius: '14px' }}
-                >
-                  {Array.from({ length: 21 }, (_, i) => currentYear - 10 + i).map(y => (
-                    <MenuItem key={y} value={y}>{y} 年</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-
-            {/* Month 4x3 Grid */}
-            <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-              月份
-            </Typography>
-            <Grid container spacing={1.5}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
-                const monthStr = String(m).padStart(2, '0')
-                const targetKey = `${pickerYear}-${monthStr}`
-                const isSelected = selectedMonthFilter === targetKey
-
-                return (
-                  <Grid item xs={4} key={m}>
-                    <Button
-                      fullWidth
-                      variant={isSelected ? 'contained' : 'outlined'}
-                      onClick={() => {
-                        setSelectedMonthFilter(targetKey)
-                        setMonthPickerOpen(false)
-                      }}
-                      sx={{
-                        borderRadius: '14px',
-                        height: 48,
-                        fontWeight: 700,
-                        fontSize: '15px',
-                        bgcolor: isSelected ? '#2F80ED' : '#F8FAFC',
-                        color: isSelected ? '#FFFFFF' : '#334155',
-                        borderColor: isSelected ? '#2F80ED' : '#E2E8F0',
-                        '&:hover': {
-                          bgcolor: isSelected ? '#1D6FD8' : '#EBF3FE',
-                          borderColor: '#2F80ED',
-                        },
-                      }}
-                    >
-                      {m} 月
-                    </Button>
-                  </Grid>
-                )
-              })}
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={() => setMonthPickerOpen(false)}
-              sx={{ borderRadius: '12px' }}
-            >
-              取消
             </Button>
           </DialogActions>
         </Dialog>

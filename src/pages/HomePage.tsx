@@ -54,9 +54,11 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   // Navigation View State: 'MONTH_LIST' | 'MONTH_DETAIL'
   const [activeMonthKey, setActiveMonthKey] = useState<string | null>(null)
 
-  // Local Search & Selection State
-  const [monthSearch, setMonthSearch]       = useState('')
-  const [search, setSearch]                 = useState('')
+  // Local Search & Filter State
+  const [searchName, setSearchName]   = useState('')
+  const [searchYear, setSearchYear]   = useState<string>('all') // 'all' | '2026' | '2025' ...
+  const [searchMonth, setSearchMonth] = useState<string>('all') // 'all' | '01' | '02' ... | '12'
+
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget]     = useState<Employee | null>(null)
   const [deleteMonthKey, setDeleteMonthKey] = useState<string | null>(null)
@@ -72,6 +74,33 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const [targetMonthToCreate, setTargetMonthToCreate] = useState<string | null>(null)
   const [prevMonthToCopyFrom, setPrevMonthToCopyFrom] = useState<string | null>(null)
 
+  // Extract available years dynamically from state.employees
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>()
+    state.employees.forEach(emp => {
+      if (emp.month) {
+        const y = parseInt(emp.month.split('-')[0], 10)
+        if (!isNaN(y)) yearSet.add(y)
+      }
+    })
+    if (yearSet.size === 0) {
+      yearSet.add(currentYear)
+    }
+    return Array.from(yearSet).sort((a, b) => b - a)
+  }, [state.employees, currentYear])
+
+  // Check if any filter condition is active
+  const isFilterActive = useMemo(() => {
+    return searchName.trim() !== '' || searchYear !== 'all' || searchMonth !== 'all'
+  }, [searchName, searchYear, searchMonth])
+
+  // Clear filter handler
+  const handleClearFilter = () => {
+    setSearchName('')
+    setSearchYear('all')
+    setSearchMonth('all')
+  }
+
   // Group salaries by month (Migration included)
   const monthGroups = useMemo(() => {
     return groupSalariesByMonth(state.employees)
@@ -79,13 +108,22 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
 
   // Filtered month groups for Month List View
   const filteredMonthGroups = useMemo(() => {
-    if (!monthSearch.trim()) return monthGroups
-    const q = monthSearch.trim().toLowerCase()
-    return monthGroups.filter(g =>
-      g.displayTitle.toLowerCase().includes(q) ||
-      g.monthKey.toLowerCase().includes(q)
-    )
-  }, [monthGroups, monthSearch])
+    return monthGroups.filter(group => {
+      const [gYear, gMonth] = group.monthKey.split('-')
+      const matchYear  = searchYear === 'all' || gYear === searchYear
+      const matchMonth = searchMonth === 'all' || gMonth === searchMonth
+
+      let matchName = true
+      if (searchName.trim()) {
+        const q = searchName.trim().toLowerCase()
+        matchName = group.employees.some(e =>
+          e.name.toLowerCase().includes(q) || (e.store && e.store.toLowerCase().includes(q))
+        )
+      }
+
+      return matchYear && matchMonth && matchName
+    })
+  }, [monthGroups, searchYear, searchMonth, searchName])
 
   // Active month group when in detail view
   const activeMonthGroup = useMemo(() => {
@@ -96,13 +134,15 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   // Filtered employees inside detail view
   const filteredEmployeesInMonth = useMemo(() => {
     if (!activeMonthGroup) return []
-    if (!search.trim()) return activeMonthGroup.employees
-    const q = search.trim().toLowerCase()
-    return activeMonthGroup.employees.filter(e =>
-      e.name.toLowerCase().includes(q) ||
-      (e.store && e.store.toLowerCase().includes(q))
-    )
-  }, [activeMonthGroup, search])
+    return activeMonthGroup.employees.filter(e => {
+      const q = searchName.trim().toLowerCase()
+      const matchName = !q || e.name.toLowerCase().includes(q) || (e.store && e.store.toLowerCase().includes(q))
+      const [eYear, eMonth] = (e.month || '').split('-')
+      const matchYear  = searchYear === 'all' || eYear === searchYear
+      const matchMonth = searchMonth === 'all' || eMonth === searchMonth
+      return matchName && matchYear && matchMonth
+    })
+  }, [activeMonthGroup, searchName, searchYear, searchMonth])
 
   // ── Handlers: Create Month ──────────────────────────────────────────────────
 
@@ -340,11 +380,11 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
           }
         />
 
-        {/* Month Search Bar */}
+        {/* ── Top Data Search & Filter Card ── */}
         <Card
           elevation={0}
           sx={{
-            p: 2,
+            p: { xs: 2, sm: 2.5 },
             mb: 3,
             borderRadius: '24px',
             bgcolor: '#FFFFFF',
@@ -352,36 +392,113 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             border: '1px solid #F1F5F9',
           }}
         >
-          <TextField
-            placeholder="🔍 搜尋薪資月份 (如 2026-08)..."
-            value={monthSearch}
-            size="small"
-            onChange={e => setMonthSearch(e.target.value)}
-            sx={{
-              width: { xs: '100%', sm: 360 },
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '16px',
-                height: 48,
-                bgcolor: '#F8FAFC',
-                px: 1.5,
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchSvg />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1F2937', mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '15px' }}>
+            🔍 資料搜尋
+          </Typography>
+
+          <Grid container spacing={1.5} alignItems="center">
+            {/* Employee Name Search Input */}
+            <Grid item xs={12} sm={4} md={5}>
+              <TextField
+                placeholder="輸入員工姓名搜尋 (如：林致玄)..."
+                value={searchName}
+                size="small"
+                fullWidth
+                onChange={e => setSearchName(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    px: 1.5,
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchSvg />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            {/* Year Select Dropdown */}
+            <Grid item xs={6} sm={2.5} md={2.5}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>年份</InputLabel>
+                <Select
+                  value={searchYear}
+                  label="年份"
+                  onChange={e => setSearchYear(e.target.value)}
+                  sx={{
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    fontWeight: 700,
+                  }}
+                >
+                  <MenuItem value="all">全部分年</MenuItem>
+                  {availableYears.map(y => (
+                    <MenuItem key={y} value={String(y)}>{y} 年</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Month Select Dropdown */}
+            <Grid item xs={6} sm={2.5} md={2.5}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>月份</InputLabel>
+                <Select
+                  value={searchMonth}
+                  label="月份"
+                  onChange={e => setSearchMonth(e.target.value)}
+                  sx={{
+                    borderRadius: '16px',
+                    height: 48,
+                    bgcolor: '#F8FAFC',
+                    fontWeight: 700,
+                  }}
+                >
+                  <MenuItem value="all">全部月份</MenuItem>
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                    <MenuItem key={m} value={m}>{m} 月</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Clear Filter Button */}
+            <Grid item xs={12} sm={3} md={2}>
+              <Button
+                fullWidth
+                variant="outlined"
+                disabled={!isFilterActive}
+                onClick={handleClearFilter}
+                sx={{
+                  height: 48,
+                  borderRadius: '16px',
+                  borderColor: '#CBD5E1',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { bgcolor: '#F1F5F9', borderColor: '#94A3B8' },
+                }}
+              >
+                ✕ 清除篩選
+              </Button>
+            </Grid>
+          </Grid>
         </Card>
 
         {filteredMonthGroups.length === 0 ? (
           <EmptyState
-            title="尚無薪資月份資料"
-            subtitle={monthSearch ? `找不到符合「${monthSearch}」的月份` : '點擊右上角「＋ 建立月份」開始進行月份薪資管理。'}
-            actionLabel="＋ 建立第一個月份"
-            onAction={handleOpenCreateModal}
+            title="找不到符合條件的薪資單"
+            subtitle="請嘗試微調搜尋條件或點擊下方按鈕重置。"
+            actionLabel="✕ 清除篩選"
+            onAction={handleClearFilter}
           />
         ) : (
           <Grid container spacing={2.5}>
@@ -470,7 +587,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                         variant="contained"
                         onClick={() => {
                           setActiveMonthKey(group.monthKey)
-                          setSearch('')
+                          handleClearFilter()
                           setSelectedEmpIds([])
                         }}
                         sx={{ borderRadius: '14px', height: 44, fontWeight: 700, px: 2.5, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
@@ -631,7 +748,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       <Card
         elevation={0}
         sx={{
-          p: 2,
+          p: { xs: 2, sm: 2.5 },
           mb: 3,
           borderRadius: '24px',
           bgcolor: '#FFFFFF',
@@ -639,50 +756,128 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
           border: '1px solid #F1F5F9',
         }}
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" justifyContent="space-between">
-          <TextField
-            placeholder="🔍 搜尋員工姓名或門市..."
-            value={search}
-            size="small"
-            onChange={e => setSearch(e.target.value)}
-            sx={{
-              width: { xs: '100%', sm: 360 },
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '16px',
-                height: 48,
-                bgcolor: '#F8FAFC',
-                px: 1.5,
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchSvg />
-                </InputAdornment>
-              ),
-            }}
-          />
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1F2937', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '15px' }}>
+            🔍 資料搜尋
+          </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
             <Checkbox
               checked={isAllInMonthSelected}
               indeterminate={selectedEmpIds.length > 0 && !isAllInMonthSelected}
               onChange={handleToggleSelectAllInMonth}
+              sx={{ p: 0.5 }}
             />
             <Typography variant="body2" fontWeight={600} color="text.secondary">
               全選本頁員工 ({selectedEmpIds.length}/{filteredEmployeesInMonth.length})
             </Typography>
           </Stack>
         </Stack>
+
+        <Grid container spacing={1.5} alignItems="center">
+          {/* Employee Name Search Input */}
+          <Grid item xs={12} sm={4} md={5}>
+            <TextField
+              placeholder="輸入員工姓名搜尋 (如：林致玄)..."
+              value={searchName}
+              size="small"
+              fullWidth
+              onChange={e => setSearchName(e.target.value)}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '16px',
+                  height: 48,
+                  bgcolor: '#F8FAFC',
+                  px: 1.5,
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchSvg />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+
+          {/* Year Select Dropdown */}
+          <Grid item xs={6} sm={2.5} md={2.5}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>年份</InputLabel>
+              <Select
+                value={searchYear}
+                label="年份"
+                onChange={e => setSearchYear(e.target.value)}
+                sx={{
+                  borderRadius: '16px',
+                  height: 48,
+                  bgcolor: '#F8FAFC',
+                  fontWeight: 700,
+                }}
+              >
+                <MenuItem value="all">全部分年</MenuItem>
+                {availableYears.map(y => (
+                  <MenuItem key={y} value={String(y)}>{y} 年</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Month Select Dropdown */}
+          <Grid item xs={6} sm={2.5} md={2.5}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>月份</InputLabel>
+              <Select
+                value={searchMonth}
+                label="月份"
+                onChange={e => setSearchMonth(e.target.value)}
+                sx={{
+                  borderRadius: '16px',
+                  height: 48,
+                  bgcolor: '#F8FAFC',
+                  fontWeight: 700,
+                }}
+              >
+                <MenuItem value="all">全部月份</MenuItem>
+                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                  <MenuItem key={m} value={m}>{m} 月</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Clear Filter Button */}
+          <Grid item xs={12} sm={3} md={2}>
+            <Button
+              fullWidth
+              variant="outlined"
+              disabled={!isFilterActive}
+              onClick={handleClearFilter}
+              sx={{
+                height: 48,
+                borderRadius: '16px',
+                borderColor: '#CBD5E1',
+                color: '#475569',
+                fontWeight: 700,
+                fontSize: '14px',
+                whiteSpace: 'nowrap',
+                '&:hover': { bgcolor: '#F1F5F9', borderColor: '#94A3B8' },
+              }}
+            >
+              ✕ 清除篩選
+            </Button>
+          </Grid>
+        </Grid>
       </Card>
 
       {/* Employee Salary Cards Grid */}
       {filteredEmployeesInMonth.length === 0 ? (
         <EmptyState
-          title="尚無此月份之員工薪資紀錄"
-          subtitle={search ? `找不到符合「${search}」的員工` : '請點擊上方「新增員工薪資」按鈕為此月份新增成員'}
-          actionLabel="新增員工薪資"
-          onAction={handleAddNewEmployeeInActiveMonth}
+          title="找不到符合條件的薪資單"
+          subtitle={searchName ? `找不到符合「${searchName}」的員工紀錄` : '請點擊上方「新增員工薪資」按鈕或重置搜尋條件。'}
+          actionLabel="✕ 清除篩選"
+          onAction={handleClearFilter}
         />
       ) : (
         <Grid container spacing={3}>
