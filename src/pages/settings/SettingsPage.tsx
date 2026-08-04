@@ -205,7 +205,7 @@ export default function SettingsPage() {
 
       {/* ── 區塊二：外觀設定 (Appearance Settings) ── */}
       <Card variant="outlined" sx={{ borderRadius: 4, p: 1, mb: 3 }}>
-        <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+        <CardContent sx={{ p: { xs: 2.25, sm: 3 }, '&:last-child': { pb: 3 } }}>
           <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontSize: 18, mb: 0.5 }}>
             🌙 外觀設定
           </Typography>
@@ -213,7 +213,7 @@ export default function SettingsPage() {
             自訂系統外觀視覺主題與介面元素大小。
           </Typography>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {/* 卡片一：主題模式 */}
             <Grid item xs={12} md={6}>
               <Box
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                   選擇系統外觀。
                 </Typography>
 
-                <Grid container spacing={1.5}>
+                <Grid container spacing={1.25}>
                   {[
                     { key: 'system' as ThemeMode, label: '跟隨系統', icon: '💻' },
                     { key: 'light' as ThemeMode, label: '淺色模式', icon: '☀️' },
@@ -240,28 +240,29 @@ export default function SettingsPage() {
                   ].map(item => {
                     const isSelected = themeMode === item.key
                     return (
-                      <Grid item xs={4} key={item.key}>
+                      <Grid item xs={12} sm={4} key={item.key}>
                         <Button
                           fullWidth
                           variant={isSelected ? 'contained' : 'outlined'}
                           onClick={() => setThemeMode(item.key)}
                           sx={{
                             borderRadius: 2.5,
-                            height: 48,
+                            height: 64,
                             fontWeight: 700,
-                            fontSize: 14,
+                            fontSize: { xs: 13, sm: 14 },
                             bgcolor: isSelected ? '#2F80ED' : 'background.paper',
                             color: isSelected ? '#FFFFFF' : 'text.primary',
                             borderColor: isSelected ? '#2F80ED' : 'divider',
                             flexDirection: 'column',
-                            gap: 0.2,
-                            py: 0.5,
+                            gap: 0.25,
+                            py: 0.75,
+                            whiteSpace: 'nowrap',
                             '&:hover': {
                               bgcolor: isSelected ? '#1D6FD8' : 'action.hover',
                             },
                           }}
                         >
-                          <span style={{ fontSize: 14 }}>{item.icon}</span>
+                          <span style={{ fontSize: 16 }}>{item.icon}</span>
                           <span>{item.label}</span>
                         </Button>
                       </Grid>
@@ -289,7 +290,7 @@ export default function SettingsPage() {
                   調整介面元素與字體大小。
                 </Typography>
 
-                <Grid container spacing={1.5}>
+                <Grid container spacing={1.25}>
                   {[
                     { key: 'compact' as UiDensity, label: '緊湊', desc: 'Compact' },
                     { key: 'default' as UiDensity, label: '標準', desc: 'Default' },
@@ -297,22 +298,23 @@ export default function SettingsPage() {
                   ].map(item => {
                     const isSelected = uiDensity === item.key
                     return (
-                      <Grid item xs={4} key={item.key}>
+                      <Grid item xs={12} sm={4} key={item.key}>
                         <Button
                           fullWidth
                           variant={isSelected ? 'contained' : 'outlined'}
                           onClick={() => setUiDensity(item.key)}
                           sx={{
                             borderRadius: 2.5,
-                            height: 48,
+                            height: 64,
                             fontWeight: 700,
-                            fontSize: 14,
+                            fontSize: { xs: 13, sm: 14 },
                             bgcolor: isSelected ? '#2F80ED' : 'background.paper',
                             color: isSelected ? '#FFFFFF' : 'text.primary',
                             borderColor: isSelected ? '#2F80ED' : 'divider',
                             flexDirection: 'column',
-                            gap: 0.2,
-                            py: 0.5,
+                            gap: 0.25,
+                            py: 0.75,
+                            whiteSpace: 'nowrap',
                             '&:hover': {
                               bgcolor: isSelected ? '#1D6FD8' : 'action.hover',
                             },

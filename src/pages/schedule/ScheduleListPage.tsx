@@ -337,12 +337,12 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
           title="📅 排班管理"
           subtitle="依月份分類管理每週班表、輕鬆建立、編輯與 PDF 匯出"
           action={
-            <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
                 disabled={exporting || state.schedules.length === 0}
-                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED' }}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, borderColor: '#2F80ED', color: '#2F80ED', px: 2.5 }}
               >
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
@@ -364,11 +364,11 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         <Card
           elevation={0}
           sx={{
-            p: 2.5,
-            mb: 3,
+            p: { xs: 2, sm: 2.5 },
+            mb: 2.5,
             borderRadius: '24px',
             bgcolor: '#FFFFFF',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
             border: '1px solid #F1F5F9',
           }}
         >
@@ -439,44 +439,50 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             onAction={handleOpenCreateMonthModal}
           />
         ) : (
-          <Grid container spacing={2.5}>
+          <Grid container spacing={2}>
             {filteredMonthGroups.map(group => (
-              <Grid item xs={12} sm={6} key={group.monthKey}>
+              <Grid item xs={12} md={6} key={group.monthKey}>
                 <Card
                   elevation={0}
                   className="animate-card-fade-up"
                   sx={{
                     borderRadius: '24px',
-                    p: { xs: 2.5, sm: 3 },
+                    p: { xs: 2.25, sm: 2.5 },
                     transition: 'transform 200ms ease, box-shadow 200ms ease',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
                     '&:hover': {
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.10)',
                     },
                   }}
                 >
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-                    {/* Left Month Info */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 2, md: 2.5 }, alignItems: { xs: 'flex-start', md: 'center' } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
                       <Box
                         sx={{
-                          width: 52, height: 52, borderRadius: '16px',
-                          bgcolor: '#EBF3FE', color: '#2F80ED',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 26, flexShrink: 0,
+                          width: { xs: 72, md: 80 },
+                          height: { xs: 72, md: 80 },
+                          borderRadius: '20px',
+                          bgcolor: '#EBF3FE',
+                          color: '#2F80ED',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 30,
+                          flexShrink: 0,
                         }}
                       >
                         📁
                       </Box>
-                      <Box>
-                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1E293B', fontSize: '22px' }}>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1E293B', fontSize: { xs: '20px', md: '22px' } }}>
                           {group.displayTitle}
                         </Typography>
-                        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.75, sm: 1.25 }} flexWrap="wrap" sx={{ mt: 1 }}>
                           <Chip
                             label={`${group.weekCount} 張班表`}
                             size="small"
-                            sx={{ bgcolor: '#EBF3FE', color: '#2F80ED', fontWeight: 700, borderRadius: '10px' }}
+                            sx={{ bgcolor: '#EBF3FE', color: '#2F80ED', fontWeight: 700, borderRadius: '999px' }}
                           />
                           <Typography variant="caption" sx={{ color: '#64748B', fontSize: '13px' }}>
                             最後修改：{group.lastUpdatedDate}
@@ -485,44 +491,46 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                       </Box>
                     </Box>
 
-                    {/* Right Action Buttons */}
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: 'stretch', sm: 'flex-end' }} flexWrap="wrap">
-                      <Button
-                        variant="outlined"
-                        onClick={(e) => handleExportMonthPDF(group, e)}
-                        disabled={exporting}
-                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, borderColor: '#2F80ED', color: '#2F80ED' }}
-                      >
-                        <PdfSvg />
-                        匯出整月 PDF
-                      </Button>
+                    <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ width: '100%' }}>
+                        <Button
+                          variant="outlined"
+                          onClick={(e) => handleExportMonthPDF(group, e)}
+                          disabled={exporting}
+                          sx={{ borderRadius: '16px', height: 52, fontWeight: 700, borderColor: '#2F80ED', color: '#2F80ED', flex: 1 }}
+                        >
+                          <PdfSvg />
+                          匯出整月 PDF
+                        </Button>
 
+                        <Button
+                          variant="contained"
+                          onClick={() => {
+                            setActiveMonthKey(group.monthKey)
+                            setWeekSearch('')
+                            setSelectedWeekIds([])
+                          }}
+                          sx={{ borderRadius: '16px', height: 52, fontWeight: 700, px: 2.5, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' }, flex: 1 }}
+                        >
+                          進入月份 →
+                        </Button>
+                      </Stack>
                       <Button
-                        variant="contained"
-                        onClick={() => {
-                          setActiveMonthKey(group.monthKey)
-                          setWeekSearch('')
-                          setSelectedWeekIds([])
-                        }}
-                        sx={{ borderRadius: '14px', height: 44, fontWeight: 700, px: 2.5, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
-                      >
-                        進入月份 →
-                      </Button>
-
-                      <IconButton
+                        fullWidth
                         onClick={() => setDeleteMonthKey(group.monthKey)}
                         sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '50%',
+                          mt: 1,
+                          height: 48,
+                          borderRadius: '16px',
                           bgcolor: '#FFF1F2',
                           color: '#E11D48',
+                          fontWeight: 700,
                           '&:hover': { bgcolor: '#FFE4E6' },
                         }}
                       >
-                        <DelSvg />
-                      </IconButton>
-                    </Stack>
+                        刪除此月份
+                      </Button>
+                    </Box>
                   </Box>
                 </Card>
               </Grid>

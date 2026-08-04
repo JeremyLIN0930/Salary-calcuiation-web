@@ -8,7 +8,15 @@ interface Props {
 
 export default function PageContainer({ children, maxWidth = 1000 }: Props) {
   return (
-    <Box sx={{ maxWidth, mx: 'auto', px: 2, pt: 3, pb: 10 }}>
+    <Box
+      sx={{
+        maxWidth,
+        mx: 'auto',
+        px: { xs: 2, sm: 2.5, md: 3 },
+        pt: { xs: 2, sm: 2.5, md: 3 },
+        pb: 10,
+      }}
+    >
       {children}
     </Box>
   )
