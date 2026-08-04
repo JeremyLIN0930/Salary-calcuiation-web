@@ -3,12 +3,42 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+:root {
+  --transition-speed: 250ms;
+  --bg-default: #F8FAFC;
+  --bg-paper: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --border-color: #E2E8F0;
+}
+
+[data-theme="dark"] {
+  --bg-default: #111827;
+  --bg-paper: #1F2937;
+  --text-primary: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  --border-color: #374151;
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #f5f6fa;
+  background-color: var(--bg-default);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+}
+
+/* Smooth transitions for theme switching */
+body.theme-dark,
+body.theme-light {
+  transition: background-color 250ms ease, color 250ms ease;
+}
+
+body.theme-dark .MuiCard-root,
+body.theme-dark .MuiPaper-root:not(.MuiMenu-paper) {
+  transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease;
 }
 
 /* Remove number input arrows */

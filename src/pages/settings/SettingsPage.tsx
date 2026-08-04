@@ -4,6 +4,7 @@ import {
 } from '@mui/material'
 import { useSettings } from '../../context/SettingsContext'
 import { useSnackbar } from '../../context/SnackbarContext'
+import { useAppearance, ThemeMode, UiDensity } from '../../context/AppearanceContext'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
@@ -12,6 +13,7 @@ import { BackupService, BackupSchema } from '../../services/backup/backup.servic
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
   const { showSnackbar } = useSnackbar()
+  const { themeMode, setThemeMode, uiDensity, setUiDensity } = useAppearance()
 
   // Form State
   const [form, setForm] = useState({
@@ -201,7 +203,135 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ── 區塊二：資料管理 (Data Management) ── */}
+      {/* ── 區塊二：外觀設定 (Appearance Settings) ── */}
+      <Card variant="outlined" sx={{ borderRadius: 4, p: 1, mb: 3 }}>
+        <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+          <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontSize: 18, mb: 0.5 }}>
+            🌙 外觀設定
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            自訂系統外觀視覺主題與介面元素大小。
+          </Typography>
+
+          <Grid container spacing={3}>
+            {/* 卡片一：主題模式 */}
+            <Grid item xs={12} md={6}>
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.default',
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
+                  🌙 主題模式
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  選擇系統外觀。
+                </Typography>
+
+                <Grid container spacing={1.5}>
+                  {[
+                    { key: 'system' as ThemeMode, label: '跟隨系統', icon: '💻' },
+                    { key: 'light' as ThemeMode, label: '淺色模式', icon: '☀️' },
+                    { key: 'dark' as ThemeMode, label: '深色模式', icon: '🌙' },
+                  ].map(item => {
+                    const isSelected = themeMode === item.key
+                    return (
+                      <Grid item xs={4} key={item.key}>
+                        <Button
+                          fullWidth
+                          variant={isSelected ? 'contained' : 'outlined'}
+                          onClick={() => setThemeMode(item.key)}
+                          sx={{
+                            borderRadius: 2.5,
+                            height: 48,
+                            fontWeight: 700,
+                            fontSize: 14,
+                            bgcolor: isSelected ? '#2F80ED' : 'background.paper',
+                            color: isSelected ? '#FFFFFF' : 'text.primary',
+                            borderColor: isSelected ? '#2F80ED' : 'divider',
+                            flexDirection: 'column',
+                            gap: 0.2,
+                            py: 0.5,
+                            '&:hover': {
+                              bgcolor: isSelected ? '#1D6FD8' : 'action.hover',
+                            },
+                          }}
+                        >
+                          <span style={{ fontSize: 14 }}>{item.icon}</span>
+                          <span>{item.label}</span>
+                        </Button>
+                      </Grid>
+                    )
+                  })}
+                </Grid>
+              </Box>
+            </Grid>
+
+            {/* 卡片二：介面大小 */}
+            <Grid item xs={12} md={6}>
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.default',
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
+                  🔠 介面大小
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  調整介面元素與字體大小。
+                </Typography>
+
+                <Grid container spacing={1.5}>
+                  {[
+                    { key: 'compact' as UiDensity, label: '緊湊', desc: 'Compact' },
+                    { key: 'default' as UiDensity, label: '標準', desc: 'Default' },
+                    { key: 'comfort' as UiDensity, label: '舒適', desc: 'Comfort' },
+                  ].map(item => {
+                    const isSelected = uiDensity === item.key
+                    return (
+                      <Grid item xs={4} key={item.key}>
+                        <Button
+                          fullWidth
+                          variant={isSelected ? 'contained' : 'outlined'}
+                          onClick={() => setUiDensity(item.key)}
+                          sx={{
+                            borderRadius: 2.5,
+                            height: 48,
+                            fontWeight: 700,
+                            fontSize: 14,
+                            bgcolor: isSelected ? '#2F80ED' : 'background.paper',
+                            color: isSelected ? '#FFFFFF' : 'text.primary',
+                            borderColor: isSelected ? '#2F80ED' : 'divider',
+                            flexDirection: 'column',
+                            gap: 0.2,
+                            py: 0.5,
+                            '&:hover': {
+                              bgcolor: isSelected ? '#1D6FD8' : 'action.hover',
+                            },
+                          }}
+                        >
+                          <span>{item.label}</span>
+                          <span style={{ fontSize: 11, opacity: 0.8 }}>({item.desc})</span>
+                        </Button>
+                      </Grid>
+                    )
+                  })}
+                </Grid>
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* ── 區塊三：資料管理 (Data Management) ── */}
       <Card variant="outlined" sx={{ borderRadius: 4, p: 1 }}>
         <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
           <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontSize: 18 }}>

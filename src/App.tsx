@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
+import { AppearanceProvider, useAppearance } from './context/AppearanceContext'
 import { EmployeeProvider } from './context/EmployeeContext'
 import { ScheduleProvider } from './context/ScheduleContext'
 import { SettingsProvider } from './context/SettingsContext'
@@ -20,44 +21,92 @@ const ScheduleEditPage       = React.lazy(() => import('./pages/schedule/Schedul
 const EmployeeManagementPage = React.lazy(() => import('./pages/employee/EmployeeManagementPage'))
 const SettingsPage           = React.lazy(() => import('./pages/settings/SettingsPage'))
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const theme = createTheme({
-  palette: {
-    primary:    { main: '#4F8FEF' },
-    error:      { main: '#EF4444' },
-    success:    { main: '#34A853' },
-    warning:    { main: '#F57C00' },
-    background: { default: '#F8FAFC', paper: '#ffffff' },
-    divider:    '#F1F5F9',
-  },
-  typography: {
-    fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
-    h4:     { fontSize: '28px', fontWeight: 900 },
-    h6:     { fontSize: '20px', fontWeight: 800 },
-    body1:  { fontSize: '16px' },
-    body2:  { fontSize: '16px' },
-    button: { fontSize: '16px', fontWeight: 700 },
-    caption:{ fontSize: '14px' },
-  },
-  shape: { borderRadius: 12 },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: { textTransform: 'none', fontWeight: 700, borderRadius: 12, height: 52 },
+// ─── Dynamic Theme Wrapper ───────────────────────────────────────────────────
+function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
+  const { effectiveTheme, uiDensity } = useAppearance()
+
+  const densityScale = useMemo(() => {
+    if (uiDensity === 'compact') return 0.92
+    if (uiDensity === 'comfort') return 1.12
+    return 1.0
+  }, [uiDensity])
+
+  const theme = useMemo(() => {
+    const isDark = effectiveTheme === 'dark'
+
+    const bgDefault     = isDark ? '#111827' : '#F8FAFC'
+    const bgPaper       = isDark ? '#1F2937' : '#FFFFFF'
+    const textPrimary   = isDark ? '#F9FAFB' : '#1E293B'
+    const textSecondary = isDark ? '#D1D5DB' : '#64748B'
+    const dividerColor  = isDark ? '#374151' : '#F1F5F9'
+    const inputBg       = isDark ? '#374151' : '#F8FAFC'
+    const borderColor   = isDark ? '#4B5563' : '#E2E8F0'
+
+    return createTheme({
+      palette: {
+        mode: isDark ? 'dark' : 'light',
+        primary:    { main: '#2F80ED' },
+        error:      { main: '#EF4444' },
+        success:    { main: '#34A853' },
+        warning:    { main: '#F57C00' },
+        background: { default: bgDefault, paper: bgPaper },
+        text:       { primary: textPrimary, secondary: textSecondary },
+        divider:    dividerColor,
       },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: { borderRadius: 16, boxShadow: 'none' },
+      typography: {
+        fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
+        h4:     { fontSize: `${Math.round(28 * densityScale)}px`, fontWeight: 900 },
+        h6:     { fontSize: `${Math.round(20 * densityScale)}px`, fontWeight: 800 },
+        body1:  { fontSize: `${Math.round(16 * densityScale)}px` },
+        body2:  { fontSize: `${Math.round(15 * densityScale)}px` },
+        button: { fontSize: `${Math.round(15 * densityScale)}px`, fontWeight: 700 },
+        caption:{ fontSize: `${Math.round(13 * densityScale)}px` },
       },
-    },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        root: { borderRadius: 10 },
+      shape: { borderRadius: 16 },
+      components: {
+        MuiButton: {
+          styleOverrides: {
+            root: {
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 16,
+              height: Math.round(48 * densityScale),
+            },
+          },
+        },
+        MuiCard: {
+          styleOverrides: {
+            root: {
+              borderRadius: 24,
+              boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.3)' : '0 8px 24px rgba(0,0,0,0.04)',
+              backgroundColor: bgPaper,
+              borderColor: borderColor,
+            },
+          },
+        },
+        MuiOutlinedInput: {
+          styleOverrides: {
+            root: {
+              borderRadius: 14,
+              height: Math.round(48 * densityScale),
+              backgroundColor: inputBg,
+            },
+            notchedOutline: {
+              borderColor: borderColor,
+            },
+          },
+        },
       },
-    },
-  },
-})
+    })
+  }, [effectiveTheme, densityScale])
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  )
+}
 
 // ─── Suspense Fallback ────────────────────────────────────────────────────────
 function Loading() {
@@ -141,22 +190,23 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <SnackbarProvider>
-          <SettingsProvider>
-            <StoreProvider>
-              <MasterEmployeeProvider>
-                <EmployeeProvider>
-                  <ScheduleProvider>
-                    <AppContent />
-                  </ScheduleProvider>
-                </EmployeeProvider>
-              </MasterEmployeeProvider>
-            </StoreProvider>
-          </SettingsProvider>
-        </SnackbarProvider>
-      </ThemeProvider>
+      <AppearanceProvider>
+        <DynamicThemeProvider>
+          <SnackbarProvider>
+            <SettingsProvider>
+              <StoreProvider>
+                <MasterEmployeeProvider>
+                  <EmployeeProvider>
+                    <ScheduleProvider>
+                      <AppContent />
+                    </ScheduleProvider>
+                  </EmployeeProvider>
+                </MasterEmployeeProvider>
+              </StoreProvider>
+            </SettingsProvider>
+          </SnackbarProvider>
+        </DynamicThemeProvider>
+      </AppearanceProvider>
     </ErrorBoundary>
   )
 }
