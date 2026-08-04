@@ -18,6 +18,7 @@ import DeleteConfirmBottomSheet from '../../components/common/DeleteConfirmBotto
 import { groupSchedulesByMonth, ScheduleMonthGroup, getMonthKeyFromSchedule } from '../../utils/scheduleMigration'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
+import { useAppearance } from '../../context/AppearanceContext'
 import { PDFService } from '../../services/pdfService'
 
 const AddSvg = () => (
@@ -51,6 +52,8 @@ interface Props {
 }
 
 export default function ScheduleListPage({ onSelectSchedule }: Props) {
+  const { tokens, effectiveTheme } = useAppearance()
+  const isDark = effectiveTheme === 'dark'
   const { state, dispatch } = useSchedule()
   const { state: masterState } = useMasterEmployees()
   const { stores: storeList } = useStoreContext()
@@ -441,7 +444,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
         ) : (
           <Grid container spacing={2.5}>
             {filteredMonthGroups.map(group => (
-              <Grid item xs={12} sm={6} lg={12} key={group.monthKey}>
+              <Grid item xs={12} key={group.monthKey}>
                 <Card
                   elevation={0}
                   className="animate-card-fade-up"
@@ -450,6 +453,9 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                     p: { xs: 2.25, sm: 2.5 },
                     transition: 'transform 200ms ease, box-shadow 200ms ease',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    '@media (min-width:1024px)': {
+                      p: '24px 32px',
+                    },
                     '&:hover': {
                       transform: 'translateY(-2px)',
                       boxShadow: '0 12px 32px rgba(0,0,0,0.10)',
@@ -461,26 +467,23 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 2,
-                      '@media (min-width:768px) and (max-width:1024px)': {
-                        gap: 2,
-                      },
-                      '@media (min-width:1025px)': {
-                        flexDirection: 'row',
+                      '@media (min-width:1024px)': {
+                        display: 'grid',
+                        gridTemplateColumns: '280px 1fr 260px',
                         alignItems: 'center',
-                        gap: 2.5,
+                        gap: 0,
                       },
                     }}
                   >
+                    {/* Column 1: Month Info */}
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 2,
                         width: '100%',
-                        '@media (min-width:1025px)': {
-                          flex: '1 1 0',
-                          minWidth: 0,
-                          width: 'auto',
+                        '@media (min-width:1024px)': {
+                          width: '280px',
                         },
                       }}
                     >
@@ -496,7 +499,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                           justifyContent: 'center',
                           fontSize: 30,
                           flexShrink: 0,
-                          '@media (min-width:1025px)': {
+                          '@media (min-width:1024px)': {
                             width: 80,
                             height: 80,
                           },
@@ -512,14 +515,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                             color: '#1E293B',
                             fontSize: '20px',
                             lineHeight: 1.2,
-                            whiteSpace: 'normal',
-                            '@media (min-width:768px) and (max-width:1024px)': {
-                              whiteSpace: 'nowrap',
-                            },
-                            '@media (min-width:1025px)': {
-                              fontSize: '22px',
-                              whiteSpace: 'nowrap',
-                            },
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {group.displayTitle}
@@ -537,51 +533,54 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                       </Box>
                     </Box>
 
+                    {/* Column 2: Spacer */}
+                    <Box sx={{ display: { xs: 'none', md: 'block' } }} />
+
+                    {/* Column 3: Actions */}
                     <Box
                       sx={{
                         width: '100%',
-                        '@media (min-width:1025px)': {
-                          width: 'auto',
-                          flex: '0 0 auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1.25,
+                        '@media (min-width:1024px)': {
+                          width: '260px',
+                          alignItems: 'flex-end',
                         },
                       }}
                     >
-                      <Stack
-                        direction="column"
-                        spacing={1}
+                      <Button
+                        variant="outlined"
+                        onClick={(e) => handleExportMonthPDF(group, e)}
+                        disabled={exporting}
                         sx={{
+                          borderRadius: '16px',
+                          height: 52,
+                          fontWeight: 700,
+                          borderColor: '#2F80ED',
+                          color: '#2F80ED',
                           width: '100%',
-                          '@media (min-width:1025px)': {
-                            flexDirection: 'row',
-                            width: 'auto',
-                            alignItems: 'center',
-                            gap: 1,
+                          whiteSpace: 'nowrap',
+                          '@media (min-width:1024px)': {
+                            width: '240px',
                           },
                         }}
                       >
-                        <Button
-                          variant="outlined"
-                          onClick={(e) => handleExportMonthPDF(group, e)}
-                          disabled={exporting}
-                          sx={{
-                            borderRadius: '16px',
-                            height: 52,
-                            fontWeight: 700,
-                            borderColor: '#2F80ED',
-                            color: '#2F80ED',
-                            width: '100%',
-                            whiteSpace: 'nowrap',
-                            '@media (min-width:1025px)': {
-                              width: 'auto',
-                              minWidth: '156px',
-                              px: 2.25,
-                            },
-                          }}
-                        >
-                          <PdfSvg />
-                          匯出整月 PDF
-                        </Button>
+                        <PdfSvg />
+                        匯出整月 PDF
+                      </Button>
 
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          gap: 1,
+                          width: '100%',
+                          '@media (min-width:1024px)': {
+                            width: '240px',
+                            justifyContent: 'flex-end',
+                          },
+                        }}
+                      >
                         <Button
                           variant="contained"
                           onClick={() => {
@@ -598,40 +597,35 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                             '&:hover': { bgcolor: '#1D6FD8' },
                             width: '100%',
                             whiteSpace: 'nowrap',
-                            '@media (min-width:1025px)': {
-                              width: 'auto',
-                              minWidth: '132px',
-                              px: 2.25,
+                            '@media (min-width:1024px)': {
+                              width: '180px',
                             },
                           }}
                         >
                           進入月份 →
                         </Button>
-                      </Stack>
-                      <Button
-                        onClick={() => setDeleteMonthKey(group.monthKey)}
-                        sx={{
-                          mt: 1,
-                          height: 48,
-                          borderRadius: '16px',
-                          bgcolor: '#FFF1F2',
-                          color: '#E11D48',
-                          fontWeight: 700,
-                          width: '100%',
-                          whiteSpace: 'nowrap',
-                          '&:hover': { bgcolor: '#FFE4E6' },
-                          '@media (min-width:1025px)': {
-                            mt: 0,
-                            width: '44px',
-                            minWidth: '44px',
-                            px: 0,
-                            ml: 1,
-                            borderRadius: '999px',
-                          },
-                        }}
-                      >
-                        {window.innerWidth >= 1025 ? '🗑' : '刪除此月份'}
-                      </Button>
+                        <Button
+                          onClick={() => setDeleteMonthKey(group.monthKey)}
+                          sx={{
+                            borderRadius: '16px',
+                            height: 48,
+                            bgcolor: isDark ? 'rgba(239,68,68,0.15)' : '#FFECEC',
+                            color: '#EF4444',
+                            fontWeight: 700,
+                            width: '100%',
+                            whiteSpace: 'nowrap',
+                            '&:hover': { bgcolor: isDark ? 'rgba(239,68,68,0.25)' : '#FEE2E2' },
+                            '@media (min-width:1024px)': {
+                              width: '52px',
+                              height: '52px',
+                              minWidth: '52px',
+                              px: 0,
+                            },
+                          }}
+                        >
+                          <DelSvg />
+                        </Button>
+                      </Box>
                     </Box>
                   </Box>
                 </Card>
