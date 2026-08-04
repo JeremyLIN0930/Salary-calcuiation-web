@@ -13,6 +13,11 @@ function escapeHtml(s: string): string {
 
 function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
   const printDate = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const displayStoreNo = [schedule.storeNo, schedule.storeCode]
+    .map(value => (value || '').toString().trim())
+    .find(value => Boolean(value) && !['001', '002'].includes(value)) || ''
+  const displayStoreName = escapeHtml(schedule.storeName || '門市')
+  const displayStoreNoHtml = escapeHtml(displayStoreNo)
 
   // Compute 7 week dates (Mon-Sun)
   const weekStart = new Date(schedule.weekStart)
@@ -98,8 +103,8 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
     <!-- Info bar -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; font-size: 16px; font-weight: bold;">
       <div>
-        <span>店號：${schedule.storeId}</span>
-        <span style="margin-left: 35px;">店名：${schedule.storeName}</span>
+        <span>店號：${displayStoreNoHtml || '—'}</span>
+        <span style="margin-left: 35px;">店名：${displayStoreName}</span>
       </div>
       <div>
         <span>列印日期：${printDate}</span>
