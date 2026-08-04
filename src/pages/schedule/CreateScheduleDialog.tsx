@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, Select, FormControl, InputLabel,
-  Stack, Typography, Box,
+  FormHelperText, Stack, Typography, Box,
 } from '@mui/material'
 import { Schedule } from '../../types/schedule'
 import { useStoreContext } from '../../context/StoreContext'
@@ -24,34 +24,68 @@ function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
+
 export default function CreateScheduleDialog({ open, onClose, onCreate }: Props) {
   const { stores: storeList } = useStoreContext()
   const todayMonday = getMonday(new Date())
 
+  const [storeCodeInput, setStoreCodeInput]   = useState('')
   const [selectedStoreId, setSelectedStoreId] = useState('')
-  const [storeId, setStoreId]                 = useState('001')
-  const [storeName, setStoreName]             = useState('慶東門市')
-  const [storeCode, setStoreCode]             = useState('001')
   const [startDate, setStartDate]             = useState(formatDate(todayMonday))
-  const [errors, setErrors]                   = useState<Record<string, string>>({})
+  
+  const [storeCodeError, setStoreCodeError]   = useState<string | null>(null)
+  const [storeNameError, setStoreNameError]   = useState<string | null>(null)
+  const [startDateError, setStartDateError]   = useState<string | null>(null)
 
+  // Initialize or reset store selection when dialog opens or storeList loads
   useEffect(() => {
-    if (storeList && storeList.length > 0) {
-      const defaultSt = storeList[0]
-      setSelectedStoreId(defaultSt.id)
-      setStoreId(defaultSt.id)
-      setStoreName(defaultSt.name)
-      setStoreCode(defaultSt.code || '001')
+    if (open && storeList && storeList.length > 0) {
+      if (!selectedStoreId || !storeList.some(s => s.id === selectedStoreId)) {
+        const defaultSt = storeList[0]
+        setSelectedStoreId(defaultSt.id)
+        setStoreCodeInput(defaultSt.code || '')
+        setStoreCodeError(null)
+        setStoreNameError(null)
+      }
     }
-  }, [storeList])
+  }, [open, storeList])
 
-  const handleSelectStore = (selectedId: string) => {
+  // Handle 門市店號 Input Change (Two-way sync: Code -> Name & UUID)
+  const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setStoreCodeInput(val)
+    const trimmed = val.trim()
+
+    if (!trimmed) {
+      setSelectedStoreId('')
+      setStoreCodeError('請輸入門市店號')
+      setStoreNameError(null)
+      return
+    }
+
+    const matched = storeList.find(s => (s.code || '').trim() === trimmed)
+    if (matched) {
+      setSelectedStoreId(matched.id)
+      setStoreCodeError(null)
+      setStoreNameError(null)
+    } else {
+      setSelectedStoreId('')
+      setStoreCodeError('查無此店號')
+      setStoreNameError(null)
+    }
+  }
+
+  // Handle 門市名稱 Select Change (Two-way sync: Name & UUID -> Code)
+  const handleSelectStoreName = (selectedId: string) => {
     setSelectedStoreId(selectedId)
-    const st = storeList.find(s => s.id === selectedId || s.name === selectedId || s.code === selectedId)
-    if (st) {
-      setStoreId(st.id)
-      setStoreName(st.name)
-      setStoreCode(st.code || st.id)
+    const matched = storeList.find(s => s.id === selectedId)
+    if (matched) {
+      setStoreCodeInput(matched.code || '')
+      setStoreCodeError(null)
+      setStoreNameError(null)
+    } else {
+      setStoreCodeInput('')
+      setStoreNameError('請選擇門市')
     }
   }
 
@@ -66,22 +100,45 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
   const weekEnd = computeWeekEnd(startDate)
 
   const handleCreate = () => {
-    const errs: Record<string, string> = {}
-    if (!storeId.trim()) errs.storeId = '店號為必填'
-    if (!storeName)      errs.storeName = '店名為必填'
-    if (!startDate)      errs.startDate = '開始日期為必填'
+    let hasErr = false
+    setStoreCodeError(null)
+    setStoreNameError(null)
+    setStartDateError(null)
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
+    const trimmedCode = storeCodeInput.trim()
+    if (!trimmedCode) {
+      setStoreCodeError('請輸入門市店號')
+      hasErr = true
+    }
+
+    const matched = storeList.find(s => s.id === selectedStoreId || (s.code || '').trim() === trimmedCode)
+    if (!matched) {
+      setStoreCodeError('查無此店號')
+      hasErr = true
+    } else if (!selectedStoreId || selectedStoreId !== matched.id) {
+      setSelectedStoreId(matched.id)
+    }
+
+    if (!matched && !selectedStoreId) {
+      setStoreNameError('請選擇門市')
+      hasErr = true
+    }
+
+    if (!startDate) {
+      setStartDateError('開始日期為必填')
+      hasErr = true
+    }
+
+    if (hasErr || !matched) {
       return
     }
 
     const now = new Date().toISOString()
     const newSchedule: Schedule = {
       id: Math.random().toString(36).slice(2),
-      storeId: storeId.trim(),
-      storeName,
-      storeCode,
+      storeId: matched.id, // Store ID (UUID) stored internally
+      storeName: matched.name,
+      storeCode: matched.code || trimmedCode,
       weekStart: startDate,
       weekEnd,
       employees: [],
@@ -99,21 +156,38 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       <DialogTitle fontWeight={700}>建立每週排班表</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
-          {/* Store Name Dropdown */}
-          <FormControl fullWidth size="small" error={!!errors.storeName}>
-            <InputLabel>門市 *</InputLabel>
+          {/* 門市店號 * */}
+          <TextField
+            label="門市店號 *"
+            value={storeCodeInput}
+            size="small"
+            fullWidth
+            placeholder="例如：251732"
+            error={!!storeCodeError}
+            helperText={storeCodeError}
+            onChange={handleCodeInputChange}
+          />
+
+          {/* 門市名稱 * */}
+          <FormControl fullWidth size="small" error={!!storeNameError}>
+            <InputLabel>門市名稱 *</InputLabel>
             <Select
-              value={selectedStoreId || (storeList[0]?.id || '')}
-              label="門市 *"
-              onChange={e => handleSelectStore(e.target.value)}
+              value={selectedStoreId}
+              label="門市名稱 *"
+              onChange={e => handleSelectStoreName(e.target.value as string)}
             >
               {storeList.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.name}（{s.code || s.id}）</MenuItem>
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name}
+                </MenuItem>
               ))}
             </Select>
+            {storeNameError && (
+              <FormHelperText error>{storeNameError}</FormHelperText>
+            )}
           </FormControl>
 
-          {/* Week Start Date */}
+          {/* 排班起始日 (週一) * */}
           <TextField
             label="排班起始日 (週一) *"
             type="date"
@@ -121,9 +195,12 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
             size="small"
             fullWidth
             InputLabelProps={{ shrink: true }}
-            error={!!errors.startDate}
-            helperText={errors.startDate}
-            onChange={e => setStartDate(e.target.value)}
+            error={!!startDateError}
+            helperText={startDateError}
+            onChange={e => {
+              setStartDate(e.target.value)
+              if (e.target.value) setStartDateError(null)
+            }}
           />
 
           {/* Computed Week Range */}
