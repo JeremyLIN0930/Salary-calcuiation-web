@@ -17,6 +17,7 @@ export class StoreMapper {
   static toModel(row: StoreRow): Store {
     return {
       id: row.id || '',
+      code: row.store_code || '',
       name: row.store_name || '',
       address: row.address || '',
       phone: row.phone || '',
@@ -26,7 +27,7 @@ export class StoreMapper {
   static toDbRow(model: Partial<Store>): StoreRow {
     const now = new Date().toISOString()
     const row: StoreRow = {
-      store_code: model.id || null,
+      store_code: model.code || model.id || null,
       store_name: model.name || '',
       address: model.address || null,
       phone: model.phone || null,
