@@ -3,6 +3,9 @@ export interface ThemeTokens {
   surface: string
   surfaceSecondary: string
   card: string
+  cardTextPrimary: string
+  cardTextSecondary: string
+  cardTextMuted: string
   sidebar: string
   sidebarHover: string
   sidebarActive: string
@@ -13,6 +16,8 @@ export interface ThemeTokens {
   divider: string
   primary: string
   primaryHover: string
+  secondaryBtnBg: string
+  secondaryBtnText: string
   danger: string
   success: string
   warning: string
@@ -21,8 +26,11 @@ export interface ThemeTokens {
   textMuted: string
   placeholder: string
   inputBackground: string
+  inputText: string
   tableHeader: string
+  tableHeaderText: string
   tableRow: string
+  tableText: string
   tableHover: string
   shadow: string
   radius: string
@@ -33,6 +41,9 @@ export const lightTokens: ThemeTokens = {
   surface: '#FFFFFF',
   surfaceSecondary: '#F1F5F9',
   card: '#FFFFFF',
+  cardTextPrimary: '#1E293B',
+  cardTextSecondary: '#475569',
+  cardTextMuted: '#64748B',
   sidebar: '#FFFFFF',
   sidebarHover: '#F1F5F9',
   sidebarActive: '#2F80ED',
@@ -43,6 +54,8 @@ export const lightTokens: ThemeTokens = {
   divider: '#F1F5F9',
   primary: '#2F80ED',
   primaryHover: '#1D6FD8',
+  secondaryBtnBg: '#FFFFFF',
+  secondaryBtnText: '#1E293B',
   danger: '#EF4444',
   success: '#34A853',
   warning: '#F57C00',
@@ -51,39 +64,50 @@ export const lightTokens: ThemeTokens = {
   textMuted: '#94A3B8',
   placeholder: '#94A3B8',
   inputBackground: '#F8FAFC',
+  inputText: '#1E293B',
   tableHeader: '#F8FAFC',
+  tableHeaderText: '#475569',
   tableRow: '#FFFFFF',
+  tableText: '#1E293B',
   tableHover: '#F1F5F9',
   shadow: '0 8px 24px rgba(0,0,0,0.04)',
   radius: '16px',
 }
 
 export const darkTokens: ThemeTokens = {
-  background: '#0F172A',
-  surface: '#1E293B',
-  surfaceSecondary: '#334155',
-  card: '#1E293B',
+  background: '#111827',
+  surface: '#1A2333',
+  surfaceSecondary: '#1A2333',
+  card: '#F7F5F1',
+  cardTextPrimary: '#1F2937',
+  cardTextSecondary: '#475569',
+  cardTextMuted: '#64748B',
   sidebar: '#111827',
   sidebarHover: '#1F2937',
   sidebarActive: '#2563EB',
   sidebarText: '#CBD5E1',
-  sidebarTitle: '#FFFFFF',
-  header: '#1E293B',
-  border: 'rgba(255,255,255,0.08)',
+  sidebarTitle: '#F8FAFC',
+  header: '#111827',
+  border: '#E5E7EB',
   divider: 'rgba(255,255,255,0.08)',
-  primary: '#2563EB',
-  primaryHover: '#1D4ED8',
+  primary: '#2F80ED',
+  primaryHover: '#1D6FD8',
+  secondaryBtnBg: '#F7F5F1',
+  secondaryBtnText: '#1F2937',
   danger: '#EF4444',
   success: '#34A853',
   warning: '#F57C00',
-  textPrimary: '#FFFFFF',
+  textPrimary: '#F8FAFC',
   textSecondary: '#CBD5E1',
   textMuted: '#94A3B8',
-  placeholder: '#64748B',
-  inputBackground: '#334155',
-  tableHeader: '#1E293B',
-  tableRow: '#0F172A',
-  tableHover: '#1E293B',
-  shadow: '0 8px 24px rgba(0,0,0,0.3)',
+  placeholder: '#94A3B8',
+  inputBackground: '#F5F4EF',
+  inputText: '#1F2937',
+  tableHeader: '#273449',
+  tableHeaderText: '#F8FAFC',
+  tableRow: '#111827',
+  tableText: '#CBD5E1',
+  tableHover: '#1F2937',
+  shadow: '0 8px 24px rgba(0,0,0,0.15)',
   radius: '16px',
 }

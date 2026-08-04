@@ -1,5 +1,6 @@
 import React from 'react'
 import { Box, Typography, Stack } from '@mui/material'
+import { useAppearance } from '../../context/AppearanceContext'
 
 interface Props {
   title: string
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export default function PageHeader({ title, subtitle, action }: Props) {
+  const { tokens } = useAppearance()
+
   return (
     <Box
       sx={{
@@ -22,12 +25,13 @@ export default function PageHeader({ title, subtitle, action }: Props) {
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="h4"
-          fontWeight={700}
+          fontWeight={800}
           sx={{
-            color: '#1E293B',
+            color: tokens.textPrimary,
             fontSize: { xs: '24px', sm: '28px', md: '32px' },
             letterSpacing: '-0.5px',
             lineHeight: 1.25,
+            transition: 'color 250ms ease',
           }}
         >
           {title}
@@ -36,10 +40,11 @@ export default function PageHeader({ title, subtitle, action }: Props) {
           <Typography
             variant="body2"
             sx={{
-              color: '#6B7280',
+              color: tokens.textSecondary,
               fontSize: { xs: '13px', sm: '14px', md: '15px' },
               mt: 0.8,
               fontWeight: 500,
+              transition: 'color 250ms ease',
             }}
           >
             {subtitle}

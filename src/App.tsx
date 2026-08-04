@@ -79,7 +79,8 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
             },
             outlined: {
               borderColor: tokens.border,
-              color: tokens.textPrimary,
+              backgroundColor: tokens.secondaryBtnBg,
+              color: tokens.secondaryBtnText,
               '&:hover': {
                 borderColor: tokens.primary,
                 backgroundColor: tokens.surfaceSecondary,
@@ -94,7 +95,7 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
               boxShadow: tokens.shadow,
               backgroundColor: tokens.card,
               borderColor: tokens.border,
-              color: tokens.textPrimary,
+              color: tokens.cardTextPrimary,
               transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
             },
           },
@@ -103,7 +104,7 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
           styleOverrides: {
             root: {
               backgroundColor: tokens.card,
-              color: tokens.textPrimary,
+              color: tokens.cardTextPrimary,
               borderColor: tokens.border,
               transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
             },
@@ -113,7 +114,7 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
           styleOverrides: {
             paper: {
               backgroundColor: tokens.card,
-              color: tokens.textPrimary,
+              color: tokens.cardTextPrimary,
               borderRadius: 24,
               boxShadow: tokens.shadow,
             },
@@ -122,7 +123,7 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
         MuiTable: {
           styleOverrides: {
             root: {
-              backgroundColor: tokens.card,
+              backgroundColor: tokens.tableRow,
             },
           },
         },
@@ -130,12 +131,12 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
           styleOverrides: {
             root: {
               borderColor: tokens.border,
-              color: tokens.textPrimary,
+              color: tokens.tableText,
               padding: Math.round(16 * densityScale),
             },
             head: {
               backgroundColor: tokens.tableHeader,
-              color: tokens.textSecondary,
+              color: tokens.tableHeaderText,
               fontWeight: 700,
             },
           },
@@ -156,13 +157,14 @@ function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
               borderRadius: 14,
               height: Math.round(48 * densityScale),
               backgroundColor: tokens.inputBackground,
-              color: tokens.textPrimary,
+              color: tokens.inputText,
               transition: 'background-color 250ms ease, border-color 250ms ease, color 250ms ease',
             },
             notchedOutline: {
               borderColor: tokens.border,
             },
             input: {
+              color: tokens.inputText,
               '&::placeholder': {
                 color: tokens.placeholder,
                 opacity: 1,
