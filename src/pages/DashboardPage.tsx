@@ -288,15 +288,13 @@ export default function DashboardPage({ onNavigate }: Props) {
       {/* ── 2. Stat Cards Section (4 Cards below Hero) ── */}
       <Grid container spacing={2.5} sx={{ mb: 4 }}>
         {/* Stat 1: 員工總數 */}
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card
             elevation={0}
             sx={{
               borderRadius: '24px',
-              bgcolor: '#FFFFFF',
               p: 2.5,
               boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-              border: '1px solid #F1F5F9',
               transition: 'all 200ms ease',
               '&:hover': {
                 transform: 'translateY(-4px)',
@@ -323,7 +321,7 @@ export default function DashboardPage({ onNavigate }: Props) {
                   <StatEmpIcon />
                 </Box>
               </Box>
-              <Typography variant="h4" fontWeight={700} sx={{ color: '#1E293B', fontSize: '28px' }}>
+              <Typography variant="h4" fontWeight={700} sx={{ fontSize: '28px' }}>
                 {masterEmpState.employees.length}
               </Typography>
             </Stack>
@@ -331,15 +329,13 @@ export default function DashboardPage({ onNavigate }: Props) {
         </Grid>
 
         {/* Stat 2: 門市總數 */}
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card
             elevation={0}
             sx={{
               borderRadius: '24px',
-              bgcolor: '#FFFFFF',
               p: 2.5,
               boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-              border: '1px solid #F1F5F9',
               transition: 'all 200ms ease',
               '&:hover': {
                 transform: 'translateY(-4px)',
@@ -366,7 +362,7 @@ export default function DashboardPage({ onNavigate }: Props) {
                   <StatStoreIcon />
                 </Box>
               </Box>
-              <Typography variant="h4" fontWeight={700} sx={{ color: '#1E293B', fontSize: '28px' }}>
+              <Typography variant="h4" fontWeight={700} sx={{ fontSize: '28px' }}>
                 {storeList.length}
               </Typography>
             </Stack>
@@ -374,15 +370,13 @@ export default function DashboardPage({ onNavigate }: Props) {
         </Grid>
 
         {/* Stat 3: 本週班表 */}
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card
             elevation={0}
             sx={{
               borderRadius: '24px',
-              bgcolor: '#FFFFFF',
               p: 2.5,
               boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-              border: '1px solid #F1F5F9',
               transition: 'all 200ms ease',
               '&:hover': {
                 transform: 'translateY(-4px)',
@@ -409,7 +403,7 @@ export default function DashboardPage({ onNavigate }: Props) {
                   <StatScheduleIcon />
                 </Box>
               </Box>
-              <Typography variant="h4" fontWeight={700} sx={{ color: '#1E293B', fontSize: '28px' }}>
+              <Typography variant="h4" fontWeight={700} sx={{ fontSize: '28px' }}>
                 {scheduleState.schedules.length}
               </Typography>
             </Stack>
@@ -417,7 +411,7 @@ export default function DashboardPage({ onNavigate }: Props) {
         </Grid>
 
         {/* Stat 4: 本月薪資單 */}
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card
             elevation={0}
             sx={{

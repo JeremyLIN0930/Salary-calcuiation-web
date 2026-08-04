@@ -425,7 +425,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             </Grid>
 
             {/* Year Select Dropdown */}
-            <Grid item xs={6} sm={2.5} md={2.5}>
+            <Grid item xs={12} sm={3} md={2.5}>
               <FormControl size="small" fullWidth>
                 <InputLabel>年份</InputLabel>
                 <Select
@@ -435,7 +435,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                   sx={{
                     borderRadius: '16px',
                     height: 48,
-                    bgcolor: '#F8FAFC',
                     fontWeight: 700,
                   }}
                 >
@@ -448,7 +447,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             </Grid>
 
             {/* Month Select Dropdown */}
-            <Grid item xs={6} sm={2.5} md={2.5}>
+            <Grid item xs={12} sm={3} md={2.5}>
               <FormControl size="small" fullWidth>
                 <InputLabel>月份</InputLabel>
                 <Select
@@ -458,7 +457,6 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                   sx={{
                     borderRadius: '16px',
                     height: 48,
-                    bgcolor: '#F8FAFC',
                     fontWeight: 700,
                   }}
                 >

@@ -19,11 +19,11 @@ const STORAGE_THEME_KEY = 'theme_mode'
 const STORAGE_DENSITY_KEY = 'ui_density'
 
 export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Initial State from localStorage
+  // 1. Initial State from localStorage (Default to Light Theme on first visit)
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(STORAGE_THEME_KEY)
     if (saved === 'light' || saved === 'dark' || saved === 'system') return saved
-    return 'system'
+    return 'light'
   })
 
   const [uiDensity, setUiDensityState] = useState<UiDensity>(() => {
