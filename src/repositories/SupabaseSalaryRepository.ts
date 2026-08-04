@@ -156,28 +156,34 @@ export class SupabaseSalaryRepository {
       }
 
       const models: Employee[] = []
-      const monthRows = (data || []) as Array<SalaryMonthRow & { salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null }> }>
+      const monthRows = (data || []) as Array<SalaryMonthRow & { salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null; base_salary?: number | null; net_salary?: number | null }> }>
 
       for (const monthRow of monthRows) {
         const monthKeyValue = `${monthRow.year || new Date().getFullYear()}-${String(monthRow.month).padStart(2, '0')}`
         const detailRows = monthRow.salary_items || []
 
         for (const detailRow of detailRows) {
-          if (!detailRow.notes) continue
-          try {
-            const parsed = JSON.parse(detailRow.notes)
-            const base = createEmptyEmployee()
-            const employeeModel: Employee = {
-              ...base,
-              ...parsed,
-              id: detailRow.id || parsed.id || base.id,
-              employeeId: detailRow.employee_id || parsed.employeeId,
-              month: monthKeyValue,
+          const parsedNotes = detailRow.notes ? (() => {
+            try {
+              return JSON.parse(detailRow.notes)
+            } catch {
+              return null
             }
-            models.push(employeeModel)
-          } catch (err) {
-            console.error('Failed to parse salary_item notes:', err)
+          })() : null
+
+          const base = createEmptyEmployee()
+          const employeeModel: Employee = {
+            ...base,
+            ...(parsedNotes || {}),
+            id: detailRow.id || parsedNotes?.id || base.id,
+            employeeId: detailRow.employee_id || parsedNotes?.employeeId,
+            name: parsedNotes?.name || detailRow.employee_name || base.name,
+            month: monthKeyValue,
+            baseSalary: detailRow.base_salary ?? parsedNotes?.baseSalary ?? base.baseSalary,
+            netSalary: detailRow.net_salary ?? parsedNotes?.netSalary ?? base.netSalary,
           }
+
+          models.push(employeeModel)
         }
       }
 
@@ -277,13 +283,22 @@ export class SupabaseSalaryRepository {
       }
       cleanPayload.employeeId = employeeId
 
+      const normalizeNumericValue = (value: unknown): number | null => {
+        if (value === undefined || value === null || value === '') return null
+        const num = typeof value === 'number' ? value : Number(value)
+        return Number.isFinite(num) ? num : null
+      }
+
       const detailPayload: Record<string, any> = {
         salary_month_id: salaryMonthId,
         employee_id: employeeId || null,
         employee_name: employeeId ? null : (salaryData.name || '').trim() || null,
-        notes: JSON.stringify(cleanPayload),
+        base_salary: normalizeNumericValue(salaryData.baseSalary),
+        net_salary: normalizeNumericValue(salaryData.netSalary),
         updated_at: new Date().toISOString(),
       }
+
+      console.log('💾 [SupabaseSalaryRepository.saveSalary] salary_items payload:', JSON.stringify(detailPayload, null, 2))
 
       const { data: existingDetail, error: findDetailErr } = await supabase
         .from('salary_items')
@@ -306,6 +321,7 @@ export class SupabaseSalaryRepository {
           .single()
 
         if (updateErr) {
+          console.error('❌ [SupabaseSalaryRepository.saveSalary] salary_items update error:', JSON.stringify(updateErr, null, 2))
           return errorResult(updateErr, 'salary_items', 'saveSalary')
         }
         savedDetail = updatedData
@@ -317,6 +333,7 @@ export class SupabaseSalaryRepository {
           .single()
 
         if (insertErr || !insertedData) {
+          console.error('❌ [SupabaseSalaryRepository.saveSalary] salary_items insert error:', JSON.stringify(insertErr, null, 2))
           return errorResult(insertErr || '建立薪資明細失敗', 'salary_items', 'saveSalary')
         }
         savedDetail = insertedData
