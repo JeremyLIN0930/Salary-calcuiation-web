@@ -77,30 +77,46 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
   }
 
   // Handle Master Employee sync dialog answer
-  const handleConfirmAddToMaster = async (isShared: boolean) => {
+  const handleConfirmAddToMaster = async (addToMaster: boolean) => {
     if (!pendingNewName) return
     const name = pendingNewName.trim()
 
-    // ALWAYS create a master_employees record to get a REAL UUID for FK constraint
-    const newMasterEmp = await masterAddEmployee({
-      name,
-      isShared: isShared,
-      hireDate: new Date().toISOString().slice(0, 10),
-      remark: isShared ? '[shared]' : '[local]'
-    })
+    if (addToMaster) {
+      // 按「是」：加入 master_employees 作為正式/共用員工
+      const newMasterEmp = await masterAddEmployee({
+        name,
+        isShared: true,
+        hireDate: new Date().toISOString().slice(0, 10),
+        remark: '[shared]'
+      })
 
-    const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
+      const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
 
-    const newEmp: ScheduleEmployee = {
-      id: realUuid,
-      name,
-      shifts: [],
+      const newEmp: ScheduleEmployee = {
+        id: realUuid,
+        name,
+        isTemp: false,
+        shifts: [],
+      }
+
+      onChangeEmployees([...employees, newEmp])
+      showSnackbar(`已將「${name}」建立為正式員工並加入排班。`, 'success')
+    } else {
+      // 按「否」：僅本週排班使用（臨時工 / 代班），不建立 master_employees
+      const tempId = 'temp_' + Math.random().toString(36).slice(2)
+      const newEmp: ScheduleEmployee = {
+        id: tempId,
+        name,
+        isTemp: true,
+        shifts: [],
+      }
+
+      onChangeEmployees([...employees, newEmp])
+      showSnackbar(`已將「${name}」以本週臨時工身分加入排班。`, 'info')
     }
 
-    onChangeEmployees([...employees, newEmp])
     setPendingNewName(null)
     setInputValue('')
-    showSnackbar(`已將「${name}」加入排班（${isShared ? '共用員工' : '本店員工'}）。`, 'success')
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 

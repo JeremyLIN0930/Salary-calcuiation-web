@@ -13,6 +13,7 @@ export interface Shift {
 export interface ScheduleEmployee {
   id: string
   name: string
+  isTemp?: boolean // true for temporary/weekly employee (no master_employees entry)
   shifts: Shift[]
 }
 

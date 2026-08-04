@@ -88,31 +88,45 @@ export class SupabaseScheduleRepository {
         }
       }
 
-      // Group DB shifts by employee_id -> Map(work_date -> DB Shift)
-      const empShiftsMap = new Map<string, Map<string, any>>()
-      schShifts.forEach(s => {
-        const empId = s.employee_id
-        if (!empShiftsMap.has(empId)) {
-          empShiftsMap.set(empId, new Map<string, any>())
+      // Group DB shifts by employee key (formal vs temporary)
+      const empShiftsMap = new Map<string, { name: string; isTemp: boolean; dateMap: Map<string, any> }>()
+      
+      schShifts.forEach((s: any) => {
+        let empKey = s.employee_id
+        let isTemp = false
+        let empName = ''
+
+        if (s.employee_id && isValidUuid(s.employee_id)) {
+          empKey = s.employee_id
+          empName = empMap.get(s.employee_id) || s.employee_name || '未命名員工'
+        } else {
+          // Temporary employee (employee_id is NULL)
+          empName = s.employee_name || (s.remarks && s.remarks.startsWith('[temp:') ? s.remarks.slice(6, -1) : '臨時工')
+          empKey = `temp_${empName}`
+          isTemp = true
         }
-        empShiftsMap.get(empId)!.set(s.work_date, s)
+
+        if (!empShiftsMap.has(empKey)) {
+          empShiftsMap.set(empKey, { name: empName, isTemp, dateMap: new Map<string, any>() })
+        }
+        empShiftsMap.get(empKey)!.dateMap.set(s.work_date, s)
       })
 
-      // Also merge any existing employee objects in sch.employees
+      // Merge existing employee objects in sch.employees
       const existingEmps = sch.employees || []
       existingEmps.forEach(e => {
-        if (!empShiftsMap.has(e.id)) {
-          empShiftsMap.set(e.id, new Map<string, any>())
+        const isTemp = e.isTemp || e.id.startsWith('temp_') || !isValidUuid(e.id)
+        const empKey = isTemp ? `temp_${e.name}` : e.id
+        if (!empShiftsMap.has(empKey)) {
+          empShiftsMap.set(empKey, { name: e.name, isTemp, dateMap: new Map<string, any>() })
         }
       })
 
       const schEmployees: ScheduleEmployee[] = []
-      empShiftsMap.forEach((dateShiftMap, empId) => {
-        const empName = empMap.get(empId) || existingEmps.find(e => e.id === empId)?.name || '未命名員工'
-        
-        // Pad to 7 days for UI display (Sparse -> Full 7-Day UI)
+      empShiftsMap.forEach(({ name: empName, isTemp, dateMap }, empKey) => {
+        // Pad to 7 days for UI display
         const paddedShifts: Shift[] = weekDates.map(dateStr => {
-          const dbShift = dateShiftMap.get(dateStr)
+          const dbShift = dateMap.get(dateStr)
           if (dbShift) {
             return {
               date: dateStr,
@@ -132,8 +146,9 @@ export class SupabaseScheduleRepository {
         })
 
         schEmployees.push({
-          id: empId,
+          id: empKey,
           name: empName,
+          isTemp: isTemp,
           shifts: paddedShifts
         })
       })
@@ -579,7 +594,8 @@ export class SupabaseScheduleRepository {
         weekRowId = insertedWeek.id
       }
 
-      // 4. Resolve Master Employee UUIDs by name, creating them if missing
+      // 4. Resolve Master Employee UUIDs for Formal Employees ONLY
+      // Do NOT create master_employees for temporary employees (isTemp = true)
       const { data: allMasterEmps } = await supabase
         .from('master_employees')
         .select('id, name')
@@ -590,54 +606,56 @@ export class SupabaseScheduleRepository {
       }
 
       const employeesToSave = schedule.employees || []
-      const resolvedEmployees: { id: string; name: string; shifts: Shift[] }[] = []
+      const resolvedEmployees: { id: string | null; name: string; isTemp: boolean; shifts: Shift[] }[] = []
 
       for (const emp of employeesToSave) {
-        let realUuid = ''
         const trimmedName = emp.name.trim()
+        const isExplicitTemp = emp.isTemp === true || emp.id.startsWith('temp_')
 
-        if (isValidUuid(emp.id)) {
-          realUuid = emp.id
+        if (isExplicitTemp) {
+          // Temporary employee: NO master_employees record, NO UUID!
+          resolvedEmployees.push({
+            id: null,
+            name: trimmedName,
+            isTemp: true,
+            shifts: emp.shifts || []
+          })
+        } else if (isValidUuid(emp.id)) {
+          // Formal employee with valid UUID
+          resolvedEmployees.push({
+            id: emp.id,
+            name: trimmedName,
+            isTemp: false,
+            shifts: emp.shifts || []
+          })
         } else if (masterEmpMap.has(trimmedName)) {
-          realUuid = masterEmpMap.get(trimmedName)!
+          // Match existing master employee by name
+          resolvedEmployees.push({
+            id: masterEmpMap.get(trimmedName)!,
+            name: trimmedName,
+            isTemp: false,
+            shifts: emp.shifts || []
+          })
         } else {
-          // Dynamic insert into master_employees to preserve FK referential integrity
-          console.log(`🚀 [SupabaseScheduleRepository] Dynamically creating master_employee for: ${trimmedName}`)
-          const { data: newEmpRow, error: newEmpErr } = await supabase
-            .from('master_employees')
-            .insert([{
-              name: trimmedName,
-              company_id: DEFAULT_COMPANY_ID,
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }])
-            .select('id')
-            .single()
-
-          if (newEmpErr) {
-            console.error('Failed to auto-create master employee:', newEmpErr)
-            continue
-          }
-          realUuid = newEmpRow.id
-          masterEmpMap.set(trimmedName, realUuid)
+          // Unmatched non-explicit temp -> Treat as temporary employee (no master_employee creation)
+          resolvedEmployees.push({
+            id: null,
+            name: trimmedName,
+            isTemp: true,
+            shifts: emp.shifts || []
+          })
         }
-
-        resolvedEmployees.push({
-          id: realUuid,
-          name: trimmedName,
-          shifts: emp.shifts || []
-        })
       }
 
-      // 5. Prepare schedule_shifts insertion rows (Sparse Design: only save non-empty shifts)
+      // 5. Prepare schedule_shifts insertion rows
       const shiftRows: any[] = []
       for (const emp of resolvedEmployees) {
         for (const shift of emp.shifts) {
           if (shift.type && typeof shift.type === 'string' && shift.type.trim() !== '') {
             shiftRows.push({
               schedule_week_id: weekRowId,
-              employee_id: emp.id,
+              employee_id: emp.id, // null for temporary employees
+              employee_name: emp.name, // stores name string
               work_date: shift.date,
               shift_type: shift.type,
               start_time: shift.startTime || null,
@@ -654,40 +672,52 @@ export class SupabaseScheduleRepository {
       // 6. Query existing shifts in DB for this week
       const { data: dbShifts, error: queryShiftsErr } = await supabase
         .from('schedule_shifts')
-        .select('id, employee_id, work_date')
+        .select('id, employee_id, employee_name, work_date, remarks')
         .eq('schedule_week_id', weekRowId)
 
       if (queryShiftsErr) {
         console.warn('⚠️ Query schedule_shifts warning:', queryShiftsErr.message)
       }
 
-      const dbShiftMap = new Map<string, string>() // key: employeeId_date, value: id (UUID)
+      const dbShiftMap = new Map<string, string>() // key -> shift.id
       if (dbShifts) {
-        dbShifts.forEach(s => {
-          dbShiftMap.set(`${s.employee_id}_${s.work_date}`, s.id)
+        dbShifts.forEach((s: any) => {
+          if (s.employee_id) {
+            dbShiftMap.set(`formal_${s.employee_id}_${s.work_date}`, s.id)
+          } else {
+            const name = s.employee_name || (s.remarks && s.remarks.startsWith('[temp:') ? s.remarks.slice(6, -1) : '')
+            dbShiftMap.set(`temp_${name}_${s.work_date}`, s.id)
+          }
         })
       }
 
       const keptShiftIds = new Set<string>()
 
-      // 7. Upsert each shift (SELECT first/Map match then UPDATE or INSERT)
+      // 7. Upsert each shift
       for (const shiftRow of shiftRows) {
-        const key = `${shiftRow.employee_id}_${shiftRow.work_date}`
+        const key = shiftRow.employee_id 
+          ? `formal_${shiftRow.employee_id}_${shiftRow.work_date}` 
+          : `temp_${shiftRow.employee_name}_${shiftRow.work_date}`
         const existingShiftId = dbShiftMap.get(key)
 
         if (existingShiftId) {
           keptShiftIds.add(existingShiftId)
           // UPDATE
+          const updatePayload: any = {
+            shift_type: shiftRow.shift_type,
+            start_time: shiftRow.start_time,
+            end_time: shiftRow.end_time,
+            is_day_off: shiftRow.is_day_off,
+            remarks: shiftRow.remarks,
+            updated_at: new Date().toISOString()
+          }
+          if (shiftRow.employee_name) {
+            updatePayload.employee_name = shiftRow.employee_name
+          }
+
           const { error: updErr } = await supabase
             .from('schedule_shifts')
-            .update({
-              shift_type: shiftRow.shift_type,
-              start_time: shiftRow.start_time,
-              end_time: shiftRow.end_time,
-              is_day_off: shiftRow.is_day_off,
-              remarks: shiftRow.remarks,
-              updated_at: new Date().toISOString()
-            })
+            .update(updatePayload)
             .eq('id', existingShiftId)
 
           if (updErr) {
@@ -703,6 +733,30 @@ export class SupabaseScheduleRepository {
 
           if (insErr) {
             console.error('❌ Failed to insert schedule_shift:', insErr.message)
+            // Fallback if DB table schedule_shifts has NOT-NULL employee_id constraint before SQL migration execution
+            if (insErr.message?.includes('employee_id') || insErr.message?.includes('employee_name')) {
+              console.warn('⚠️ Fallback for NOT-NULL employee_id constraint...')
+              const tempRemark = `[temp:${shiftRow.employee_name}]`
+              const { data: tempMaster } = await supabase
+                .from('master_employees')
+                .insert([{
+                  name: shiftRow.employee_name,
+                  company_id: DEFAULT_COMPANY_ID,
+                  store_id: resolvedStoreId,
+                  hire_date: new Date().toISOString().slice(0, 10),
+                  is_active: true,
+                  notes: '[temp]'
+                }])
+                .select('id')
+                .single()
+
+              if (tempMaster?.id) {
+                const fallbackRow = { ...shiftRow, employee_id: tempMaster.id, remarks: tempRemark }
+                delete fallbackRow.employee_name
+                const { data: retryData } = await supabase.from('schedule_shifts').insert([fallbackRow]).select('id').single()
+                if (retryData) keptShiftIds.add(retryData.id)
+              }
+            }
           } else if (newShift) {
             keptShiftIds.add(newShift.id)
           }
