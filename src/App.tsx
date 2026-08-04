@@ -23,12 +23,12 @@ const SettingsPage           = React.lazy(() => import('./pages/settings/Setting
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
-    primary:    { main: '#1976D2' },
-    error:      { main: '#E53935' },
-    success:    { main: '#43A047' },
-    warning:    { main: '#FFB300' },
-    background: { default: '#F5F7FA', paper: '#ffffff' },
-    divider:    '#E5E7EB',
+    primary:    { main: '#4F8FEF' },
+    error:      { main: '#EF4444' },
+    success:    { main: '#34A853' },
+    warning:    { main: '#F57C00' },
+    background: { default: '#F8FAFC', paper: '#ffffff' },
+    divider:    '#F1F5F9',
   },
   typography: {
     fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
