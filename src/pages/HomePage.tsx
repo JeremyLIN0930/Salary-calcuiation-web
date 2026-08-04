@@ -626,83 +626,152 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
           onAction={handleAddNewEmployeeInActiveMonth}
         />
       ) : (
-        <Grid container spacing={2.5}>
+        <Grid container spacing={3}>
           {filteredEmployeesInMonth.map(emp => {
             const isSelected = selectedEmpIds.includes(emp.id)
             return (
-              <Grid item xs={12} sm={6} key={emp.id}>
+              <Grid item xs={12} sm={6} md={6} key={emp.id}>
                 <Card
-                  variant="outlined"
+                  elevation={0}
                   sx={{
-                    borderRadius: 4,
-                    borderColor: isSelected ? 'primary.main' : '#E5E7EB',
-                    bgcolor: isSelected ? '#F0F7FF' : '#ffffff',
-                    transition: 'all 0.15s ease',
-                    boxShadow: isSelected ? '0 4px 14px rgba(25, 118, 210, 0.12)' : 'none',
+                    borderRadius: '24px',
+                    borderColor: isSelected ? '#2F80ED' : '#ECECEC',
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    bgcolor: isSelected ? '#F0F7FF' : '#FFFFFF',
+                    transition: 'all 200ms ease',
+                    boxShadow: isSelected ? '0 8px 24px rgba(47, 128, 237, 0.12)' : '0 8px 24px rgba(0,0,0,0.04)',
+                    p: { xs: 2.5, sm: 3.5 },
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
+                    },
                   }}
                 >
-                  <CardContent sx={{ p: 2.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Checkbox
-                          checked={isSelected}
-                          onChange={() => handleToggleSelectEmp(emp.id)}
-                          sx={{ p: 0.5 }}
-                        />
-                        <Box>
-                          <Typography variant="h6" fontWeight={800} color="text.primary">
-                            {emp.name || '未命名員工'}
+                  {/* Top Section: Checkbox + Name + Pay Date vs Tool Icons */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectEmp(emp.id)}
+                        sx={{
+                          p: 0.5,
+                          color: '#CBD5E1',
+                          '&.Mui-checked': { color: '#2F80ED' }
+                        }}
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="h5"
+                          fontWeight={700}
+                          sx={{
+                            color: '#1F2937',
+                            fontSize: { xs: '22px', sm: '26px', md: '28px' },
+                            lineHeight: 1.2,
+                            letterSpacing: '-0.5px',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {emp.name || '未命名員工'}
+                        </Typography>
+
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.8 }}>
+                          {emp.store && (
+                            <Chip
+                              label={emp.store}
+                              size="small"
+                              sx={{
+                                bgcolor: '#EBF3FE',
+                                color: '#2F80ED',
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                borderRadius: '10px',
+                              }}
+                            />
+                          )}
+                          <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '15px', fontWeight: 500 }}>
+                            📅 發薪日：{emp.payDate || '未定'}
                           </Typography>
-                          <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                            {emp.store && <Chip label={emp.store} size="small" variant="outlined" sx={{ fontWeight: 600 }} />}
-                            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                              發薪日: {emp.payDate || '未定'}
-                            </Typography>
-                          </Stack>
-                        </Box>
-                      </Stack>
-
-                      {/* Right Action Icons */}
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="匯出此員工 PDF">
-                          <IconButton size="small" color="primary" onClick={() => handleExportSingleEmpPDF(emp)}>
-                            <PdfSvg />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="編輯薪資">
-                          <IconButton size="small" color="info" onClick={() => onEditEmployee(emp)}>
-                            <EditSvg />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="刪除紀錄">
-                          <IconButton size="small" color="error" onClick={() => setDeleteTarget(emp)}>
-                            <DelSvg />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </Box>
-
-                    <Divider sx={{ my: 1.5 }} />
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          應發薪資 (Gross)
-                        </Typography>
-                        <Typography variant="body2" fontWeight={700} color="text.primary">
-                          ${(emp.grossSalary || 0).toLocaleString()}
-                        </Typography>
+                        </Stack>
                       </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="caption" color="text.secondary">
-                          實發薪資 (Net)
-                        </Typography>
-                        <Typography variant="subtitle1" fontWeight={900} color="success.main">
-                          ${(emp.netSalary || 0).toLocaleString()}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
+                    </Stack>
+
+                    {/* Top Right Tool Buttons: 40x40px Circular Buttons */}
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Tooltip title="匯出此員工 PDF">
+                        <IconButton
+                          onClick={() => handleExportSingleEmpPDF(emp)}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: '#EBF3FE',
+                            color: '#2F80ED',
+                            transition: 'all 150ms ease',
+                            '&:hover': { bgcolor: '#DBEAFE', transform: 'scale(1.05)' },
+                          }}
+                        >
+                          <PdfSvg />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="編輯薪資">
+                        <IconButton
+                          onClick={() => onEditEmployee(emp)}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: '#F8FAFC',
+                            color: '#475569',
+                            transition: 'all 150ms ease',
+                            '&:hover': { bgcolor: '#F1F5F9', color: '#1F2937', transform: 'scale(1.05)' },
+                          }}
+                        >
+                          <EditSvg />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="刪除紀錄">
+                        <IconButton
+                          onClick={() => setDeleteTarget(emp)}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: '#FFF1F2',
+                            color: '#E11D48',
+                            transition: 'all 150ms ease',
+                            '&:hover': { bgcolor: '#FFE4E6', transform: 'scale(1.05)' },
+                          }}
+                        >
+                          <DelSvg />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  </Box>
+
+                  {/* Divider Line */}
+                  <Divider sx={{ my: 2.5, borderColor: '#F1F5F9' }} />
+
+                  {/* Bottom Net Salary Highlight Section */}
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '15px', fontWeight: 600, mb: 0.5 }}>
+                      💰 實發薪資
+                    </Typography>
+                    <Typography
+                      variant="h3"
+                      fontWeight={700}
+                      sx={{
+                        color: '#16A34A',
+                        fontSize: { xs: '32px', sm: '38px', md: '40px' },
+                        letterSpacing: '-1px',
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      ${(emp.netSalary || 0).toLocaleString('zh-TW')}
+                    </Typography>
+                  </Box>
                 </Card>
               </Grid>
             )
