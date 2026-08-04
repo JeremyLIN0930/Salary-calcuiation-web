@@ -50,6 +50,19 @@ export class SupabaseScheduleRepository {
 
     const shifts = shiftsData || []
 
+    // Step 2 Log
+    console.log("🔍 [Step 2 populateSchedulesWithShifts weekIds]", weekIds)
+    console.log("🔍 [Step 2 shiftsCount]", shifts.length)
+    shifts.forEach(s => {
+      console.log("🔍 [Step 2 shift item]", {
+        schedule_week_id: s.schedule_week_id,
+        employee_id: s.employee_id,
+        employee_name: s.employee_name,
+        work_date: s.work_date,
+        shift_type: s.shift_type
+      })
+    })
+
     // 2. Fetch all master employees to map employee_id -> name
     const { data: empsData, error: empsError } = await supabase
       .from('master_employees')
@@ -124,6 +137,12 @@ export class SupabaseScheduleRepository {
         }
       })
 
+      // Step 3 Log
+      console.log("🔍 [Step 3 Map(employee_id)]", Array.from(empShiftsMap.keys()))
+      empShiftsMap.forEach((val, key) => {
+        console.log(`🔍 [Step 3 empShiftsMap key=${key}] name=${val.name}, shiftsCount=${val.dateMap.size}`)
+      })
+
       const schEmployees: ScheduleEmployee[] = []
       empShiftsMap.forEach(({ name: empName, isTemp, dateMap }, empKey) => {
         // Pad to 7 days for UI display
@@ -160,10 +179,9 @@ export class SupabaseScheduleRepository {
 
       sch.employees = schEmployees
 
-      console.log("Populate Result")
-      console.log(sch.id)
-      console.log(schEmployees)
-      console.log(schEmployees.length)
+      // Step 4 Log
+      console.log("🔍 [Step 4 schEmployees.length]", schEmployees.length)
+      console.log("🔍 [Step 4 schEmployees]", schEmployees)
     }
   }
 
@@ -260,13 +278,23 @@ export class SupabaseScheduleRepository {
           } : null,
           store_id: parentMonth?.store_id || null
         }
+
+        // Step 1 Log
+        console.log("🔍 [Step 1 getWeeks]", {
+          week_id: row.id,
+          schedule_month_id: row.schedule_month_id,
+          week_no: row.week_no,
+          store_id: rowWithStore.store_id
+        })
+
         return ScheduleMapper.weekToModel(rowWithStore as any)
       })
       
       // Load shifts and reconstruct employees/shifts
       await this.populateSchedulesWithShifts(models)
       
-      console.log("Loaded schedules", models)
+      // Step 5 Log
+      console.log("🔍 [Step 5 getWeeks return models]", models)
       return successResult(models)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getWeeks')
