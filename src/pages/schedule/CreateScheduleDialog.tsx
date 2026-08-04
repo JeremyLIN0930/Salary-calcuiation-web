@@ -37,20 +37,25 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
   const [storeNameError, setStoreNameError]   = useState<string | null>(null)
   const [startDateError, setStartDateError]   = useState<string | null>(null)
 
+  // Helper to extract store_no (e.g. '251732')
+  const getStoreNoStr = (s: any): string => {
+    return (s.storeNo || s.code || '').trim()
+  }
+
   // Initialize or reset store selection when dialog opens or storeList loads
   useEffect(() => {
     if (open && storeList && storeList.length > 0) {
       if (!selectedStoreId || !storeList.some(s => s.id === selectedStoreId)) {
         const defaultSt = storeList[0]
         setSelectedStoreId(defaultSt.id)
-        setStoreCodeInput(defaultSt.code || '')
+        setStoreCodeInput(getStoreNoStr(defaultSt))
         setStoreCodeError(null)
         setStoreNameError(null)
       }
     }
   }, [open, storeList])
 
-  // Handle 門市店號 Input Change (Two-way sync: Code -> Name & UUID)
+  // Handle 門市店號 (store_no) Input Change (Two-way sync: store_no -> Name & UUID)
   const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setStoreCodeInput(val)
@@ -63,7 +68,7 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       return
     }
 
-    const matched = storeList.find(s => (s.code || '').trim() === trimmed)
+    const matched = storeList.find(s => getStoreNoStr(s) === trimmed)
     if (matched) {
       setSelectedStoreId(matched.id)
       setStoreCodeError(null)
@@ -75,12 +80,12 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
     }
   }
 
-  // Handle 門市名稱 Select Change (Two-way sync: Name & UUID -> Code)
+  // Handle 門市名稱 Select Change (Two-way sync: Name & UUID -> store_no)
   const handleSelectStoreName = (selectedId: string) => {
     setSelectedStoreId(selectedId)
     const matched = storeList.find(s => s.id === selectedId)
     if (matched) {
-      setStoreCodeInput(matched.code || '')
+      setStoreCodeInput(getStoreNoStr(matched))
       setStoreCodeError(null)
       setStoreNameError(null)
     } else {
@@ -111,7 +116,7 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       hasErr = true
     }
 
-    const matched = storeList.find(s => s.id === selectedStoreId || (s.code || '').trim() === trimmedCode)
+    const matched = storeList.find(s => s.id === selectedStoreId || getStoreNoStr(s) === trimmedCode)
     if (!matched) {
       setStoreCodeError('查無此店號')
       hasErr = true
@@ -138,7 +143,8 @@ export default function CreateScheduleDialog({ open, onClose, onCreate }: Props)
       id: Math.random().toString(36).slice(2),
       storeId: matched.id, // Store ID (UUID) stored internally
       storeName: matched.name,
-      storeCode: matched.code || trimmedCode,
+      storeCode: matched.code || '',
+      storeNo: matched.storeNo || trimmedCode,
       weekStart: startDate,
       weekEnd,
       employees: [],

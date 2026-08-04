@@ -27,6 +27,7 @@ export interface CompanyRow {
 export interface StoreRow {
   id?: string
   store_code?: string | null
+  store_no?: string | null
   store_name: string
   phone?: string | null
   address?: string | null

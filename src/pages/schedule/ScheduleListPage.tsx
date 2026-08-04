@@ -314,7 +314,12 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
 
     // Helper: Resolve store to canonical Store ID
     const resolveStoreId = (s: Partial<Schedule>): string => {
-      const match = storeList.find(st => st.id === s.storeId || st.name === s.storeName || st.code === s.storeCode || st.code === s.storeId)
+      const match = storeList.find(st => 
+        st.id === s.storeId || 
+        (st.storeNo && (st.storeNo === s.storeNo || st.storeNo === s.storeId)) ||
+        (st.code && (st.code === s.storeCode || st.code === s.storeId)) || 
+        st.name === s.storeName
+      )
       if (match) return match.id
       return s.storeId || s.storeName || ''
     }

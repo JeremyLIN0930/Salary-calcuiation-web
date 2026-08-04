@@ -11,7 +11,7 @@ export class SupabaseStoreRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('id, store_code, store_name, address, phone')
+        .select('id, store_code, store_no, store_name, address, phone')
         .order('store_code', { ascending: true })
 
       if (error) {
@@ -35,7 +35,7 @@ export class SupabaseStoreRepository {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('id, store_code, store_name, address, phone')
+        .select('id, store_code, store_no, store_name, address, phone')
         .eq('id', id)
         .single()
 
