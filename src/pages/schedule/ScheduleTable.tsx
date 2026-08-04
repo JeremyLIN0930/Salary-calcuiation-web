@@ -349,7 +349,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
                 【否】
               </Typography>
               <Typography variant="body2" color="#4B5563">
-                僅此門市可使用。之後仍可到員工管理改成共用。
+                僅此班表使用（臨時工/代班）。不建立正式員工，不上架至員工管理。
               </Typography>
             </Box>
           </Stack>
@@ -361,7 +361,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
             onClick={() => handleConfirmAddToMaster(false)}
             sx={{ borderRadius: 2.5, fontWeight: 700, px: 2.5 }}
           >
-            否（僅此門市）
+            否（僅此班表）
           </Button>
           <Button
             variant="contained"

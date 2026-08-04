@@ -96,12 +96,14 @@ export class SupabaseScheduleRepository {
         let isTemp = false
         let empName = ''
 
-        if (s.employee_id && isValidUuid(s.employee_id)) {
+        if (s.employee_id && isValidUuid(s.employee_id) && !(s.remarks && s.remarks.startsWith('[temp:'))) {
           empKey = s.employee_id
           empName = empMap.get(s.employee_id) || s.employee_name || '未命名員工'
         } else {
-          // Temporary employee (employee_id is NULL)
-          empName = s.employee_name || (s.remarks && s.remarks.startsWith('[temp:') ? s.remarks.slice(6, -1) : '臨時工')
+          // Temporary employee (employee_id is NULL or fallback temp master)
+          empName = (s.employee_name && s.employee_name.trim()) 
+            ? s.employee_name.trim() 
+            : (s.remarks && s.remarks.startsWith('[temp:') ? s.remarks.slice(6, -1).trim() : '臨時工')
           empKey = `temp_${empName}`
           isTemp = true
         }
