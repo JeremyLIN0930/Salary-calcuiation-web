@@ -67,8 +67,8 @@ interface MasterEmployeeContextValue {
   state: State
   dispatch: React.Dispatch<Action>
   refresh: () => Promise<void>
-  /** Returns true on Supabase success, false on failure */
-  addEmployee:    (emp: MasterEmployee) => Promise<boolean>
+  /** Returns created MasterEmployee on success, null on failure */
+  addEmployee:    (emp: Partial<MasterEmployee>) => Promise<MasterEmployee | null>
   updateEmployee: (emp: MasterEmployee) => Promise<boolean>
   deleteEmployee: (id: string)         => Promise<boolean>
 }
@@ -120,32 +120,40 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
 
   // ── CRUD Helpers — each waits for Supabase and returns success ───────────
 
-  const addEmployee = useCallback(async (emp: MasterEmployee): Promise<boolean> => {
-    // Optimistic update
-    dispatch({ type: 'ADD', payload: emp })
-
+  const addEmployee = useCallback(async (emp: Partial<MasterEmployee>): Promise<MasterEmployee | null> => {
     if (!USE_SUPABASE) {
-      EmployeeRepository.save(emp)
-      return true
+      const fullEmp: MasterEmployee = {
+        id: emp.id || Math.random().toString(36).slice(2),
+        name: emp.name || '',
+        store: emp.store || '',
+        storeId: emp.storeId,
+        isShared: emp.isShared !== undefined ? emp.isShared : true,
+        hireDate: emp.hireDate || '',
+        remark: emp.remark || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      EmployeeRepository.save(fullEmp)
+      dispatch({ type: 'ADD', payload: fullEmp })
+      return fullEmp
     }
 
     try {
       console.log('② CONTEXT Payload:', emp)
       const result = await supabaseEmployeeRepository.create(emp)
-      if (result.success) {
+      if (result.success && result.data) {
         console.log('[MasterEmployee] Insert SUCCESS:', result.data)
-        return true
+        dispatch({ type: 'ADD', payload: result.data })
+        return result.data
       } else {
         console.error('[MasterEmployee] Insert FAILED:', result.error)
-        await refresh() // Rollback local optimistic
-        return false
+        return null
       }
     } catch (err) {
       console.error('[MasterEmployee] addEmployee exception:', err)
-      await refresh()
-      return false
+      return null
     }
-  }, [refresh])
+  }, [])
 
   const updateEmployee = useCallback(async (emp: MasterEmployee): Promise<boolean> => {
     dispatch({ type: 'UPDATE', payload: emp })

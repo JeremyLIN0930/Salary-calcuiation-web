@@ -33,12 +33,18 @@ export class EmployeeMapper {
       resolvedStoreName = '慶東門市'
     }
 
+    // Determine if shared employee
+    const isSharedVal = (row as any).is_shared !== undefined
+      ? Boolean((row as any).is_shared)
+      : (!row.store_id || row.notes?.includes('[shared]'))
+
     const employee: MasterEmployee = {
       id: row.id || '',
       name: row.name || '',
       store: resolvedStoreName,
       storeId: row.store_id || undefined,
       storeName: resolvedStoreName,
+      isShared: isSharedVal,
       hireDate: row.hire_date || '',
       remark: row.notes || '',
       createdAt: row.created_at || new Date().toISOString(),
@@ -63,16 +69,26 @@ export class EmployeeMapper {
       targetStoreId = DEFAULT_STORE_ID
     }
 
-    // Convert empty strings "" to null for optional columns
-    const cleanHireDate = model.hireDate && model.hireDate.trim() !== '' ? model.hireDate.trim() : null
-    const cleanNotes    = model.remark && model.remark.trim() !== '' ? model.remark.trim() : null
+    // Ensure valid store_id (default to DEFAULT_STORE_ID if null)
+    const finalStoreId = targetStoreId || DEFAULT_STORE_ID
+
+    // Convert empty strings "" to default string for NOT-NULL columns
+    const cleanHireDate = model.hireDate && model.hireDate.trim() !== '' ? model.hireDate.trim() : now.slice(0, 10)
+    
+    // Tag notes with [shared] or [local] for scope tracking
+    let cleanNotes = model.remark && model.remark.trim() !== '' ? model.remark.trim() : ''
+    if (model.isShared === true && !cleanNotes.includes('[shared]')) {
+      cleanNotes = (cleanNotes + ' [shared]').trim()
+    } else if (model.isShared === false && !cleanNotes.includes('[local]')) {
+      cleanNotes = (cleanNotes + ' [local]').trim()
+    }
 
     const row: MasterEmployeeRow = {
       name: model.name || '',
       company_id: DEFAULT_COMPANY_ID,
-      store_id: targetStoreId,
+      store_id: finalStoreId,
       hire_date: cleanHireDate,
-      notes: cleanNotes,
+      notes: cleanNotes || null,
       is_active: true,
       updated_at: model.updatedAt || now,
     }

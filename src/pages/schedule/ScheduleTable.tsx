@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react'
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Button, IconButton, TextField, Box, Typography, Tooltip,
-  Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions,
+  Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions, Stack,
 } from '@mui/material'
 import { ScheduleEmployee, Shift } from '../../types/schedule'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
@@ -32,7 +32,7 @@ interface ActiveCell {
 
 export default function ScheduleTable({ weekDates, employees, onChangeEmployees }: Props) {
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
-  const { state: masterState, dispatch: masterDispatch } = useMasterEmployees()
+  const { state: masterState, addEmployee: masterAddEmployee } = useMasterEmployees()
   const { showSnackbar } = useSnackbar()
 
   // State for Autocomplete input
@@ -57,13 +57,13 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
     }
 
     // 2. Check if exists in Master Employee database
-    const existsInMaster = masterState.employees.some(m => m.name.trim() === name)
+    const match = masterState.employees.find(m => m.name.trim() === name)
 
-    if (existsInMaster) {
-      // Add directly to schedule
+    if (match) {
+      // Add directly to schedule using existing Master Employee UUID
       const newEmp: ScheduleEmployee = {
-        id: Math.random().toString(36).slice(2),
-        name,
+        id: match.id,
+        name: match.name,
         shifts: [],
       }
       onChangeEmployees([...employees, newEmp])
@@ -71,40 +71,36 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
       showSnackbar(`已將「${name}」加入排班。`, 'success')
       setTimeout(() => inputRef.current?.focus(), 50)
     } else {
-      // Ask user if they want to sync to Master Employees as well
+      // Ask user if they want to join shared employee list
       setPendingNewName(name)
     }
   }
 
   // Handle Master Employee sync dialog answer
-  const handleConfirmAddToMaster = (addToMaster: boolean) => {
+  const handleConfirmAddToMaster = async (isShared: boolean) => {
     if (!pendingNewName) return
-    const name = pendingNewName
+    const name = pendingNewName.trim()
 
-    if (addToMaster) {
-      masterDispatch({
-        type: 'ADD',
-        payload: {
-          id: Math.random().toString(36).slice(2),
-          name,
-          store: '',
-          hireDate: '',
-          remark: '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      })
-    }
+    // ALWAYS create a master_employees record to get a REAL UUID for FK constraint
+    const newMasterEmp = await masterAddEmployee({
+      name,
+      isShared: isShared,
+      hireDate: new Date().toISOString().slice(0, 10),
+      remark: isShared ? '[shared]' : '[local]'
+    })
+
+    const realUuid = newMasterEmp?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
 
     const newEmp: ScheduleEmployee = {
-      id: Math.random().toString(36).slice(2),
+      id: realUuid,
       name,
       shifts: [],
     }
+
     onChangeEmployees([...employees, newEmp])
     setPendingNewName(null)
     setInputValue('')
-    showSnackbar(`已將「${name}」加入排班${addToMaster ? '並同步至共用員工名單' : ''}。`, 'success')
+    showSnackbar(`已將「${name}」加入排班（${isShared ? '共用員工' : '本店員工'}）。`, 'success')
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -305,33 +301,59 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
         />
       )}
 
-      {/* ── Dialog: 是否同時新增至共用員工名單 ── */}
+      {/* ── Dialog: 新增員工 是否加入共用員工名單 ── */}
       <Dialog
         open={!!pendingNewName}
         onClose={() => handleConfirmAddToMaster(false)}
-        PaperProps={{ sx: { borderRadius: 3, minWidth: 320 } }}
+        PaperProps={{ sx: { borderRadius: 4, p: 1, minWidth: 340, maxWidth: 460 } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>是否同時新增至共用員工名單？</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800, fontSize: 20 }}>
+          新增員工
+        </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            即將新增「{pendingNewName}」至本週排班，是否一併儲存至員工管理庫，供日後快速選擇？
+          <Typography variant="h6" fontWeight={700} color="text.primary" sx={{ mb: 1.5 }}>
+            是否加入共用員工名單？
           </Typography>
+          <Box sx={{ bgcolor: '#F9FAFB', p: 1.5, borderRadius: 2, border: '1px solid #E5E7EB', mb: 2 }}>
+            <Typography variant="subtitle2" fontWeight={800} color="primary.main">
+              員工姓名：{pendingNewName}
+            </Typography>
+          </Box>
+          <Stack spacing={1.5}>
+            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF' }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#1E40AF">
+                【是】
+              </Typography>
+              <Typography variant="body2" color="#1E3A8A">
+                可於所有門市快速選取。
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #E5E7EB', bgcolor: '#F9FAFB' }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#374151">
+                【否】
+              </Typography>
+              <Typography variant="body2" color="#4B5563">
+                僅此門市可使用。之後仍可到員工管理改成共用。
+              </Typography>
+            </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1.5, justifyContent: 'flex-end' }}>
           <Button
             variant="outlined"
+            color="inherit"
             onClick={() => handleConfirmAddToMaster(false)}
-            sx={{ borderRadius: 2, fontWeight: 700 }}
+            sx={{ borderRadius: 2.5, fontWeight: 700, px: 2.5 }}
           >
-            否 (僅新增至本週排班)
+            否（僅此門市）
           </Button>
           <Button
             variant="contained"
             color="primary"
             onClick={() => handleConfirmAddToMaster(true)}
-            sx={{ borderRadius: 2, fontWeight: 700 }}
+            sx={{ borderRadius: 2.5, fontWeight: 700, px: 2.5 }}
           >
-            是 (同步新增至共用名單)
+            是（加入共用名單）
           </Button>
         </DialogActions>
       </Dialog>

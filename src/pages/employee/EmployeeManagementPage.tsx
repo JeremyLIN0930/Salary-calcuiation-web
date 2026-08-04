@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import {
   Box, Typography, Button, Card, CardContent, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Stack, Tooltip,
+  DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Stack, Tooltip, Chip,
 } from '@mui/material'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
@@ -37,6 +37,7 @@ export default function EmployeeManagementPage() {
 
   const [name, setName]         = useState('')
   const [storeId, setStoreId]   = useState<string>(storeList[0]?.id || DEFAULT_STORES[0].id)
+  const [isShared, setIsShared] = useState<boolean>(true)
   const [hireDate, setHireDate] = useState('')
   const [remark, setRemark]     = useState('')
   const [errors, setErrors]     = useState<Record<string, string>>({})
@@ -45,6 +46,7 @@ export default function EmployeeManagementPage() {
     setEditingItem(null)
     setName('')
     setStoreId(storeList[0]?.id || DEFAULT_STORES[0].id)
+    setIsShared(true)
     setHireDate('')
     setRemark('')
     setErrors({})
@@ -56,6 +58,7 @@ export default function EmployeeManagementPage() {
     setName(emp.name)
     const match = storeList.find(s => s.id === emp.storeId || s.name === emp.store || s.id === emp.store)
     setStoreId(match ? match.id : (storeList[0]?.id || DEFAULT_STORES[0].id))
+    setIsShared(emp.isShared !== undefined ? emp.isShared : true)
     setHireDate(emp.hireDate || '')
     setRemark(emp.remark || '')
     setErrors({})
@@ -78,6 +81,7 @@ export default function EmployeeManagementPage() {
         store: selectedStoreObj.name,
         storeId: selectedStoreObj.id,
         storeName: selectedStoreObj.name,
+        isShared: isShared,
         hireDate,
         remark,
         updatedAt: now,
@@ -89,20 +93,20 @@ export default function EmployeeManagementPage() {
         showSnackbar('更新失敗，請確認網路連線或重試。', 'error')
       }
     } else {
-      const newEmp: MasterEmployee = {
-        id: '', // Supabase gen_random_uuid()
+      const newEmp: Partial<MasterEmployee> = {
         name: name.trim(),
         store: selectedStoreObj.name,
         storeId: selectedStoreObj.id,
         storeName: selectedStoreObj.name,
+        isShared: isShared,
         hireDate,
         remark,
         createdAt: now,
         updatedAt: now,
       }
       console.log('① FORM Submit Payload:', newEmp)
-      const ok = await addEmployee(newEmp)
-      if (ok) {
+      const res = await addEmployee(newEmp)
+      if (res) {
         showSnackbar('全新員工資料已成功建立！')
       } else {
         showSnackbar('新增失敗，請確認網路連線或重試。', 'error')
@@ -148,6 +152,7 @@ export default function EmployeeManagementPage() {
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8F9FA' }}>
                 <TableCell sx={{ fontWeight: 700, py: 1.5 }}>姓名</TableCell>
+                <TableCell sx={{ fontWeight: 700, py: 1.5 }}>類型</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1.5 }}>所屬門市</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1.5 }}>到職日</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1.5 }}>備註</TableCell>
@@ -157,13 +162,13 @@ export default function EmployeeManagementPage() {
             <TableBody>
               {state.loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                     資料載入中...
                   </TableCell>
                 </TableRow>
               ) : state.employees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                     目前尚無員工資料，請點擊上方按鈕建立第一個員工。
                   </TableCell>
                 </TableRow>
@@ -171,6 +176,15 @@ export default function EmployeeManagementPage() {
                 state.employees.map(emp => (
                   <TableRow key={emp.id} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{emp.name}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={emp.isShared !== false ? '共用員工' : '本店員工'}
+                        color={emp.isShared !== false ? 'primary' : 'default'}
+                        variant={emp.isShared !== false ? 'filled' : 'outlined'}
+                        size="small"
+                        sx={{ fontWeight: 700, fontSize: 11 }}
+                      />
+                    </TableCell>
                     <TableCell>{emp.storeName || emp.store}</TableCell>
                     <TableCell>{emp.hireDate || '—'}</TableCell>
                     <TableCell sx={{ color: 'text.secondary', maxWidth: 200 }}>
@@ -198,7 +212,7 @@ export default function EmployeeManagementPage() {
 
       {/* Add/Edit Master Employee Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>{editingItem ? '編輯員工資料' : '新增共用員工'}</DialogTitle>
+        <DialogTitle fontWeight={700}>{editingItem ? '編輯員工資料' : '新增員工'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <TextField
@@ -210,6 +224,18 @@ export default function EmployeeManagementPage() {
               helperText={errors.name}
               onChange={e => setName(e.target.value)}
             />
+
+            <FormControl fullWidth size="small">
+              <InputLabel>員工類型</InputLabel>
+              <Select
+                value={isShared ? 'shared' : 'local'}
+                label="員工類型"
+                onChange={e => setIsShared(e.target.value === 'shared')}
+              >
+                <MenuItem value="shared">共用員工（所有門市可選取）</MenuItem>
+                <MenuItem value="local">本店員工（僅所選門市可使用）</MenuItem>
+              </Select>
+            </FormControl>
 
             <FormControl fullWidth size="small">
               <InputLabel>門市</InputLabel>
