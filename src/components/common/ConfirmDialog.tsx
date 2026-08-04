@@ -9,12 +9,13 @@ interface Props {
   content: string
   confirmText?: string
   confirmColor?: 'primary' | 'error' | 'success'
+  hideCancelButton?: boolean
   onClose: () => void
   onConfirm: () => void
 }
 
 export default function ConfirmDialog({
-  open, title, content, confirmText = '確定', confirmColor = 'primary', onClose, onConfirm,
+  open, title, content, confirmText = '確定', confirmColor = 'primary', hideCancelButton = false, onClose, onConfirm,
 }: Props) {
   return (
     <Dialog
@@ -27,9 +28,11 @@ export default function ConfirmDialog({
         <DialogContentText>{content}</DialogContentText>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-        <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>
-          取消
-        </Button>
+        {!hideCancelButton && (
+          <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>
+            取消
+          </Button>
+        )}
         <Button variant="contained" color={confirmColor} onClick={onConfirm} sx={{ borderRadius: 2 }}>
           {confirmText}
         </Button>

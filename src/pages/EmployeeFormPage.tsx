@@ -9,6 +9,8 @@ import { useEmployees } from '../context/EmployeeContext'
 import { useMasterEmployees } from '../context/MasterEmployeeContext'
 import { useSnackbar } from '../context/SnackbarContext'
 import { MasterEmployee } from '../types/masterEmployee'
+import ConfirmDialog from '../components/common/ConfirmDialog'
+import { supabaseSalaryRepository } from '../repositories/SupabaseSalaryRepository'
 
 function MasterEmployeeSelect({ onSelect }: { onSelect: (emp: MasterEmployee) => void }) {
   const { state } = useMasterEmployees()
@@ -126,6 +128,8 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
 
   const [errors, setErrors] = useState<{ name?: string; month?: string; store?: string }>({})
   const [saving, setSaving] = useState(false)
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const [duplicateInfo, setDuplicateInfo] = useState<{ employeeName: string; monthLabel: string } | null>(null)
 
   // Auto-calc gross
   useEffect(() => {
@@ -172,15 +176,34 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
       createdAt: emp.createdAt || now,
     }
 
-    console.log("① FORM Payload", record)
-    const ok = await saveSalary(record)
+    try {
+      if (!editEmployee) {
+        const duplicateResult = await supabaseSalaryRepository.checkDuplicateSalary(record)
+        if (duplicateResult.success && duplicateResult.data?.duplicate) {
+          setDuplicateInfo({
+            employeeName: duplicateResult.data.employeeName || emp.name,
+            monthLabel: record.month.replace(/-(\d{2})$/, ' 年 $1 月').replace('-', ' 年 '),
+          })
+          setDuplicateDialogOpen(true)
+          setSaving(false)
+          return
+        }
+      }
 
-    if (ok) {
-      showSnackbar('薪資單已成功寫入 Supabase 並儲存！', 'success')
-      setSaving(false)
-      onBack()
-    } else {
-      showSnackbar('薪資單儲存失敗，請確認 Supabase 連線與 Console 錯誤！', 'error')
+      console.log("① FORM Payload", record)
+      const ok = await saveSalary(record)
+
+      if (ok) {
+        showSnackbar('薪資單已成功寫入 Supabase 並儲存！', 'success')
+        setSaving(false)
+        onBack()
+      } else {
+        showSnackbar('薪資單儲存失敗，請確認 Supabase 連線與 Console 錯誤！', 'error')
+        setSaving(false)
+      }
+    } catch (err: any) {
+      console.error('[EmployeeFormPage] save failed:', err)
+      showSnackbar(err?.message || '薪資單儲存失敗，請確認 Supabase 連線與 Console 錯誤！', 'error')
       setSaving(false)
     }
   }
@@ -202,6 +225,16 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
       </AppBar>
 
       <Box sx={{ maxWidth: 840, mx: 'auto', px: 2, pt: 3 }}>
+        <ConfirmDialog
+          open={duplicateDialogOpen}
+          title="⚠️ 本月薪資單已存在"
+          content={`員工：${duplicateInfo?.employeeName || emp.name}\n月份：${duplicateInfo?.monthLabel || emp.month}\n\n此員工本月份已建立薪資單，\n請至薪資列表編輯既有薪資單。`}
+          confirmText="我知道了"
+          confirmColor="primary"
+          hideCancelButton
+          onClose={() => setDuplicateDialogOpen(false)}
+          onConfirm={() => setDuplicateDialogOpen(false)}
+        />
 
         {/* ── 3 Summary Highlight Cards ── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>

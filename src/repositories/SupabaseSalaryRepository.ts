@@ -99,6 +99,60 @@ export class SupabaseSalaryRepository {
     }
   }
 
+  async checkDuplicateSalary(salaryData: Partial<Employee>): Promise<RepositoryResult<{ duplicate: boolean; employeeName: string | null; monthLabel: string | null; existingId: string | null }>> {
+    try {
+      const monthStr = salaryData.month || new Date().toISOString().slice(0, 7)
+      const yearVal = parseInt(monthStr.slice(0, 4), 10) || new Date().getFullYear()
+      const monthNum = parseInt(monthStr.slice(5, 7), 10) || 8
+      const employeeId = salaryData.employeeId && isValidUuid(salaryData.employeeId) ? salaryData.employeeId : null
+      const { employeeName } = await this.resolveEmployeeName(salaryData, employeeId)
+
+      const { data: existingMonth, error: findMonthErr } = await supabase
+        .from(this.tableName)
+        .select('id')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('year', yearVal)
+        .eq('month', monthNum)
+        .maybeSingle()
+
+      if (findMonthErr) {
+        console.error('========== salary_months duplicate-check lookup error ==========' )
+        console.error(findMonthErr)
+        console.error(JSON.stringify(findMonthErr, null, 2))
+        return successResult({ duplicate: false, employeeName, monthLabel: monthStr, existingId: null })
+      }
+
+      if (!existingMonth?.id) {
+        return successResult({ duplicate: false, employeeName, monthLabel: monthStr, existingId: null })
+      }
+
+      const { data: existingDetail, error: findDetailErr } = await supabase
+        .from('salary_items')
+        .select('id')
+        .eq('salary_month_id', existingMonth.id)
+        .eq(employeeId ? 'employee_id' : 'employee_name', employeeId || employeeName)
+        .maybeSingle()
+
+      if (findDetailErr) {
+        console.error('========== salary_items duplicate-check lookup error ==========' )
+        console.error(findDetailErr)
+        console.error(JSON.stringify(findDetailErr, null, 2))
+        return successResult({ duplicate: false, employeeName, monthLabel: monthStr, existingId: null })
+      }
+
+      return successResult({
+        duplicate: Boolean(existingDetail?.id),
+        employeeName,
+        monthLabel: monthStr,
+        existingId: existingDetail?.id || null,
+      })
+    } catch (err: unknown) {
+      console.error('❌ checkDuplicateSalary Exception:', err)
+      console.error(JSON.stringify(err, null, 2))
+      return successResult({ duplicate: false, employeeName: null, monthLabel: null, existingId: null })
+    }
+  }
+
   async getMonths(): Promise<RepositoryResult<string[]>> {
     try {
       const result = await supabase
