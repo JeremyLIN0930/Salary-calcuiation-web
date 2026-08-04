@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { Employee, createEmptyEmployee } from '../types/employee'
 import { SalaryMonthRow, SalaryItemTypeRow } from '../types/database'
-import { SalaryMapper } from '../mappers/SalaryMapper'
 import { DEFAULT_COMPANY_ID, isValidUuid } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
@@ -141,20 +140,47 @@ export class SupabaseSalaryRepository {
 
   async getSalaryRecords(monthKey?: string): Promise<RepositoryResult<Employee[]>> {
     try {
-      let query = supabase.from(this.tableName).select('*')
+      let query = supabase
+        .from(this.tableName)
+        .select('id, company_id, year, month, payroll_date, status, notes, created_at, updated_at, salary_items(*)')
+
       if (monthKey) {
         const yr = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
         const mo = parseInt(monthKey.slice(5, 7), 10) || 8
         query = query.eq('year', yr).eq('month', mo)
       }
 
-      const result = await query.order('updated_at', { ascending: false })
-      if (result.error) {
-        return errorResult(result.error, this.tableName, 'getSalaryRecords')
+      const { data, error } = await query.order('updated_at', { ascending: false })
+      if (error) {
+        return errorResult(error, this.tableName, 'getSalaryRecords')
       }
 
-      const rows = (result.data || []) as SalaryMonthRow[]
-      const models = rows.map(row => SalaryMapper.toModel(row))
+      const models: Employee[] = []
+      const monthRows = (data || []) as Array<SalaryMonthRow & { salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null }> }>
+
+      for (const monthRow of monthRows) {
+        const monthKeyValue = `${monthRow.year || new Date().getFullYear()}-${String(monthRow.month).padStart(2, '0')}`
+        const detailRows = monthRow.salary_items || []
+
+        for (const detailRow of detailRows) {
+          if (!detailRow.notes) continue
+          try {
+            const parsed = JSON.parse(detailRow.notes)
+            const base = createEmptyEmployee()
+            const employeeModel: Employee = {
+              ...base,
+              ...parsed,
+              id: detailRow.id || parsed.id || base.id,
+              employeeId: detailRow.employee_id || parsed.employeeId,
+              month: monthKeyValue,
+            }
+            models.push(employeeModel)
+          } catch (err) {
+            console.error('Failed to parse salary_item notes:', err)
+          }
+        }
+      }
+
       return successResult(models)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'getSalaryRecords')
@@ -183,6 +209,63 @@ export class SupabaseSalaryRepository {
         employeeId = matchedEmp?.id || null
       }
 
+      const { data: existingMonth, error: findMonthErr } = await supabase
+        .from(this.tableName)
+        .select('id')
+        .eq('company_id', DEFAULT_COMPANY_ID)
+        .eq('year', yearVal)
+        .eq('month', monthNum)
+        .maybeSingle()
+
+      if (findMonthErr) {
+        return errorResult(findMonthErr, this.tableName, 'saveSalary')
+      }
+
+      let salaryMonthId: string | null = existingMonth?.id || null
+      if (!salaryMonthId) {
+        const monthPayload: Record<string, any> = {
+          company_id: DEFAULT_COMPANY_ID,
+          year: yearVal,
+          month: monthNum,
+          payroll_date: salaryData.payDate || null,
+          status: 'draft',
+          notes: monthStr,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        const { data: insertedMonth, error: insertMonthErr } = await supabase
+          .from(this.tableName)
+          .insert([monthPayload])
+          .select('id')
+          .single()
+
+        if (insertMonthErr || !insertedMonth) {
+          return errorResult(insertMonthErr || '建立月份主檔失敗', this.tableName, 'saveSalary')
+        }
+
+        salaryMonthId = insertedMonth.id
+      } else {
+        const monthPayload: Record<string, any> = {
+          company_id: DEFAULT_COMPANY_ID,
+          year: yearVal,
+          month: monthNum,
+          payroll_date: salaryData.payDate || null,
+          status: 'draft',
+          notes: monthStr,
+          updated_at: new Date().toISOString(),
+        }
+
+        const { error: updateMonthErr } = await supabase
+          .from(this.tableName)
+          .update(monthPayload)
+          .eq('id', salaryMonthId)
+
+        if (updateMonthErr) {
+          return errorResult(updateMonthErr, this.tableName, 'saveSalary')
+        }
+      }
+
       const cleanPayload: Record<string, unknown> = {}
       for (const [key, val] of Object.entries(salaryData)) {
         if (val === undefined || val === null) continue
@@ -194,39 +277,108 @@ export class SupabaseSalaryRepository {
       }
       cleanPayload.employeeId = employeeId
 
-      const dbRow = SalaryMapper.toDbRow({
-        ...salaryData,
-        employeeId: employeeId || undefined,
-        month: monthStr,
-      })
-
-      const { data, error } = await supabase
-        .from(this.tableName)
-        .upsert([dbRow])
-        .select('*')
-        .single()
-
-      if (error) {
-        return errorResult(error, this.tableName, 'saveSalary')
+      const detailPayload: Record<string, any> = {
+        salary_month_id: salaryMonthId,
+        employee_id: employeeId || null,
+        employee_name: employeeId ? null : (salaryData.name || '').trim() || null,
+        notes: JSON.stringify(cleanPayload),
+        updated_at: new Date().toISOString(),
       }
 
-      const savedModel = SalaryMapper.toModel(data as SalaryMonthRow)
+      const { data: existingDetail, error: findDetailErr } = await supabase
+        .from('salary_items')
+        .select('id')
+        .eq('salary_month_id', salaryMonthId)
+        .eq(employeeId ? 'employee_id' : 'employee_name', employeeId || (salaryData.name || '').trim() || null)
+        .maybeSingle()
+
+      if (findDetailErr) {
+        return errorResult(findDetailErr, 'salary_items', 'saveSalary')
+      }
+
+      let savedDetail: any = null
+      if (existingDetail?.id) {
+        const { data: updatedData, error: updateErr } = await supabase
+          .from('salary_items')
+          .update(detailPayload)
+          .eq('id', existingDetail.id)
+          .select('*')
+          .single()
+
+        if (updateErr) {
+          return errorResult(updateErr, 'salary_items', 'saveSalary')
+        }
+        savedDetail = updatedData
+      } else {
+        const { data: insertedData, error: insertErr } = await supabase
+          .from('salary_items')
+          .insert([detailPayload])
+          .select('*')
+          .single()
+
+        if (insertErr || !insertedData) {
+          return errorResult(insertErr || '建立薪資明細失敗', 'salary_items', 'saveSalary')
+        }
+        savedDetail = insertedData
+      }
+
+      const savedModel: Employee = {
+        ...createEmptyEmployee(),
+        ...JSON.parse(savedDetail.notes || '{}'),
+        id: savedDetail.id,
+        employeeId: savedDetail.employee_id || undefined,
+        month: monthStr,
+      }
+
       return successResult(savedModel)
     } catch (err: unknown) {
       console.error('❌ Supabase saveSalary Exception:', err)
-      return errorResult(err, this.tableName, 'saveSalary')
+      return errorResult(err, 'salary_items', 'saveSalary')
     }
   }
 
   async deleteSalary(id: string): Promise<RepositoryResult<boolean>> {
     try {
-      const { error } = await supabase
-        .from(this.tableName)
-        .delete()
+      const { data: detailRow, error: findDetailErr } = await supabase
+        .from('salary_items')
+        .select('id, salary_month_id')
         .eq('id', id)
+        .maybeSingle()
 
-      if (error) {
-        return errorResult(error, this.tableName, 'deleteSalary')
+      if (findDetailErr) {
+        return errorResult(findDetailErr, 'salary_items', 'deleteSalary')
+      }
+
+      if (detailRow?.id) {
+        const { error: deleteDetailErr } = await supabase
+          .from('salary_items')
+          .delete()
+          .eq('id', detailRow.id)
+
+        if (deleteDetailErr) {
+          return errorResult(deleteDetailErr, 'salary_items', 'deleteSalary')
+        }
+
+        const { data: remainingItems, error: checkErr } = await supabase
+          .from('salary_items')
+          .select('id')
+          .eq('salary_month_id', detailRow.salary_month_id)
+          .maybeSingle()
+
+        if (checkErr) {
+          return errorResult(checkErr, 'salary_items', 'deleteSalary')
+        }
+
+        if (!remainingItems) {
+          const { error: deleteMonthErr } = await supabase
+            .from(this.tableName)
+            .delete()
+            .eq('id', detailRow.salary_month_id)
+
+          if (deleteMonthErr) {
+            return errorResult(deleteMonthErr, this.tableName, 'deleteSalary')
+          }
+        }
       }
 
       return successResult(true)
