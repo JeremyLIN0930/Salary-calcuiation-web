@@ -224,7 +224,10 @@ export class SupabaseSalaryRepository {
         .maybeSingle()
 
       if (findMonthErr) {
-        return errorResult(findMonthErr, this.tableName, 'saveSalary')
+        console.error('========== salary_months lookup error ==========' )
+        console.error(findMonthErr)
+        console.error(JSON.stringify(findMonthErr, null, 2))
+        throw findMonthErr
       }
 
       let salaryMonthId: string | null = existingMonth?.id || null
@@ -247,7 +250,10 @@ export class SupabaseSalaryRepository {
           .single()
 
         if (insertMonthErr || !insertedMonth) {
-          return errorResult(insertMonthErr || '建立月份主檔失敗', this.tableName, 'saveSalary')
+          console.error('========== salary_months insert error ==========' )
+          console.error(insertMonthErr)
+          console.error(JSON.stringify(insertMonthErr, null, 2))
+          throw insertMonthErr || new Error('建立月份主檔失敗')
         }
 
         salaryMonthId = insertedMonth.id
@@ -268,37 +274,86 @@ export class SupabaseSalaryRepository {
           .eq('id', salaryMonthId)
 
         if (updateMonthErr) {
-          return errorResult(updateMonthErr, this.tableName, 'saveSalary')
+          console.error('========== salary_months update error ==========' )
+          console.error(updateMonthErr)
+          console.error(JSON.stringify(updateMonthErr, null, 2))
+          throw updateMonthErr
         }
       }
 
-      const cleanPayload: Record<string, unknown> = {}
-      for (const [key, val] of Object.entries(salaryData)) {
-        if (val === undefined || val === null) continue
-        if (typeof val === 'string' && val.trim() === '') {
-          cleanPayload[key] = null
-        } else {
-          cleanPayload[key] = val
+      const normalizeStringValue = (value: unknown): string | null => {
+        if (value === undefined || value === null) return null
+        if (typeof value === 'string') {
+          const trimmed = value.trim()
+          return trimmed || null
         }
+        return String(value)
       }
-      cleanPayload.employeeId = employeeId
 
       const normalizeNumericValue = (value: unknown): number | null => {
         if (value === undefined || value === null || value === '') return null
-        const num = typeof value === 'number' ? value : Number(value)
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null
+        const num = Number(value)
         return Number.isFinite(num) ? num : null
       }
 
+      const normalizeDateValue = (value: unknown): string | null => {
+        if (value === undefined || value === null || value === '') return null
+        if (typeof value === 'string') {
+          const trimmed = value.trim()
+          if (!trimmed) return null
+          if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+          const date = new Date(trimmed)
+          return Number.isNaN(date.getTime()) ? trimmed : date.toISOString().slice(0, 10)
+        }
+        if (value instanceof Date) return value.toISOString().slice(0, 10)
+        return String(value)
+      }
+
       const detailPayload: Record<string, any> = {
-        salary_month_id: salaryMonthId,
+        salary_month_id: salaryMonthId ?? null,
         employee_id: employeeId || null,
-        employee_name: employeeId ? null : (salaryData.name || '').trim() || null,
+        employee_name: employeeId ? null : normalizeStringValue(salaryData.name),
         base_salary: normalizeNumericValue(salaryData.baseSalary),
+        attendance_days: normalizeNumericValue((salaryData as any).attendanceDays ?? (salaryData as any).attendance_days),
+        overtime_hours: normalizeNumericValue((salaryData as any).overtimeHours ?? (salaryData as any).overtime_hours),
+        labor_insurance: normalizeNumericValue(salaryData.laborInsurance),
+        health_insurance: normalizeNumericValue(salaryData.healthInsurance),
+        tax: normalizeNumericValue(salaryData.incomeTax),
+        bonus: normalizeNumericValue(salaryData.bonusItems),
+        allowance: normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
+        deduction: normalizeNumericValue(salaryData.otherDeductions),
         net_salary: normalizeNumericValue(salaryData.netSalary),
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
 
-      console.log('💾 [SupabaseSalaryRepository.saveSalary] salary_items payload:', JSON.stringify(detailPayload, null, 2))
+      const payload = [detailPayload]
+      console.log('========== salary_items payload ==========' )
+      console.log(JSON.stringify(payload, null, 2))
+
+      const debugFields = [
+        'salary_month_id',
+        'employee_id',
+        'employee_name',
+        'base_salary',
+        'hourly_wage',
+        'attendance_days',
+        'attendance_hours',
+        'overtime_hours',
+        'gross_salary',
+        'labor_insurance',
+        'health_insurance',
+        'labor_pension',
+        'tax',
+        'bonus',
+        'allowance',
+        'deduction',
+        'net_salary',
+      ]
+      for (const field of debugFields) {
+        console.log(`${field}:`, payload[0]?.[field] ?? null)
+      }
 
       const { data: existingDetail, error: findDetailErr } = await supabase
         .from('salary_items')
@@ -308,7 +363,10 @@ export class SupabaseSalaryRepository {
         .maybeSingle()
 
       if (findDetailErr) {
-        return errorResult(findDetailErr, 'salary_items', 'saveSalary')
+        console.error('========== salary_items lookup error ==========' )
+        console.error(findDetailErr)
+        console.error(JSON.stringify(findDetailErr, null, 2))
+        throw findDetailErr
       }
 
       let savedDetail: any = null
@@ -321,8 +379,10 @@ export class SupabaseSalaryRepository {
           .single()
 
         if (updateErr) {
-          console.error('❌ [SupabaseSalaryRepository.saveSalary] salary_items update error:', JSON.stringify(updateErr, null, 2))
-          return errorResult(updateErr, 'salary_items', 'saveSalary')
+          console.error('========== Supabase Response ==========' )
+          console.error(updateErr)
+          console.error(JSON.stringify(updateErr, null, 2))
+          throw updateErr
         }
         savedDetail = updatedData
       } else {
@@ -333,8 +393,10 @@ export class SupabaseSalaryRepository {
           .single()
 
         if (insertErr || !insertedData) {
-          console.error('❌ [SupabaseSalaryRepository.saveSalary] salary_items insert error:', JSON.stringify(insertErr, null, 2))
-          return errorResult(insertErr || '建立薪資明細失敗', 'salary_items', 'saveSalary')
+          console.error('========== Supabase Response ==========' )
+          console.error(insertErr)
+          console.error(JSON.stringify(insertErr, null, 2))
+          throw insertErr || new Error('建立薪資明細失敗')
         }
         savedDetail = insertedData
       }
@@ -350,7 +412,8 @@ export class SupabaseSalaryRepository {
       return successResult(savedModel)
     } catch (err: unknown) {
       console.error('❌ Supabase saveSalary Exception:', err)
-      return errorResult(err, 'salary_items', 'saveSalary')
+      console.error(JSON.stringify(err, null, 2))
+      throw err
     }
   }
 
