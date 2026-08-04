@@ -160,10 +160,10 @@ export class SupabaseScheduleRepository {
 
       sch.employees = schEmployees
 
-      console.log("Schedule ID", sch.id)
-      console.log("Shifts", schShifts)
-      console.log("Employees", schEmployees)
-      console.log("Returned Schedule", sch)
+      console.log("Populate Result")
+      console.log(sch.id)
+      console.log(schEmployees)
+      console.log(schEmployees.length)
     }
   }
 
@@ -760,7 +760,19 @@ export class SupabaseScheduleRepository {
 
       // 9. Reconstruct fully populated schedule model to return
       const savedModel = ScheduleMapper.weekToModel(weekData as ScheduleWeekRow)
+      
+      // Preserve input employees list so employees with 0 shifts in DB are retained
+      savedModel.employees = (schedule.employees || []).map(e => ({
+        ...e,
+        shifts: e.shifts || []
+      }))
+
       await this.populateSchedulesWithShifts([savedModel])
+
+      console.log("===== SAVE RETURN =====")
+      console.log(savedModel)
+      console.log(savedModel.employees)
+      console.log(savedModel.employees.length)
 
       return successResult(savedModel)
     } catch (err: unknown) {
