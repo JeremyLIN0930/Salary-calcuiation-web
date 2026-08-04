@@ -42,6 +42,24 @@ export class SupabaseSalaryRepository {
     return String(value)
   }
 
+  private async findSalaryMonthId(monthKey: string): Promise<string | null> {
+    const yr = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
+    const mo = parseInt(monthKey.slice(5, 7), 10) || 8
+
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('id')
+      .eq('year', yr)
+      .eq('month', mo)
+      .limit(1)
+
+    if (error) {
+      throw error
+    }
+
+    return data?.[0]?.id ?? null
+  }
+
   private async resolveEmployeeName(salaryData: Partial<Employee>, employeeId: string | null): Promise<{ employeeId: string | null; employeeName: string }> {
     const candidateName = this.normalizeStringValue((salaryData as any).employee_name)
       || this.normalizeStringValue((salaryData as any).employeeName)
@@ -252,27 +270,48 @@ export class SupabaseSalaryRepository {
 
   async deleteMonth(monthKey: string): Promise<RepositoryResult<boolean>> {
     try {
-      const yr = parseInt(monthKey.slice(0, 4), 10) || new Date().getFullYear()
-      const mo = parseInt(monthKey.slice(5, 7), 10) || 8
+      const salaryMonthId = await this.findSalaryMonthId(monthKey)
 
-      const result = await supabase
+      if (!salaryMonthId) {
+        return successResult(true)
+      }
+
+      const { error: deleteItemsErr } = await supabase
+        .from('salary_items')
+        .delete()
+        .eq('salary_month_id', salaryMonthId)
+
+      if (deleteItemsErr) {
+        console.error('code:', deleteItemsErr.code)
+        console.error('message:', deleteItemsErr.message)
+        console.error('details:', deleteItemsErr.details)
+        console.error('hint:', deleteItemsErr.hint)
+        console.error('status:', (deleteItemsErr as any).status || 'N/A')
+        return errorResult(deleteItemsErr, 'salary_items', 'deleteMonth')
+      }
+
+      const { error: deleteMonthErr } = await supabase
         .from(this.tableName)
         .delete()
-        .eq('year', yr)
-        .eq('month', mo)
+        .eq('id', salaryMonthId)
 
-      if (result.error) {
-        console.error('code:', result.error.code)
-        console.error('message:', result.error.message)
-        console.error('details:', result.error.details)
-        console.error('hint:', result.error.hint)
-        console.error('status:', (result.error as any).status || 'N/A')
-        return errorResult(result.error, this.tableName, 'deleteMonth')
+      if (deleteMonthErr) {
+        console.error('code:', deleteMonthErr.code)
+        console.error('message:', deleteMonthErr.message)
+        console.error('details:', deleteMonthErr.details)
+        console.error('hint:', deleteMonthErr.hint)
+        console.error('status:', (deleteMonthErr as any).status || 'N/A')
+        return errorResult(deleteMonthErr, this.tableName, 'deleteMonth')
       }
+
       return successResult(true)
     } catch (err: unknown) {
       return errorResult(err, this.tableName, 'deleteMonth')
     }
+  }
+
+  async deleteSalaryMonth(monthKey: string): Promise<RepositoryResult<boolean>> {
+    return this.deleteMonth(monthKey)
   }
 
   async getSalaryRecords(monthKey?: string): Promise<RepositoryResult<Employee[]>> {
@@ -520,15 +559,16 @@ export class SupabaseSalaryRepository {
 
   async deleteSalary(id: string): Promise<RepositoryResult<boolean>> {
     try {
-      const { data: detailRow, error: findDetailErr } = await supabase
+      const { data: detailRows, error: findDetailErr } = await supabase
         .from('salary_items')
         .select('id, salary_month_id')
         .eq('id', id)
-        .maybeSingle()
 
       if (findDetailErr) {
         return errorResult(findDetailErr, 'salary_items', 'deleteSalary')
       }
+
+      const detailRow = detailRows?.[0] ?? null
 
       if (detailRow?.id) {
         const { error: deleteDetailErr } = await supabase
@@ -544,13 +584,12 @@ export class SupabaseSalaryRepository {
           .from('salary_items')
           .select('id')
           .eq('salary_month_id', detailRow.salary_month_id)
-          .maybeSingle()
 
         if (checkErr) {
           return errorResult(checkErr, 'salary_items', 'deleteSalary')
         }
 
-        if (!remainingItems) {
+        if (!remainingItems || remainingItems.length === 0) {
           const { error: deleteMonthErr } = await supabase
             .from(this.tableName)
             .delete()

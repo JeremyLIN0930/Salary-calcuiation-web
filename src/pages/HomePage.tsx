@@ -259,7 +259,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
     if (group) {
       const ok = await deleteMonth(deleteMonthKey)
       if (ok) {
-        showSnackbar(`已刪除「${group.displayTitle}」及其所有員工薪資資料。`, 'info')
+        showSnackbar('已刪除本月份所有薪資資料', 'info')
       } else {
         showSnackbar(`刪除「${group.displayTitle}」失敗，請確認網路錯誤。`, 'error')
       }
