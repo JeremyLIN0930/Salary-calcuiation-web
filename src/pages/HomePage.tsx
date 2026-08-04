@@ -374,7 +374,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                 sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
               >
                 <AddSvg />
-                ＋ 建立月份
+                建立月份
               </Button>
             </Stack>
           }
