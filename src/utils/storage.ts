@@ -24,7 +24,7 @@ export function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (err) {
-    console.warn('[storage] Failed to save:', key, err)
+    console.error('[storage] Failed to save:', key, err)
   }
 }
 

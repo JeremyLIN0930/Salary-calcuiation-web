@@ -190,8 +190,7 @@ export default function EmployeeFormPage({ editEmployee, onBack }: Props) {
         }
       }
 
-      console.log("① FORM Payload", record)
-      const ok = await saveSalary(record)
+const ok = await saveSalary(record)
 
       if (ok) {
         showSnackbar('薪資單已成功寫入 Supabase 並儲存！', 'success')

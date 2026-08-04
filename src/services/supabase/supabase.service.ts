@@ -17,10 +17,8 @@ export class SupabaseService {
         return false
       }
 
-      console.log('Supabase Connected')
       if (data) {
-        console.log('[Supabase Debug] Data query successful:', data)
-      }
+        }
       return true
     } catch (err: any) {
       console.error('Supabase Connection Error:', err?.message || err)

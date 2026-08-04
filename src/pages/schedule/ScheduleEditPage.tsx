@@ -49,8 +49,6 @@ export default function ScheduleEditPage({ schedule: initialSchedule, onBack }: 
   const { showSnackbar } = useSnackbar()
 
   // Step 7 Logs
-  console.log("🔍 [Step 7 ScheduleEdit received schedule]:", initialSchedule)
-  console.log("🔍 [Step 7 ScheduleEdit received schedule.employees]:", initialSchedule?.employees)
 
   // Context schedule source of truth
   const contextSchedule = useMemo(() => {

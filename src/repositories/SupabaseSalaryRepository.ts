@@ -207,10 +207,7 @@ export class SupabaseSalaryRepository {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      console.log('🚀 [SupabaseSalaryRepository.createMonth] INSERT Payload:\n' + JSON.stringify(dbRow, null, 2))
-      
       const result = await supabase.from(this.tableName).insert([dbRow]).select('*').single()
-      console.log('④ Supabase createMonth Result:', result)
 
       if (result.error) {
         console.error('code:', result.error.code)
@@ -468,18 +465,13 @@ export class SupabaseSalaryRepository {
         }
       }
 
-      console.log('========== salary_items payload ==========' )
-      console.table(payloadDebugRows)
-
       if (insertPayloads.length > 0) {
-        console.log('========== bulk insert salary_items ==========' )
         const insertResult = await supabase
           .from('salary_items')
           .insert(insertPayloads)
           .select('*')
 
-        console.log('========== Supabase Response ==========' )
-        console.log(insertResult)
+        console.error(insertResult)
         if (insertResult.error) {
           console.error(insertResult.error)
           console.error(JSON.stringify(insertResult.error, null, 2))
@@ -496,8 +488,7 @@ export class SupabaseSalaryRepository {
           .select('*')
           .single()
 
-        console.log('========== Supabase Response ==========' )
-        console.log(updateResult)
+        console.error(updateResult)
         if (updateResult.error) {
           console.error(updateResult.error)
           console.error(JSON.stringify(updateResult.error, null, 2))

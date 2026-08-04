@@ -104,7 +104,6 @@ export default function EmployeeManagementPage() {
         createdAt: now,
         updatedAt: now,
       }
-      console.log('① FORM Submit Payload:', newEmp)
       const res = await addEmployee(newEmp)
       if (res) {
         showSnackbar('全新員工資料已成功建立！')

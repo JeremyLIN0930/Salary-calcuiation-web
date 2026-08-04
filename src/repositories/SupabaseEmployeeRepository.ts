@@ -30,7 +30,6 @@ export class SupabaseEmployeeRepository {
         return errorResult(error, this.tableName, 'getAll')
       }
 
-      console.log("Supabase SELECT", data)
       const rows = (data || []) as MasterEmployeeRow[]
       const models = rows.map(row => EmployeeMapper.toModel(row))
       return successResult(models)
@@ -72,7 +71,6 @@ export class SupabaseEmployeeRepository {
   async create(employee: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow(employee)
-      console.log('③ REPOSITORY INSERT Payload:', JSON.stringify(dbRow, null, 2))
 
       const { data, error } = await supabase
         .from(this.tableName)
@@ -84,7 +82,6 @@ export class SupabaseEmployeeRepository {
         console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'create')
       }
-      console.log('④ SUPABASE RESPONSE Data:', data)
       return successResult(EmployeeMapper.toModel(data as MasterEmployeeRow))
     } catch (err: unknown) {
       console.error('④ SUPABASE RESPONSE Exception:', err)
@@ -95,7 +92,6 @@ export class SupabaseEmployeeRepository {
   async update(id: string, data: Partial<MasterEmployee>): Promise<RepositoryResult<MasterEmployee>> {
     try {
       const dbRow = EmployeeMapper.toDbRow({ ...data, id })
-      console.log('③ REPOSITORY UPDATE Payload:', JSON.stringify(dbRow, null, 2))
 
       const { data: resultData, error } = await supabase
         .from(this.tableName)
@@ -108,7 +104,6 @@ export class SupabaseEmployeeRepository {
         console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'update')
       }
-      console.log('④ SUPABASE RESPONSE Data:', resultData)
       return successResult(EmployeeMapper.toModel(resultData as MasterEmployeeRow))
     } catch (err: unknown) {
       console.error('④ SUPABASE RESPONSE Exception:', err)
@@ -118,7 +113,6 @@ export class SupabaseEmployeeRepository {
 
   async delete(id: string): Promise<RepositoryResult<boolean>> {
     try {
-      console.log('③ REPOSITORY DELETE Target ID:', id)
       const { error } = await supabase
         .from(this.tableName)
         .delete()
@@ -128,7 +122,6 @@ export class SupabaseEmployeeRepository {
         console.error('④ SUPABASE RESPONSE Error:', error)
         return errorResult(error, this.tableName, 'delete')
       }
-      console.log('④ SUPABASE RESPONSE Success')
       return successResult(true)
     } catch (err: unknown) {
       console.error('④ SUPABASE RESPONSE Exception:', err)

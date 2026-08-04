@@ -10,9 +10,7 @@ const isValidKey = supabaseAnonKey && supabaseAnonKey !== 'your-anon-key-here' &
 export const isSupabaseEnvConfigured = Boolean(isValidUrl && isValidKey)
 
 if (!isSupabaseEnvConfigured) {
-  console.warn('⚠️ Missing Supabase Environment Variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env')
-} else {
-  console.log('🔧 Supabase client initializing...', supabaseUrl)
+  console.error('Supabase environment variables are not configured.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

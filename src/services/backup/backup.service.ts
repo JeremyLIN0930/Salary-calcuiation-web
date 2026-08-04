@@ -99,7 +99,6 @@ export class BackupService {
 
   private static migrateVersionIfNeeded(data: any): void {
     if (data.version !== this.CURRENT_VERSION) {
-      console.log(`[BackupService] Backup version is ${data.version}, current is ${this.CURRENT_VERSION}`)
     }
   }
 
@@ -110,7 +109,6 @@ export class BackupService {
   }
 
   static async clearAllData(): Promise<void> {
-    console.log('[BackupService] Clear data called')
   }
 
   /**

@@ -117,7 +117,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (USE_SUPABASE) {
         const result = await supabaseScheduleRepository.getAllSchedules()
         if (result.success && result.data) {
-          console.log("🔍 [Step 6 ScheduleContext.refresh result.data]", result.data)
           dispatch({ type: 'SET_SCHEDULES', payload: result.data })
         } else {
           console.error('[ScheduleContext] Supabase load error:', result.error)
@@ -139,7 +138,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   }, [refresh])
 
   useEffect(() => {
-    console.log("Context schedules", state.schedules)
   }, [state.schedules])
 
   // ── Intercept dispatch to sync Supabase ───────────────────────────────────

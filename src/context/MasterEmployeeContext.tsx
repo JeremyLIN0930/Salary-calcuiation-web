@@ -89,13 +89,9 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
 
     try {
       if (USE_SUPABASE) {
-        console.log('[MasterEmployee] Loading from Supabase master_employees...')
         const result = await supabaseEmployeeRepository.getAll()
         if (result.success && result.data) {
-          console.log("Employees From Repository", result.data)
-          console.log("State Before Set", state)
           dispatch({ type: 'SET', payload: result.data as MasterEmployee[] })
-          console.log("State After Set", result.data)
         } else {
           console.error('[MasterEmployee] Supabase load failed:', result.error)
           dispatch({ type: 'SET', payload: [] })
@@ -118,10 +114,8 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
 
   const addEmployee = useCallback(async (emp: Partial<MasterEmployee>): Promise<MasterEmployee | null> => {
     try {
-      console.log('② CONTEXT Payload:', emp)
       const result = await supabaseEmployeeRepository.create(emp)
       if (result.success && result.data) {
-        console.log('[MasterEmployee] Insert SUCCESS:', result.data)
         dispatch({ type: 'ADD', payload: result.data })
         return result.data
       } else {
@@ -138,7 +132,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
     dispatch({ type: 'UPDATE', payload: emp })
 
     try {
-      console.log('[MasterEmployee] Updating master_employees:', emp.id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await supabaseEmployeeRepository.update(emp.id, emp as any)
       if (result.success) {
@@ -159,7 +152,6 @@ export function MasterEmployeeProvider({ children }: { children: React.ReactNode
     dispatch({ type: 'DELETE', payload: id })
 
     try {
-      console.log('[MasterEmployee] Deleting from master_employees:', id)
       const result = await supabaseEmployeeRepository.delete(id)
       if (result.success) {
         return true

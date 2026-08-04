@@ -134,7 +134,6 @@ export async function createSchedulePDFDoc(
   customFileName?: string,
   weekIndex?: number
 ): Promise<{ doc: jsPDF; blob: Blob; url: string; fileName: string }> {
-  console.log('[PDF Debug] Starting createSchedulePDFDoc for store:', schedule.storeName)
   const { default: html2canvas } = await import('html2canvas')
 
   const container = document.createElement('div')
@@ -160,14 +159,12 @@ export async function createSchedulePDFDoc(
     doc.addImage(imgData, 'JPEG', 0, 0, 297, 210)
 
     const blob = doc.output('blob')
-    console.log('[PDF Debug] Schedule PDF Blob Size:', blob.size)
 
     if (blob.size === 0) {
       throw new Error('PDF 建立失敗，Blob Size 為 0')
     }
 
     const url = URL.createObjectURL(blob)
-    console.log('[PDF Debug] Schedule PDF URL:', url)
 
     const { getScheduleFileName } = await import('./pdfFileNameHelper')
     const fileName = customFileName || getScheduleFileName(schedule, 'single', weekIndex)

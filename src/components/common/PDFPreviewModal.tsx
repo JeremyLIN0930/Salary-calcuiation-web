@@ -20,7 +20,6 @@ export default function PDFPreviewModal({
 }: Props) {
   React.useEffect(() => {
     if (open) {
-      console.log('[PDF Preview Debug] Modal Opened. pdfUrl:', pdfUrl, 'loading:', loading, 'error:', pdfError)
     }
   }, [open, pdfUrl, loading, pdfError])
 

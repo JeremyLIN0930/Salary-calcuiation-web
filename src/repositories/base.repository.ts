@@ -1,15 +1,10 @@
-import { debugLogger } from '../utils/debugLogger'
-
 export interface RepositoryResult<T> {
   success: boolean
   data: T | null
   error: any
 }
 
-export function successResult<T>(data: T, actionName?: string): RepositoryResult<T> {
-  if (actionName) {
-    debugLogger.addLog(actionName, 'Success')
-  }
+export function successResult<T>(data: T): RepositoryResult<T> {
   return {
     success: true,
     data,
@@ -21,23 +16,11 @@ export function errorResult<T>(
   error: any,
   table?: string,
   method?: string,
-  actionName?: string
 ): RepositoryResult<T> {
   const errMsg = typeof error === 'object' && error !== null && 'message' in error ? error.message : String(error)
 
-  if (actionName) {
-    debugLogger.addLog(actionName, 'Failed', errMsg)
-  }
-
-  // Enhanced Error Diagnostic Group
-  console.group(`❌ [Repository Error] ${table || 'Unknown Table'} :: ${method || 'Unknown Method'}`)
-  console.error('Table:', table || 'N/A')
-  console.error('Method:', method || 'N/A')
-  console.error('Error Details:', error)
-  if (error && error.stack) {
-    console.error('Stack Trace:', error.stack)
-  }
-  console.groupEnd()
+  console.error(`[Repository Error] ${table || 'Unknown Table'} :: ${method || 'Unknown Method'}`)
+  console.error(errMsg)
 
   return {
     success: false,

@@ -13,7 +13,6 @@ export async function checkSupabaseConnection(): Promise<{ success: boolean; err
       return { success: false, error }
     }
 
-    console.log('✅ Supabase Connected')
     return { success: true, error: null }
   } catch (err: any) {
     console.error('❌ Supabase Connection Failed')
