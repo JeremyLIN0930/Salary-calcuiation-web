@@ -32,9 +32,10 @@ export class ScheduleMapper {
       }
     }
 
-    const storeName = parsed.storeName || (row as any).stores?.store_name || '慶東門市'
-    const storeCode = parsed.storeCode || (row as any).stores?.store_code || (storeName.includes('南醫') ? '002' : '001')
-    const storeId = parsed.storeId || (row as any).store_id || (storeCode === '002' ? 'c468eee2-8135-5b1b-9bb1-77d73325ecef' : 'b357ddf1-7024-4a0a-8aa0-66c62214dbeb')
+    const storeName = (row as any).stores?.store_name || parsed.storeName || '慶東門市'
+    const storeCode = (row as any).stores?.store_code || parsed.storeCode || '001'
+    const storeNo   = (row as any).stores?.store_no || parsed.storeNo || (storeCode === '001' ? '251732' : storeCode === '002' ? '129213' : storeCode || '')
+    const storeId   = (row as any).store_id || parsed.storeId || ''
 
     const startDateVal = row.start_date || parsed.weekStart || new Date().toISOString().slice(0, 10)
     const dayOfMonth = parseInt(startDateVal.slice(8, 10), 10) || 1
@@ -44,6 +45,7 @@ export class ScheduleMapper {
       id: row.id || parsed.id || '',
       storeId,
       storeCode,
+      storeNo,
       storeName,
       weekStart: startDateVal,
       weekEnd: row.end_date || parsed.weekEnd || new Date().toISOString().slice(0, 10),
