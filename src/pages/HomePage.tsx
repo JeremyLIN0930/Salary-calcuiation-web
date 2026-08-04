@@ -4,7 +4,7 @@ import {
   Stack, Divider, Chip, IconButton, Tooltip, Dialog,
   DialogTitle, DialogContent, DialogActions,
   TextField, InputAdornment, Grid, CircularProgress, Checkbox,
-  FormControl, InputLabel, Select, MenuItem, Alert,
+  FormControl, InputLabel, Select, MenuItem, Alert, Skeleton,
 } from '@mui/material'
 import { useEmployees } from '../context/EmployeeContext'
 import { useSnackbar } from '../context/SnackbarContext'
@@ -14,6 +14,7 @@ import PageHeader from '../components/common/PageHeader'
 import PageContainer from '../components/common/PageContainer'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import DeleteConfirmBottomSheet from '../components/common/DeleteConfirmBottomSheet'
 import { groupSalariesByMonth, MonthGroup } from '../utils/salaryMigration'
 
 const AddSvg = () => (
@@ -495,26 +496,22 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
 
         {filteredMonthGroups.length === 0 ? (
           <EmptyState
-            title="找不到符合條件的薪資單"
-            subtitle="請嘗試微調搜尋條件或點擊下方按鈕重置。"
-            actionLabel="✕ 清除篩選"
-            onAction={handleClearFilter}
+            title="目前尚無薪資資料"
+            subtitle="點擊右上角「建立月份」按鈕即可開始管理薪資。"
+            actionLabel="＋ 建立月份"
+            onAction={() => setCreateModalOpen(true)}
           />
         ) : (
           <Grid container spacing={2.5}>
             {filteredMonthGroups.map(group => (
-              <Grid item xs={12} key={group.monthKey}>
+              <Grid item xs={12} sm={6} key={group.monthKey}>
                 <Card
                   elevation={0}
+                  className="animate-card-fade-up"
                   sx={{
                     borderRadius: '24px',
-                    borderColor: '#ECECEC',
-                    borderWidth: '1.5px',
-                    borderStyle: 'solid',
-                    bgcolor: '#FFFFFF',
-                    transition: 'all 200ms ease',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
                     p: { xs: 2.5, sm: 3 },
+                    transition: 'transform 200ms ease, box-shadow 200ms ease',
                     '&:hover': {
                       transform: 'translateY(-2px)',
                       boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
@@ -652,6 +649,17 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Delete Month Confirmation Bottom Sheet / Dialog */}
+        <DeleteConfirmBottomSheet
+          open={!!deleteMonthKey}
+          title="確定刪除此薪資月份？"
+          monthLabel={deleteMonthKey ? deleteMonthKey.replace('-', ' 年 ') + ' 月' : ''}
+          employeeCount={monthGroups.find(g => g.monthKey === deleteMonthKey)?.employeeCount || 0}
+          warningText="該月份包含之所有員工薪資資料將永久刪除且無法復原。"
+          onClose={() => setDeleteMonthKey(null)}
+          onConfirm={handleConfirmDeleteMonth}
+        />
 
         {/* ── Dialog: 複製上個月員工確認 ── */}
         <Dialog open={copyPrevConfirmOpen} onClose={() => handleConfirmCopyPrevMonth(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>

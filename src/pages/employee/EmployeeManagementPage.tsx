@@ -3,7 +3,7 @@ import {
   Box, Typography, Button, Card, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Stack, Tooltip, Chip,
-  InputAdornment,
+  InputAdornment, Skeleton,
 } from '@mui/material'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
@@ -237,11 +237,13 @@ export default function EmployeeManagementPage() {
 
             <TableBody>
               {state.loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#64748B' }}>
-                    資料載入中...
-                  </TableCell>
-                </TableRow>
+                [1, 2, 3, 4].map(i => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6} sx={{ py: 2 }}>
+                      <Skeleton variant="text" height={28} />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : filteredEmployees.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 5, color: '#64748B' }}>

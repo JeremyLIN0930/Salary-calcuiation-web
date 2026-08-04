@@ -3,7 +3,7 @@ import {
   Box, Typography, Button, Card, CardContent, Grid, Stack,
   Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
   Tooltip, CircularProgress, Checkbox, TextField, InputAdornment,
-  FormControl, InputLabel, Select, MenuItem, Alert,
+  FormControl, InputLabel, Select, MenuItem, Alert, Skeleton,
 } from '@mui/material'
 import { useSchedule } from '../../context/ScheduleContext'
 import { useSnackbar } from '../../context/SnackbarContext'
@@ -14,6 +14,7 @@ import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
 import EmptyState from '../../components/common/EmptyState'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
+import DeleteConfirmBottomSheet from '../../components/common/DeleteConfirmBottomSheet'
 import { groupSchedulesByMonth, ScheduleMonthGroup, getMonthKeyFromSchedule } from '../../utils/scheduleMigration'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
@@ -422,28 +423,32 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
           </Stack>
         </Card>
 
-        {filteredMonthGroups.length === 0 ? (
+        {state.loading ? (
+          <Grid container spacing={2.5}>
+            {[1, 2, 3, 4].map(i => (
+              <Grid item xs={12} sm={6} key={i}>
+                <Skeleton variant="rounded" height={160} sx={{ borderRadius: '24px' }} />
+              </Grid>
+            ))}
+          </Grid>
+        ) : filteredMonthGroups.length === 0 ? (
           <EmptyState
-            title="目前沒有符合的月份"
-            subtitle={`在 ${selectedYear} 年 ${selectedMonth === 'all' ? '' : selectedMonth + ' 月'} 查無排班紀錄。`}
-            actionLabel="＋ 建立第一個月份"
+            title="目前沒有排班月份"
+            subtitle="建立第一個月份開始管理班表。"
+            actionLabel="＋ 建立月份"
             onAction={handleOpenCreateMonthModal}
           />
         ) : (
           <Grid container spacing={2.5}>
             {filteredMonthGroups.map(group => (
-              <Grid item xs={12} key={group.monthKey}>
+              <Grid item xs={12} sm={6} key={group.monthKey}>
                 <Card
                   elevation={0}
+                  className="animate-card-fade-up"
                   sx={{
                     borderRadius: '24px',
-                    borderColor: '#ECECEC',
-                    borderWidth: '1.5px',
-                    borderStyle: 'solid',
-                    bgcolor: '#FFFFFF',
-                    transition: 'all 200ms ease',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
                     p: { xs: 2.5, sm: 3 },
+                    transition: 'transform 200ms ease, box-shadow 200ms ease',
                     '&:hover': {
                       transform: 'translateY(-2px)',
                       boxShadow: '0 12px 32px rgba(0,0,0,0.08)',
@@ -561,6 +566,16 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
             </Button>
           </DialogActions>
         </Dialog>
+        {/* Delete Month Confirmation Bottom Sheet / Dialog */}
+        <DeleteConfirmBottomSheet
+          open={!!deleteMonthKey}
+          title="確定刪除此排班月份？"
+          monthLabel={deleteMonthKey ? deleteMonthKey.replace('-', ' 年 ') + ' 月' : ''}
+          employeeCount={monthGroups.find(g => g.monthKey === deleteMonthKey)?.weekCount || 0}
+          warningText="該月份包含之所有每週排班表與班表紀錄將永久刪除且無法復原。"
+          onClose={() => setDeleteMonthKey(null)}
+          onConfirm={handleConfirmDeleteMonth}
+        />
       </PageContainer>
     )
   }

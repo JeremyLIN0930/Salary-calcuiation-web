@@ -55,3 +55,26 @@ input[type=number] {
 html {
   scroll-behavior: smooth;
 }
+
+/* Card Entrance Micro-Animation (180~220ms Fade Up) */
+@keyframes cardFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-fade-up {
+  animation: cardFadeUp 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Button Active Scale Micro-Interaction */
+.MuiButton-root:active,
+.MuiIconButton-root:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease;
+}
