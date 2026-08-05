@@ -239,7 +239,7 @@ const ok = await saveSalary(record)
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={4}>
             <SummaryCard
-              title="應發薪資"
+              title="薪資合計"
               value={`$ ${(emp.grossSalary ?? 0).toLocaleString('zh-TW')}`}
               color="primary"
             />
@@ -345,11 +345,11 @@ const ok = await saveSalary(record)
             <Grid item xs={12}>
               <Paper variant="outlined" sx={{ p: 2.5, borderColor: emp.isGrossManual ? 'warning.main' : 'primary.main', borderWidth: 2, borderRadius: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={800} color="primary.main">應發薪資小計</Typography>
+                  <Typography variant="subtitle2" fontWeight={800} color="primary.main">薪資合計小計</Typography>
                   {emp.isGrossManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 11 }} />}
                   {!emp.isGrossManual && <Chip label="自動計算" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: 11 }} />}
                 </Box>
-                <MoneyField label="應發薪資" value={emp.grossSalary}
+                <MoneyField label="薪資合計" value={emp.grossSalary}
                   onChange={v => { set('isGrossManual', true); set('grossSalary', v) }} />
                 {emp.isGrossManual && (
                   <Button size="small" sx={{ mt: 1 }} onClick={() => set('isGrossManual', false)}>↺ 恢復自動計算</Button>
@@ -414,7 +414,7 @@ const ok = await saveSalary(record)
               <Box sx={{ bgcolor: '#1A237E', borderRadius: 4, p: 3, color: 'white' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                    實發金額（應發薪資 − 代扣合計）
+                    實發金額（薪資合計 − 代扣合計）
                   </Typography>
                   {emp.isNetManual && <Chip label="手動覆寫中" size="small" color="warning" sx={{ height: 20, fontSize: 10 }} />}
                 </Box>

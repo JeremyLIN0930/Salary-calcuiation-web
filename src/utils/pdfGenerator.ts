@@ -1,17 +1,35 @@
 import type { Employee } from '../types/employee'
 import { jsPDF } from 'jspdf'
-
-function fmt(n: number | undefined | null): string {
-  const v = n ?? 0
-  return v === 0 ? '—' : v.toLocaleString('zh-TW')
-}
-
-function fmtD(n: number | undefined | null): string {
-  const v = n ?? 0
-  return v === 0 ? '—' : String(v) + ' 日'
-}
-
+import { safeNum, calcGross, calcDeductions } from '../types/employee'
 import { stripSystemTags } from './textUtils'
+
+function fmt(n: any): string {
+  const v = safeNum(n)
+  return v === 0 ? '-' : v.toLocaleString('zh-TW')
+}
+
+function fmtD(n: any): string {
+  const v = safeNum(n)
+  return v === 0 ? '-' : String(v) + ' 日'
+}
+
+function getPayDateForMonth(monthStr: string, customPayDate?: string): string {
+  if (customPayDate && customPayDate.trim() !== '' && customPayDate !== '-' && customPayDate !== '—') {
+    return customPayDate
+  }
+  if (!monthStr) return ''
+  const cleanMonth = monthStr.trim()
+  const parts = cleanMonth.split('-')
+  if (parts.length === 2) {
+    const y = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+      const lastDay = new Date(y, m, 0).getDate()
+      return `${y}/${String(m).padStart(2, '0')}/${String(lastDay).padStart(2, '0')}`
+    }
+  }
+  return ''
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -28,6 +46,24 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 
   const cleanRemark = stripSystemTags(emp.remark)
   const remarkText = cleanRemark ? escapeHtml(cleanRemark) : '無'
+
+  // Safe Total Calculations
+  const calculatedGross = calcGross(emp)
+  const grossSalary = (emp.isGrossManual && emp.grossSalary !== undefined && emp.grossSalary !== null)
+    ? safeNum(emp.grossSalary)
+    : calculatedGross
+
+  const calculatedDeductions = calcDeductions(emp)
+  const totalDeductions = (emp.isDeductionManual && emp.totalDeductions !== undefined && emp.totalDeductions !== null)
+    ? safeNum(emp.totalDeductions)
+    : calculatedDeductions
+
+  const calculatedNet = grossSalary - totalDeductions
+  const netSalary = (emp.isNetManual && emp.netSalary !== undefined && emp.netSalary !== null)
+    ? safeNum(emp.netSalary)
+    : calculatedNet
+
+  const payDateDisplay = getPayDateForMonth(emp.month, emp.payDate)
 
   const div = document.createElement('div')
   div.style.cssText = [
@@ -263,19 +299,19 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 <table class="info-table">
   <tr>
     <td class="field-label">姓　名</td>
-    <td class="field-value" style="font-size:15px;font-weight:700;">${emp.name || '—'}</td>
+    <td class="field-value" style="font-size:15px;font-weight:700;">${emp.name || ''}</td>
     <td class="field-label">月　份</td>
-    <td class="field-value">${monthStr || '—'}</td>
+    <td class="field-value">${monthStr || ''}</td>
   </tr>
   <tr>
     <td class="field-label">門　市</td>
-    <td class="field-value">${emp.store || '—'}</td>
+    <td class="field-value">${emp.store || ''}</td>
     <td class="field-label">到 職 日</td>
-    <td class="field-value">${emp.hireDate || '—'}</td>
+    <td class="field-value">${emp.hireDate || ''}</td>
   </tr>
   <tr>
     <td class="field-label">發薪日期</td>
-    <td class="field-value">${emp.payDate || '—'}</td>
+    <td class="field-value">${payDateDisplay || ''}</td>
     <td class="field-label"></td>
     <td class="field-value"></td>
   </tr>
@@ -296,7 +332,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
     </tr>
     <tr>
       <td class="name-cell">健保費</td><td class="amt-cell">${fmt(emp.healthInsurance)}</td>
-      <td class="name-cell">勞退個人自提</td><td class="amt-cell-last">${fmt(emp.laborPension)}</td>
+      <td class="name-cell">健保費扣款</td><td class="amt-cell-last">${fmt(emp.healthInsurance)}</td>
     </tr>
     <tr>
       <td class="name-cell">職務津貼</td><td class="amt-cell">${fmt(emp.positionAllowance)}</td>
@@ -339,10 +375,10 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
       <td class="name-cell"></td><td class="amt-cell-last"></td>
     </tr>
     <tr class="subtotal-row">
-      <td class="name-cell">應　發　薪　資</td>
-      <td class="amt-cell" style="font-size:14px;">$ ${(emp.grossSalary ?? 0).toLocaleString('zh-TW')}</td>
+      <td class="name-cell">薪　資　合　計</td>
+      <td class="amt-cell" style="font-size:14px;">$ ${grossSalary.toLocaleString('zh-TW')}</td>
       <td class="name-cell">代　扣　合　計</td>
-      <td class="amt-cell-last" style="font-size:14px;">$ ${(emp.totalDeductions ?? 0).toLocaleString('zh-TW')}</td>
+      <td class="amt-cell-last" style="font-size:14px;">$ ${totalDeductions.toLocaleString('zh-TW')}</td>
     </tr>
   </tbody>
 </table>
@@ -350,7 +386,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 <!-- 考勤記錄 -->
 <table class="attend-table">
   <thead>
-    <tr><th colspan="4">考　勤　記　錄</th></tr>
+    <tr><th colspan="4">考　勤　記錄</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -365,7 +401,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 <!-- 退休金 -->
 <table class="pension-table">
   <thead>
-    <tr><th colspan="4">退　休　金　提　撥</th></tr>
+    <tr><th colspan="4">退　休Settings　提　撥</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -385,8 +421,8 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 
 <!-- 實發金額 -->
 <div class="net-block">
-  <div class="net-label">實　發　金　額</div>
-  <div class="net-amount">$ ${(emp.netSalary ?? 0).toLocaleString('zh-TW')}</div>
+  <div class="net-label">實　發　金額</div>
+  <div class="net-amount">$ ${netSalary.toLocaleString('zh-TW')}</div>
 </div>
 `
   return div

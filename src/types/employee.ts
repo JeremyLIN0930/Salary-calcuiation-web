@@ -90,19 +90,37 @@ export function createEmptyEmployee(): Employee {
   }
 }
 
+export function safeNum(v: any): number {
+  if (v === null || v === undefined || v === '' || v === '-' || v === '—') return 0
+  const n = Number(v)
+  return isNaN(n) ? 0 : n
+}
+
 export function calcGross(e: Employee): number {
-  return e.baseSalary + e.positionAllowance + e.otherAllowance
-    + e.nightAllowance + e.bonusItems + e.otherAdditions
-    + e.specialLeaveAllowance + e.weekdayOT + e.restDayOT + e.holidayOT
-    - e.sickLeaveDeduction
+  return safeNum(e.baseSalary)
+    + safeNum(e.healthInsurance)
+    + safeNum(e.positionAllowance)
+    + safeNum(e.otherAllowance)
+    + safeNum(e.nightAllowance)
+    + safeNum(e.bonusItems)
+    + safeNum(e.otherAdditions)
+    + safeNum(e.specialLeaveAllowance)
+    + safeNum(e.weekdayOT)
+    + safeNum(e.restDayOT)
+    + safeNum(e.holidayOT)
+    - safeNum(e.sickLeaveDeduction)
 }
 
 export function calcDeductions(e: Employee): number {
-  return e.laborInsurance + e.healthInsurance + e.laborPension + e.incomeTax + e.otherDeductions
+  return safeNum(e.laborInsurance)
+    + safeNum(e.healthInsurance)
+    + safeNum(e.laborPension)
+    + safeNum(e.incomeTax)
+    + safeNum(e.otherDeductions)
 }
 
 export function fmtMoney(n: number | undefined | null): string {
-  const val = n ?? 0
-  if (val === 0) return '—'
+  const val = safeNum(n)
+  if (val === 0) return '-'
   return val.toLocaleString('zh-TW')
 }
