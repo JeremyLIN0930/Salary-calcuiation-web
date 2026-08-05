@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Button, IconButton, TextField, Box, Typography, Tooltip,
@@ -64,11 +64,20 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
       }))
   }, [masterState.employees])
 
+  // Reset search input value whenever modal is opened
+  useEffect(() => {
+    if (addEmpModalOpen) {
+      setInputValue('')
+    }
+  }, [addEmpModalOpen])
+
   // Custom filter options for Autocomplete
   const filterOptions = (options: MasterOptionItem[], state: { inputValue: string }) => {
     const q = state.inputValue.trim().toLowerCase()
+    // 1. Result list initially displays NO options until user types keyword
+    if (!q) return []
+
     const filtered = options.filter(opt => {
-      if (!q) return true
       const nameMatch = opt.name.toLowerCase().includes(q)
       const storeMatch = opt.store ? opt.store.toLowerCase().includes(q) : false
       return nameMatch || storeMatch
@@ -374,7 +383,10 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
       {/* Add Employee Dialog Modal */}
       <Dialog
         open={addEmpModalOpen}
-        onClose={() => setAddEmpModalOpen(false)}
+        onClose={() => {
+          setAddEmpModalOpen(false)
+          setInputValue('')
+        }}
         fullWidth
         maxWidth="xs"
         PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
@@ -389,6 +401,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
             openOnFocus
             options={masterOptions}
             filterOptions={filterOptions}
+            noOptionsText={inputValue.trim() ? '未找到相符員工' : '請輸入員工姓名進行搜尋...'}
             getOptionLabel={(option) => {
               if (typeof option === 'string') return option
               return option.name
