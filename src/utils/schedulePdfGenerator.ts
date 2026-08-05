@@ -47,7 +47,7 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
     const shiftCells = weekDaysInfo.map(wd => {
       const shift = emp.shifts.find(s => s.date === wd.dateStr)
       if (!shift || !shift.type || shift.type.trim() === '') {
-        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 6px 2px;"></td>`
+        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 4px 2px; vertical-align: middle;"></td>`
       }
 
       const hasRemark = Boolean(shift.remark && shift.remark.trim() !== '')
@@ -67,13 +67,15 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
         }
 
         const subText = hasRemark
-          ? `<div style="font-size: 11px; font-weight: 500; color: #16A34A; margin-top: 2px;">${cleanRemark}</div>`
+          ? `<div style="font-size: 11.5px; font-weight: 700; color: #16A34A; margin-top: 2px; line-height: 1.15;">${cleanRemark}</div>`
           : ''
 
         return `
-          <td style="border: 1px solid #000; text-align: center; font-size: 12px; font-weight: bold; color: #000; padding: 6px 2px; vertical-align: middle;">
-            <div>${timeText}</div>
-            ${subText}
+          <td style="border: 1px solid #000; text-align: center; padding: 4px 2px; vertical-align: middle;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.18;">
+              <div style="font-size: 13.5px; font-weight: 700; color: #000000;">${timeText}</div>
+              ${subText}
+            </div>
           </td>
         `
       }
@@ -88,24 +90,26 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
       }
       const label = labelMap[shift.type] || ''
       if (!label) {
-        return `<td style="border: 1px solid #000; text-align: center; font-size: 13px; padding: 6px 2px;"></td>`
+        return `<td style="border: 1px solid #000; text-align: center; padding: 4px 2px; vertical-align: middle;"></td>`
       }
       const isRed = shift.type === 'off' || shift.type === 'personal'
       const subText = hasRemark
-        ? `<div style="font-size: 11px; font-weight: 500; color: #16A34A; margin-top: 2px;">${cleanRemark}</div>`
+        ? `<div style="font-size: 11.5px; font-weight: 700; color: #16A34A; margin-top: 2px; line-height: 1.15;">${cleanRemark}</div>`
         : ''
 
       return `
-        <td style="border: 1px solid #000; text-align: center; padding: 6px 2px; vertical-align: middle;">
-          <div style="font-size: 15px; font-weight: 900; color: ${isRed ? '#c00' : '#000'};">${label}</div>
-          ${subText}
+        <td style="border: 1px solid #000; text-align: center; padding: 4px 2px; vertical-align: middle;">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.18;">
+            <div style="font-size: 14px; font-weight: 700; color: ${isRed ? '#DC2626' : '#000000'};">${label}</div>
+            ${subText}
+          </div>
         </td>
       `
     }).join('')
 
     return `
-      <tr style="height: 42px;">
-        <td style="border: 1px solid #000; width: 140px; text-align: center; font-size: 15px; font-weight: bold; padding: 4px 8px;">${emp.name}</td>
+      <tr style="height: 44px;">
+        <td style="border: 1px solid #000; width: 140px; text-align: center; font-size: 14px; font-weight: 700; color: #111827; padding: 4px 8px; vertical-align: middle;">${emp.name}</td>
         ${shiftCells}
       </tr>
     `
