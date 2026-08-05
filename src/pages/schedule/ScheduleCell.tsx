@@ -121,7 +121,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
             </Typography>
           )}
           {shift.remark && (
-            <Typography variant="caption" sx={{ fontSize: '11px', color: '#1D4ED8', mt: 0.2, fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ fontSize: '11px', color: '#16A34A', mt: 0.2, fontWeight: 500 }}>
               {shift.remark}
             </Typography>
           )}
@@ -168,7 +168,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
           {conf ? conf.label : '休'}
         </Typography>
         {shift.remark && (
-          <Typography variant="caption" sx={{ fontSize: '11px', color: '#1D4ED8', mt: 0.2, fontWeight: 500 }}>
+          <Typography variant="caption" sx={{ fontSize: '11px', color: '#16A34A', mt: 0.2, fontWeight: 500 }}>
             {shift.remark}
           </Typography>
         )}

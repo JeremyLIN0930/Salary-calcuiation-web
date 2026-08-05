@@ -57,27 +57,21 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
         const s = shift.startTime ? shift.startTime.trim() : ''
         const e = shift.endTime ? shift.endTime.trim() : ''
         let timeText = '上班'
-        let durationHours = 0
 
         if (s && e) {
           const [sH, sM = 0] = s.split(':').map(Number)
           const [eH, eM = 0] = e.split(':').map(Number)
-          if (!isNaN(sH) && !isNaN(eH)) {
-            const startMin = sH * 60 + sM
-            const endMin = (eH < sH ? eH + 24 : eH) * 60 + eM
-            durationHours = Math.max(0, Math.round((endMin - startMin) / 60 * 10) / 10)
-          }
           const sFormatted = sM === 0 ? String(sH) : s.slice(0, 5)
           const eFormatted = eM === 0 ? String(eH) : e.slice(0, 5)
           timeText = `${sFormatted}~${eFormatted}`
         }
 
         const subText = hasRemark
-          ? `<div style="font-size: 11px; font-weight: 500; color: #475569; margin-top: 2px;">${cleanRemark}</div>`
-          : (durationHours > 0 ? `<div style="font-size: 10px; font-weight: 500; color: #64748B; margin-top: 2px;">${durationHours} 小時</div>` : '')
+          ? `<div style="font-size: 11px; font-weight: 500; color: #16A34A; margin-top: 2px;">${cleanRemark}</div>`
+          : ''
 
         return `
-          <td style="border: 1px solid #000; text-align: center; font-size: 12px; font-weight: bold; color: #000; padding: 4px 2px; vertical-align: middle;">
+          <td style="border: 1px solid #000; text-align: center; font-size: 12px; font-weight: bold; color: #000; padding: 6px 2px; vertical-align: middle;">
             <div>${timeText}</div>
             ${subText}
           </td>
@@ -98,11 +92,11 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
       }
       const isRed = shift.type === 'off' || shift.type === 'personal'
       const subText = hasRemark
-        ? `<div style="font-size: 11px; font-weight: 500; color: #475569; margin-top: 2px;">${cleanRemark}</div>`
+        ? `<div style="font-size: 11px; font-weight: 500; color: #16A34A; margin-top: 2px;">${cleanRemark}</div>`
         : ''
 
       return `
-        <td style="border: 1px solid #000; text-align: center; padding: 4px 2px; vertical-align: middle;">
+        <td style="border: 1px solid #000; text-align: center; padding: 6px 2px; vertical-align: middle;">
           <div style="font-size: 15px; font-weight: 900; color: ${isRed ? '#c00' : '#000'};">${label}</div>
           ${subText}
         </td>
