@@ -98,7 +98,13 @@ export class SupabaseSalaryRepository {
   }
 
   private buildSalaryItemPayload(salaryMonthId: string | null, employeeId: string | null, employeeName: string | null, salaryData: Partial<Employee>): Record<string, any> {
-    return {
+    const fullJsonRemarks = JSON.stringify({
+      ...salaryData,
+      employeeId: employeeId || salaryData.employeeId,
+      name: employeeName || salaryData.name,
+    })
+
+    const payload = {
       salary_month_id: salaryMonthId ?? null,
       employee_id: employeeId || null,
       employee_name: employeeName || null,
@@ -112,9 +118,15 @@ export class SupabaseSalaryRepository {
       allowance: this.normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
       deduction: this.normalizeNumericValue(salaryData.otherDeductions),
       net_salary: this.normalizeNumericValue(salaryData.netSalary),
+      remarks: fullJsonRemarks,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
+
+    console.log("=== Salary Save Payload ===")
+    console.log(payload)
+
+    return payload
   }
 
   async checkDuplicateSalary(salaryData: Partial<Employee>): Promise<RepositoryResult<{ duplicate: boolean; employeeName: string | null; monthLabel: string | null; existingId: string | null }>> {
@@ -356,37 +368,52 @@ export class SupabaseSalaryRepository {
       }
 
       const models: Employee[] = []
-      const monthRows = (data || []) as Array<SalaryMonthRow & { payroll_date?: string | null; salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null; base_salary?: number | null; labor_insurance?: number | null; health_insurance?: number | null; tax?: number | null; bonus?: number | null; allowance?: number | null; deduction?: number | null; net_salary?: number | null }> }>
+      const monthRows = (data || []) as Array<SalaryMonthRow & { payroll_date?: string | null; notes?: string | null; salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; remarks?: string | null; notes?: string | null; base_salary?: number | null; labor_insurance?: number | null; health_insurance?: number | null; tax?: number | null; bonus?: number | null; allowance?: number | null; deduction?: number | null; net_salary?: number | null }> }>
 
       for (const monthRow of monthRows) {
         const monthKeyValue = `${monthRow.year || new Date().getFullYear()}-${String(monthRow.month).padStart(2, '0')}`
         const detailRows = monthRow.salary_items || []
 
         for (const detailRow of detailRows) {
-          const parsedNotes = detailRow.notes ? (() => {
+          const rawRemarks = detailRow.remarks || detailRow.notes
+          const parsedRemarks = rawRemarks ? (() => {
             try {
-              return JSON.parse(detailRow.notes)
+              return JSON.parse(rawRemarks)
             } catch {
-              return null
+              return { remark: rawRemarks }
             }
           })() : null
 
           const base = createEmptyEmployee()
           const employeeModel: Employee = {
             ...base,
-            ...(parsedNotes || {}),
-            id: detailRow.id || parsedNotes?.id || base.id,
-            employeeId: detailRow.employee_id || parsedNotes?.employeeId,
-            name: parsedNotes?.name || detailRow.employee_name || base.name,
+            ...(parsedRemarks || {}),
+            id: detailRow.id || parsedRemarks?.id || base.id,
+            employeeId: detailRow.employee_id || parsedRemarks?.employeeId,
+            name: parsedRemarks?.name || detailRow.employee_name || base.name,
             month: monthKeyValue,
-            baseSalary: detailRow.base_salary ?? parsedNotes?.baseSalary ?? base.baseSalary,
-            laborInsurance: detailRow.labor_insurance ?? parsedNotes?.laborInsurance ?? base.laborInsurance,
-            healthInsurance: detailRow.health_insurance ?? parsedNotes?.healthInsurance ?? base.healthInsurance,
-            incomeTax: detailRow.tax ?? parsedNotes?.incomeTax ?? base.incomeTax,
-            bonusItems: detailRow.bonus ?? parsedNotes?.bonusItems ?? base.bonusItems,
-            otherAllowance: detailRow.allowance ?? parsedNotes?.otherAllowance ?? base.otherAllowance,
-            otherDeductions: detailRow.deduction ?? parsedNotes?.otherDeductions ?? base.otherDeductions,
-            netSalary: detailRow.net_salary ?? parsedNotes?.netSalary ?? base.netSalary,
+            baseSalary: detailRow.base_salary ?? parsedRemarks?.baseSalary ?? base.baseSalary,
+            positionAllowance: parsedRemarks?.positionAllowance ?? base.positionAllowance,
+            otherAllowance: detailRow.allowance ?? parsedRemarks?.otherAllowance ?? base.otherAllowance,
+            nightAllowance: parsedRemarks?.nightAllowance ?? base.nightAllowance,
+            bonusItems: detailRow.bonus ?? parsedRemarks?.bonusItems ?? base.bonusItems,
+            otherAdditions: parsedRemarks?.otherAdditions ?? base.otherAdditions,
+            specialLeaveAllowance: parsedRemarks?.specialLeaveAllowance ?? base.specialLeaveAllowance,
+            weekdayOT: parsedRemarks?.weekdayOT ?? base.weekdayOT,
+            restDayOT: parsedRemarks?.restDayOT ?? base.restDayOT,
+            holidayOT: parsedRemarks?.holidayOT ?? base.holidayOT,
+            sickLeaveDeduction: parsedRemarks?.sickLeaveDeduction ?? base.sickLeaveDeduction,
+            laborInsurance: detailRow.labor_insurance ?? parsedRemarks?.laborInsurance ?? base.laborInsurance,
+            healthInsurance: detailRow.health_insurance ?? parsedRemarks?.healthInsurance ?? base.healthInsurance,
+            laborPension: parsedRemarks?.laborPension ?? base.laborPension,
+            incomeTax: detailRow.tax ?? parsedRemarks?.incomeTax ?? base.incomeTax,
+            otherDeductions: detailRow.deduction ?? parsedRemarks?.otherDeductions ?? base.otherDeductions,
+            annualLeaveRemaining: parsedRemarks?.annualLeaveRemaining ?? base.annualLeaveRemaining,
+            carriedOverLeave: parsedRemarks?.carriedOverLeave ?? base.carriedOverLeave,
+            companyPensionContribution: parsedRemarks?.companyPensionContribution ?? base.companyPensionContribution,
+            monthlyPensionContribution: parsedRemarks?.monthlyPensionContribution ?? base.monthlyPensionContribution,
+            netSalary: detailRow.net_salary ?? parsedRemarks?.netSalary ?? base.netSalary,
+            remark: parsedRemarks?.remark || monthRow.notes || '',
           }
 
           // Fallback payDate from month record if empty
