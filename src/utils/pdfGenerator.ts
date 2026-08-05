@@ -401,7 +401,7 @@ function createPayslipElement(emp: Employee): HTMLDivElement {
 <!-- 退休金 -->
 <table class="pension-table">
   <thead>
-    <tr><th colspan="4">退　休Settings　提　撥</th></tr>
+    <tr><th colspan="4">退　休　金　提　撥</th></tr>
   </thead>
   <tbody>
     <tr>

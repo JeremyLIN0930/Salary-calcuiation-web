@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { Employee, createEmptyEmployee } from '../types/employee'
 import { SalaryMonthRow, SalaryItemTypeRow } from '../types/database'
-import { DEFAULT_COMPANY_ID, isValidUuid } from '../mappers/EmployeeMapper'
+import { DEFAULT_COMPANY_ID, isValidUuid, NAN_YI_STORE_ID } from '../mappers/EmployeeMapper'
 import { RepositoryResult, successResult, errorResult } from './base.repository'
 
 export interface SalaryItemType {
@@ -98,6 +98,12 @@ export class SupabaseSalaryRepository {
   }
 
   private buildSalaryItemPayload(salaryMonthId: string | null, employeeId: string | null, employeeName: string | null, salaryData: Partial<Employee>): Record<string, any> {
+    const fullJsonNotes = JSON.stringify({
+      ...salaryData,
+      employeeId: employeeId || salaryData.employeeId,
+      name: employeeName || salaryData.name,
+    })
+
     return {
       salary_month_id: salaryMonthId ?? null,
       employee_id: employeeId || null,
@@ -112,6 +118,7 @@ export class SupabaseSalaryRepository {
       allowance: this.normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
       deduction: this.normalizeNumericValue(salaryData.otherDeductions),
       net_salary: this.normalizeNumericValue(salaryData.netSalary),
+      notes: fullJsonNotes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -331,8 +338,32 @@ export class SupabaseSalaryRepository {
         return errorResult(error, this.tableName, 'getSalaryRecords')
       }
 
+      // Pre-fetch master_employees mapping for store and hireDate fallback
+      let masterById: Record<string, { store: string; hireDate: string }> = {}
+      let masterByName: Record<string, { store: string; hireDate: string }> = {}
+      try {
+        const { data: masterRows } = await supabase
+          .from('master_employees')
+          .select('id, name, hire_date, store_id, stores(store_name)')
+
+        if (masterRows) {
+          for (const m of masterRows) {
+            let resolvedStore = (m as any).stores?.store_name || ''
+            if (!resolvedStore || resolvedStore === '總店') {
+              if (m.store_id === NAN_YI_STORE_ID) resolvedStore = '南醫門市'
+              else resolvedStore = '慶東門市'
+            }
+            const info = { store: resolvedStore, hireDate: m.hire_date || '' }
+            if (m.id) masterById[m.id] = info
+            if (m.name && m.name.trim()) masterByName[m.name.trim()] = info
+          }
+        }
+      } catch (e) {
+        console.warn('[getSalaryRecords] Master employee lookup failed:', e)
+      }
+
       const models: Employee[] = []
-      const monthRows = (data || []) as Array<SalaryMonthRow & { salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null; base_salary?: number | null; net_salary?: number | null }> }>
+      const monthRows = (data || []) as Array<SalaryMonthRow & { payroll_date?: string | null; salary_items?: Array<{ id?: string; employee_id?: string | null; employee_name?: string | null; notes?: string | null; base_salary?: number | null; labor_insurance?: number | null; health_insurance?: number | null; tax?: number | null; bonus?: number | null; allowance?: number | null; deduction?: number | null; net_salary?: number | null }> }>
 
       for (const monthRow of monthRows) {
         const monthKeyValue = `${monthRow.year || new Date().getFullYear()}-${String(monthRow.month).padStart(2, '0')}`
@@ -356,7 +387,30 @@ export class SupabaseSalaryRepository {
             name: parsedNotes?.name || detailRow.employee_name || base.name,
             month: monthKeyValue,
             baseSalary: detailRow.base_salary ?? parsedNotes?.baseSalary ?? base.baseSalary,
+            laborInsurance: detailRow.labor_insurance ?? parsedNotes?.laborInsurance ?? base.laborInsurance,
+            healthInsurance: detailRow.health_insurance ?? parsedNotes?.healthInsurance ?? base.healthInsurance,
+            incomeTax: detailRow.tax ?? parsedNotes?.incomeTax ?? base.incomeTax,
+            bonusItems: detailRow.bonus ?? parsedNotes?.bonusItems ?? base.bonusItems,
+            otherAllowance: detailRow.allowance ?? parsedNotes?.otherAllowance ?? base.otherAllowance,
+            otherDeductions: detailRow.deduction ?? parsedNotes?.otherDeductions ?? base.otherDeductions,
             netSalary: detailRow.net_salary ?? parsedNotes?.netSalary ?? base.netSalary,
+          }
+
+          // Fallback payDate from month record if empty
+          if (!employeeModel.payDate && monthRow.payroll_date) {
+            employeeModel.payDate = monthRow.payroll_date
+          }
+
+          // Fallback store and hireDate from master_employees if empty
+          const masterInfo: { store: string; hireDate: string } | undefined =
+            (employeeModel.employeeId && masterById[employeeModel.employeeId]) ||
+            (employeeModel.name && employeeModel.name.trim() ? masterByName[employeeModel.name.trim()] : undefined)
+
+          if (!employeeModel.store && masterInfo?.store) {
+            employeeModel.store = masterInfo.store as any
+          }
+          if (!employeeModel.hireDate && masterInfo?.hireDate) {
+            employeeModel.hireDate = masterInfo.hireDate
           }
 
           models.push(employeeModel)
@@ -543,9 +597,10 @@ export class SupabaseSalaryRepository {
 
       const savedModel: Employee = {
         ...createEmptyEmployee(),
+        ...salaryData,
         id: savedDetail.id,
-        employeeId: savedDetail.employee_id || undefined,
-        name: savedDetail.employee_name || '',
+        employeeId: savedDetail.employee_id || salaryData.employeeId,
+        name: savedDetail.employee_name || salaryData.name || '',
         month: monthStr,
       }
 
