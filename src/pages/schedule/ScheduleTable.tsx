@@ -71,17 +71,17 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
     }
   }, [addEmpModalOpen])
 
-  // Custom filter options for Autocomplete
+  // Custom filter options for Autocomplete (Searchable Combobox)
   const filterOptions = (options: MasterOptionItem[], state: { inputValue: string }) => {
     const q = state.inputValue.trim().toLowerCase()
-    // 1. Result list initially displays NO options until user types keyword
-    if (!q) return []
-
-    const filtered = options.filter(opt => {
-      const nameMatch = opt.name.toLowerCase().includes(q)
-      const storeMatch = opt.store ? opt.store.toLowerCase().includes(q) : false
-      return nameMatch || storeMatch
-    })
+    // When query is empty, return full list so user can expand and pick from dropdown
+    const filtered = !q
+      ? [...options]
+      : options.filter(opt => {
+          const nameMatch = opt.name.toLowerCase().includes(q)
+          const storeMatch = opt.store ? opt.store.toLowerCase().includes(q) : false
+          return nameMatch || storeMatch
+        })
 
     // If query is non-empty and doesn't exactly match an existing name, add "➕ 建立新員工"
     if (q && !options.some(opt => opt.name.trim().toLowerCase() === q)) {
@@ -401,7 +401,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
             openOnFocus
             options={masterOptions}
             filterOptions={filterOptions}
-            noOptionsText={inputValue.trim() ? '未找到相符員工' : '請輸入員工姓名進行搜尋...'}
+            noOptionsText="沒有符合的員工"
             getOptionLabel={(option) => {
               if (typeof option === 'string') return option
               return option.name
@@ -442,7 +442,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
               if (option.isNewOption) {
                 return (
                   <Box component="li" {...props} key={option.id} sx={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <Typography variant="subtitle2" fontWeight={700} color="#2F80ED">
+                    <Typography variant="subtitle2" fontWeight={700} color="#2563EB">
                       ➕ 建立新員工：「{option.name}」
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -458,7 +458,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
                     {option.name}
                   </Typography>
                   <Typography variant="caption" color="#64748B">
-                    {option.store ? `${option.store} · ` : ''}{option.isShared ? '共用主資料庫員工' : '本店員工'}
+                    {option.store ? `${option.store} · ` : ''}{option.isShared ? '共用員工' : '本店員工'}
                   </Typography>
                 </Box>
               )
@@ -467,7 +467,7 @@ export default function ScheduleTable({ weekDates, employees, onChangeEmployees 
               <TextField
                 {...params}
                 inputRef={inputRef}
-                placeholder="搜尋或輸入員工姓名"
+                placeholder="🔍 搜尋或輸入員工姓名"
                 size="small"
                 autoFocus
                 sx={{
