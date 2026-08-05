@@ -98,7 +98,7 @@ function buildPaperScheduleHTML(schedule: Schedule): HTMLDivElement {
         : ''
 
       return `
-        <td style="border: 1px solid #000; text-align: center; padding: 4px 2px; vertical-align: middle;">
+        <td style="border: 1px solid #000; text-align: center; background-color: ${isRed ? '#FEECEC' : '#ffffff'}; padding: 4px 2px; vertical-align: middle;">
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.18;">
             <div style="font-size: 14px; font-weight: 700; color: ${isRed ? '#DC2626' : '#000000'};">${label}</div>
             ${subText}

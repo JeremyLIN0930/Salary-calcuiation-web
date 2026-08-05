@@ -131,9 +131,10 @@ export default function ScheduleCell({ shift, onClick }: Props) {
   }
 
   // Off / Leave / Other Types
-  const isOff = shift.type === 'off'
-  const bgColor = isOff ? '#F1F5F9' : (conf ? conf.bg : '#F1F5F9')
-  const textColor = isOff ? '#64748B' : (conf ? conf.color : '#334155')
+  const isOff = shift.type === 'off' || shift.type === 'personal'
+  const bgColor = isOff ? '#FEECEC' : (conf ? conf.bg : '#F1F5F9')
+  const borderColor = isOff ? '#F8B4B4' : 'transparent'
+  const textColor = isOff ? '#DC2626' : (conf ? conf.color : '#334155')
 
   return (
     <TableCell
@@ -154,6 +155,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
         sx={{
           bgcolor: bgColor,
           color: textColor,
+          border: `1px solid ${borderColor}`,
           borderRadius: '12px',
           py: 0.8,
           px: 0.5,
@@ -164,7 +166,7 @@ export default function ScheduleCell({ shift, onClick }: Props) {
           minHeight: 48,
         }}
       >
-        <Typography variant="body2" fontWeight={700} sx={{ fontSize: '14px', lineHeight: 1.2 }}>
+        <Typography variant="body2" fontWeight={700} sx={{ fontSize: isOff ? '18px' : '14px', lineHeight: 1.2 }}>
           {conf ? conf.label : '休'}
         </Typography>
         {shift.remark && (
