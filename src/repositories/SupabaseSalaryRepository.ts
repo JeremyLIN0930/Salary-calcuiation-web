@@ -98,12 +98,6 @@ export class SupabaseSalaryRepository {
   }
 
   private buildSalaryItemPayload(salaryMonthId: string | null, employeeId: string | null, employeeName: string | null, salaryData: Partial<Employee>): Record<string, any> {
-    const fullJsonNotes = JSON.stringify({
-      ...salaryData,
-      employeeId: employeeId || salaryData.employeeId,
-      name: employeeName || salaryData.name,
-    })
-
     return {
       salary_month_id: salaryMonthId ?? null,
       employee_id: employeeId || null,
@@ -118,7 +112,6 @@ export class SupabaseSalaryRepository {
       allowance: this.normalizeNumericValue((salaryData as any).allowance ?? salaryData.otherAllowance),
       deduction: this.normalizeNumericValue(salaryData.otherDeductions),
       net_salary: this.normalizeNumericValue(salaryData.netSalary),
-      notes: fullJsonNotes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -461,7 +454,7 @@ export class SupabaseSalaryRepository {
           month: monthNum,
           payroll_date: normalizedPayrollDate,
           status: 'draft',
-          notes: monthStr,
+          notes: salaryData.remark || monthStr,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
@@ -487,7 +480,7 @@ export class SupabaseSalaryRepository {
           month: monthNum,
           payroll_date: normalizedPayrollDate,
           status: 'draft',
-          notes: monthStr,
+          notes: salaryData.remark || monthStr,
           updated_at: new Date().toISOString(),
         }
 
