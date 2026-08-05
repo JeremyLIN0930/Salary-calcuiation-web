@@ -13,6 +13,7 @@ import { DEFAULT_STORES } from '../../types/store'
 import PageHeader from '../../components/common/PageHeader'
 import PageContainer from '../../components/common/PageContainer'
 import { stripSystemTags } from '../../utils/textUtils'
+import { useAppearance } from '../../context/AppearanceContext'
 
 const AddSvg = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
@@ -36,6 +37,7 @@ const SearchSvg = () => (
 )
 
 export default function EmployeeManagementPage() {
+  const { tokens } = useAppearance()
   const { state, addEmployee, updateEmployee, deleteEmployee } = useMasterEmployees()
   const { stores: storeList } = useStoreContext()
   const { showSnackbar }    = useSnackbar()
@@ -153,7 +155,9 @@ export default function EmployeeManagementPage() {
       {/* ── Page Header (Japanese Minimalism Style) ── */}
       <PageHeader
         title="👥 員工管理"
-        subtitle="建立與管理共用員工主資料庫，排班與薪資單自動同步取用"
+        subtitle="建立共用員工資料"
+        primaryActionLabel="＋ 新增員工"
+        onPrimaryAction={openAdd}
         action={
           <Button
             variant="contained"
@@ -175,16 +179,19 @@ export default function EmployeeManagementPage() {
         }
       />
 
-      {/* ── Search Bar (Unified Design System) ── */}
+      {/* ── Search Bar (Sticky on Mobile, Card on Desktop) ── */}
       <Card
         elevation={0}
         sx={{
-          p: 2,
+          p: 1.5,
           mb: 3,
           borderRadius: '24px',
-          bgcolor: '#FFFFFF',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-          border: '1px solid #F1F5F9',
+          bgcolor: tokens.card,
+          boxShadow: tokens.shadow,
+          border: `1px solid ${tokens.border}`,
+          position: { xs: 'sticky', sm: 'static' },
+          top: { xs: 10, sm: 'auto' },
+          zIndex: { xs: 999, sm: 'auto' },
         }}
       >
         <TextField
@@ -197,7 +204,7 @@ export default function EmployeeManagementPage() {
             '& .MuiOutlinedInput-root': {
               borderRadius: '16px',
               height: 48,
-              bgcolor: '#F8FAFC',
+              bgcolor: tokens.inputBackground,
               px: 1.5,
             },
           }}

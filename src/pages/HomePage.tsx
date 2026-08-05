@@ -15,6 +15,8 @@ import PageContainer from '../components/common/PageContainer'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import DeleteConfirmBottomSheet from '../components/common/DeleteConfirmBottomSheet'
+import MoreActionsBottomSheet from '../components/common/MoreActionsBottomSheet'
+import MobileFilterBottomSheet from '../components/common/MobileFilterBottomSheet'
 import { useAppearance } from '../context/AppearanceContext'
 import { groupSalariesByMonth, MonthGroup } from '../utils/salaryMigration'
 
@@ -67,6 +69,8 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
   const [deleteTarget, setDeleteTarget]     = useState<Employee | null>(null)
   const [deleteMonthKey, setDeleteMonthKey] = useState<string | null>(null)
   const [exporting, setExporting]           = useState(false)
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false)
+  const [filterBottomSheetOpen, setFilterBottomSheetOpen] = useState(false)
 
   // Create Month Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -359,18 +363,12 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
       <PageContainer maxWidth={1120}>
         <PageHeader
           title="💰 薪資管理"
-          subtitle="依月份分類管理全公司薪資表、輕鬆建立月份與匯出整月 PDF"
+          subtitle="依月份管理公司薪資表"
+          primaryActionLabel="＋ 建立月份"
+          onPrimaryAction={handleOpenCreateModal}
+          onMoreAction={() => setMoreActionsOpen(true)}
           action={
-            <Stack direction={{ xs: 'column', sm: 'row-reverse' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              <Button
-                variant="contained"
-                onClick={handleOpenCreateModal}
-                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 52, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
-              >
-                <AddSvg />
-                建立月份
-              </Button>
-
+            <Stack direction="row" spacing={1.5}>
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
@@ -380,23 +378,80 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
               </Button>
+
+              <Button
+                variant="contained"
+                onClick={handleOpenCreateModal}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+              >
+                <AddSvg />
+                建立月份
+              </Button>
             </Stack>
           }
         />
 
-        {/* ── Top Data Search & Filter Card ── */}
+        {/* ── Mobile Sticky Single-Line Search Bar (Mobile < 768px Only) ── */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            alignItems: 'center',
+            gap: 1,
+            p: 1.5,
+            mb: 2,
+            bgcolor: tokens.card,
+            borderRadius: '20px',
+            border: `1px solid ${tokens.border}`,
+            boxShadow: tokens.shadow,
+            position: 'sticky',
+            top: 10,
+            zIndex: 999,
+          }}
+        >
+          <TextField
+            placeholder="🔍 搜尋員工姓名..."
+            value={searchName}
+            onChange={e => setSearchName(e.target.value)}
+            size="small"
+            fullWidth
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                height: 44,
+                bgcolor: tokens.inputBackground,
+              },
+            }}
+          />
+          <IconButton
+            onClick={() => setFilterBottomSheetOpen(true)}
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: '14px',
+              bgcolor: isFilterActive ? '#EBF3FE' : tokens.inputBackground,
+              color: isFilterActive ? '#2F80ED' : tokens.cardTextPrimary,
+              border: `1px solid ${tokens.border}`,
+              flexShrink: 0,
+            }}
+          >
+            ⚙️
+          </IconButton>
+        </Box>
+
+        {/* ── Top Data Search & Filter Card (Desktop & Tablet ≥ 768px) ── */}
         <Card
           elevation={0}
           sx={{
-            p: { xs: 2, sm: 2.5 },
+            display: { xs: 'none', md: 'block' },
+            p: 2.5,
             mb: 2.5,
             borderRadius: '24px',
-            bgcolor: '#FFFFFF',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-            border: '1px solid #F1F5F9',
+            bgcolor: tokens.card,
+            boxShadow: tokens.shadow,
+            border: `1px solid ${tokens.border}`,
           }}
         >
-          <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1F2937', mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '15px' }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ color: tokens.cardTextPrimary, mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '15px' }}>
             🔍 資料搜尋
           </Typography>
 
@@ -413,7 +468,7 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '16px',
                     height: 48,
-                    bgcolor: '#F8FAFC',
+                    bgcolor: tokens.inputBackground,
                     px: 1.5,
                   },
                 }}
@@ -481,12 +536,12 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
                 sx={{
                   height: 48,
                   borderRadius: '16px',
-                  borderColor: '#CBD5E1',
-                  color: '#475569',
+                  borderColor: tokens.border,
+                  color: tokens.cardTextPrimary,
                   fontWeight: 700,
                   fontSize: '14px',
                   whiteSpace: 'nowrap',
-                  '&:hover': { bgcolor: '#F1F5F9', borderColor: '#94A3B8' },
+                  '&:hover': { bgcolor: tokens.surfaceSecondary },
                 }}
               >
                 ✕ 清除篩選
@@ -801,6 +856,27 @@ export default function HomePage({ onAddEmployee, onEditEmployee }: Props) {
             </Button>
           </DialogActions>
         </Dialog>
+        {/* Mobile More Actions Bottom Sheet */}
+        <MoreActionsBottomSheet
+          open={moreActionsOpen}
+          onClose={() => setMoreActionsOpen(false)}
+          onExportPDF={handleExportAllMonthsPDF}
+          exporting={exporting}
+          disabled={state.employees.length === 0}
+        />
+
+        {/* Mobile Search Filter Bottom Sheet */}
+        <MobileFilterBottomSheet
+          open={filterBottomSheetOpen}
+          onClose={() => setFilterBottomSheetOpen(false)}
+          searchYear={searchYear}
+          setSearchYear={setSearchYear}
+          searchMonth={searchMonth}
+          setSearchMonth={setSearchMonth}
+          availableYears={availableYears}
+          isFilterActive={isFilterActive}
+          onClearFilter={handleClearFilter}
+        />
       </PageContainer>
     )
   }

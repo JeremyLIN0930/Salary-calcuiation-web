@@ -15,6 +15,8 @@ import PageContainer from '../../components/common/PageContainer'
 import EmptyState from '../../components/common/EmptyState'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import DeleteConfirmBottomSheet from '../../components/common/DeleteConfirmBottomSheet'
+import MoreActionsBottomSheet from '../../components/common/MoreActionsBottomSheet'
+import MobileFilterBottomSheet from '../../components/common/MobileFilterBottomSheet'
 import { groupSchedulesByMonth, ScheduleMonthGroup, getMonthKeyFromSchedule } from '../../utils/scheduleMigration'
 import { useMasterEmployees } from '../../context/MasterEmployeeContext'
 import { useStoreContext } from '../../context/StoreContext'
@@ -66,6 +68,8 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
   const [weekSearch, setWeekSearch]           = useState('')
   const [selectedWeekIds, setSelectedWeekIds] = useState<string[]>([])
   const [exporting, setExporting]             = useState(false)
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false)
+  const [filterBottomSheetOpen, setFilterBottomSheetOpen] = useState(false)
 
   // Dialog States
   const [createWeekDialogOpen, setCreateWeekDialogOpen] = useState(false)
@@ -338,18 +342,12 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
       <PageContainer maxWidth={1120}>
         <PageHeader
           title="📅 排班管理"
-          subtitle="依月份分類管理每週班表、輕鬆建立、編輯與 PDF 匯出"
+          subtitle="依月份管理排班"
+          primaryActionLabel="＋ 建立月份"
+          onPrimaryAction={handleOpenCreateMonthModal}
+          onMoreAction={() => setMoreActionsOpen(true)}
           action={
-            <Stack direction={{ xs: 'column', sm: 'row-reverse' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              <Button
-                variant="contained"
-                onClick={handleOpenCreateMonthModal}
-                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 52, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
-              >
-                <AddSvg />
-                建立月份
-              </Button>
-
+            <Stack direction="row" spacing={1.5}>
               <Button
                 variant="outlined"
                 onClick={handleExportAllMonthsPDF}
@@ -359,31 +357,77 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                 {exporting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : <PdfSvg />}
                 匯出全部月份 PDF
               </Button>
+
+              <Button
+                variant="contained"
+                onClick={handleOpenCreateMonthModal}
+                sx={{ borderRadius: '16px', fontWeight: 700, minHeight: 48, px: 3, bgcolor: '#2F80ED', '&:hover': { bgcolor: '#1D6FD8' } }}
+              >
+                <AddSvg />
+                建立月份
+              </Button>
             </Stack>
           }
         />
 
-        {/* Year + Month Dual Dropdown Filter Bar */}
+        {/* ── Mobile Sticky Filter Trigger Bar (Mobile < 768px Only) ── */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.5,
+            mb: 2,
+            bgcolor: tokens.card,
+            borderRadius: '20px',
+            border: `1px solid ${tokens.border}`,
+            boxShadow: tokens.shadow,
+            position: 'sticky',
+            top: 10,
+            zIndex: 999,
+          }}
+        >
+          <Typography variant="body2" fontWeight={700} sx={{ color: tokens.cardTextPrimary, pl: 1 }}>
+            🔍 篩選：{selectedYear} 年 {selectedMonth === 'all' ? '全部月份' : `${selectedMonth} 月`}
+          </Typography>
+          <IconButton
+            onClick={() => setFilterBottomSheetOpen(true)}
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: '14px',
+              bgcolor: (selectedMonth !== 'all') ? '#EBF3FE' : tokens.inputBackground,
+              color: (selectedMonth !== 'all') ? '#2F80ED' : tokens.cardTextPrimary,
+              border: `1px solid ${tokens.border}`,
+              flexShrink: 0,
+            }}
+          >
+            ⚙️
+          </IconButton>
+        </Box>
+
+        {/* ── Year + Month Dual Dropdown Filter Bar (Desktop & Tablet ≥ 768px) ── */}
         <Card
           elevation={0}
           sx={{
-            p: { xs: 2, sm: 2.5 },
+            display: { xs: 'none', md: 'block' },
+            p: 2.5,
             mb: 2.5,
             borderRadius: '24px',
-            bgcolor: '#FFFFFF',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-            border: '1px solid #F1F5F9',
+            bgcolor: tokens.card,
+            boxShadow: tokens.shadow,
+            border: `1px solid ${tokens.border}`,
           }}
         >
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction="row"
             spacing={2}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
+            alignItems="center"
             justifyContent="space-between"
           >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Stack direction="row" spacing={1.5}>
               {/* Year Select Dropdown */}
-              <FormControl size="small" sx={{ width: { xs: '100%', sm: 160 } }}>
+              <FormControl size="small" sx={{ width: 160 }}>
                 <InputLabel>年份</InputLabel>
                 <Select
                   value={selectedYear}
@@ -392,7 +436,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                   sx={{
                     borderRadius: '16px',
                     height: 48,
-                    bgcolor: '#F8FAFC',
+                    bgcolor: tokens.inputBackground,
                     fontWeight: 700,
                   }}
                 >
@@ -403,7 +447,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
               </FormControl>
 
               {/* Month Select Dropdown */}
-              <FormControl size="small" sx={{ width: { xs: '100%', sm: 160 } }}>
+              <FormControl size="small" sx={{ width: 160 }}>
                 <InputLabel>月份</InputLabel>
                 <Select
                   value={selectedMonth}
@@ -412,7 +456,7 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
                   sx={{
                     borderRadius: '16px',
                     height: 48,
-                    bgcolor: '#F8FAFC',
+                    bgcolor: tokens.inputBackground,
                     fontWeight: 700,
                   }}
                 >
@@ -679,6 +723,27 @@ export default function ScheduleListPage({ onSelectSchedule }: Props) {
           warningText="該月份包含之所有每週排班表與班表紀錄將永久刪除且無法復原。"
           onClose={() => setDeleteMonthKey(null)}
           onConfirm={handleConfirmDeleteMonth}
+        />
+        {/* Mobile More Actions Bottom Sheet */}
+        <MoreActionsBottomSheet
+          open={moreActionsOpen}
+          onClose={() => setMoreActionsOpen(false)}
+          onExportPDF={handleExportAllMonthsPDF}
+          exporting={exporting}
+          disabled={state.schedules.length === 0}
+        />
+
+        {/* Mobile Search Filter Bottom Sheet */}
+        <MobileFilterBottomSheet
+          open={filterBottomSheetOpen}
+          onClose={() => setFilterBottomSheetOpen(false)}
+          searchYear={String(selectedYear)}
+          setSearchYear={y => setSelectedYear(y === 'all' ? new Date().getFullYear() : Number(y))}
+          searchMonth={selectedMonth}
+          setSearchMonth={setSelectedMonth}
+          availableYears={availableYears}
+          isFilterActive={selectedMonth !== 'all'}
+          onClearFilter={() => setSelectedMonth('all')}
         />
       </PageContainer>
     )

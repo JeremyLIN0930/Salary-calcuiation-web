@@ -7,16 +7,37 @@ interface Props {
   title: string
   subtitle?: string
   action?: React.ReactNode
+  primaryActionLabel?: string
+  onPrimaryAction?: () => void
+  onMoreAction?: () => void
   onBack?: () => void
 }
 
-export default function PageHeader({ title, subtitle, action, onBack }: Props) {
+export default function PageHeader({
+  title,
+  subtitle,
+  action,
+  primaryActionLabel,
+  onPrimaryAction,
+  onMoreAction,
+  onBack,
+}: Props) {
   const theme = useTheme()
   const isMobile = useMediaQuery('(max-width:767px)')
   const { tokens } = useAppearance()
 
   if (isMobile) {
-    return <MobileHeader title={title} subtitle={subtitle} action={action} onBack={onBack} />
+    return (
+      <MobileHeader
+        title={title}
+        subtitle={subtitle}
+        action={action}
+        primaryActionLabel={primaryActionLabel}
+        onPrimaryAction={onPrimaryAction}
+        onMoreAction={onMoreAction}
+        onBack={onBack}
+      />
+    )
   }
 
   return (
